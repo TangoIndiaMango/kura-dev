@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+@import '@mantine/core/styles.css';
+@import '@mantine/notifications/styles.css';
+@import '@mantine/dates/styles.css';
+@import '@mantine/spotlight/styles.css';
+
+html,
+body,
+#root {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Custom instrument scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #070f14;
+}
+::-webkit-scrollbar-thumb {
+  background: #172a36;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0D7C8F;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(13, 124, 143, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(13, 124, 143, 0.7);
+  }
+}
+
+.kura-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
+}

@@ -1,0 +1,116 @@
+import { Box, Button, Group, Modal, Stack, Text } from '@mantine/core'
+import { RevealImage } from './RevealImage'
+
+type FileKind = 'image' | 'pdf' | 'video' | 'audio' | 'document'
+
+function getFileKind(url: string, preferImage?: boolean): FileKind {
+  const path = url.split('?')[0]?.toLowerCase() ?? url.toLowerCase()
+  if (
+    preferImage ||
+    /\.(jpe?g|png|gif|webp|bmp|svg)$/.test(path) ||
+    /cloudinary/i.test(url)
+  ) {
+    return 'image'
+  }
+  if (/\.pdf$/.test(path)) return 'pdf'
+  if (/\.(mp4|webm|ogg|mov)$/.test(path)) return 'video'
+  if (/\.(mp3|wav|m4a)$/.test(path)) return 'audio'
+  return 'document'
+}
+
+function fileNameFromUrl(url: string) {
+  try {
+    const name = decodeURIComponent(url.split('/').pop()?.split('?')[0] ?? '')
+    return name || 'Attachment'
+  } catch {
+    return 'Attachment'
+  }
+}
+
+interface FilePreviewModalProps {
+  opened: boolean
+  onClose: () => void
+  url: string | null
+  title?: string
+  preferImage?: boolean
+}
+
+export function FilePreviewModal({
+  opened,
+  onClose,
+  url,
+  title,
+  preferImage,
+}: FilePreviewModalProps) {
+  const kind = url ? getFileKind(url, preferImage) : 'document'
+  const heading = title || (url ? fileNameFromUrl(url) : 'Attachment')
+
+  return (
+    <Modal
+      opened={opened && Boolean(url)}
+      onClose={onClose}
+      centered
+      size="xl"
+      radius="lg"
+      title={heading}
+      overlayProps={{ backgroundOpacity: 0.5, blur: 8 }}
+      styles={{
+        title: { fontWeight: 700, fontSize: 16 },
+        body: { paddingTop: 8 },
+      }}
+    >
+      <Stack gap="md">
+        {url && kind === 'image' ? (
+          <Box className="overflow-hidden rounded-lg bg-gray-100">
+            <RevealImage
+              src={url}
+              alt={heading}
+              fit="contain"
+              mah={520}
+              w="100%"
+            />
+          </Box>
+        ) : null}
+
+        {url && (kind === 'pdf' || kind === 'document') ? (
+          <Box
+            className="overflow-hidden rounded-lg bg-gray-50"
+            h={{ base: 360, sm: 520 }}
+          >
+            <iframe
+              title={heading}
+              src={url}
+              className="h-full w-full border-0"
+            />
+          </Box>
+        ) : null}
+
+        {url && kind === 'video' ? (
+          <video src={url} controls className="w-full rounded-lg" />
+        ) : null}
+
+        {url && kind === 'audio' ? (
+          <audio src={url} controls className="w-full" />
+        ) : null}
+
+        <Group justify="space-between" wrap="wrap" gap="sm">
+          <Text fz="xs" c="gray.6">
+            Previewing this file in the app.
+          </Text>
+          {url ? (
+            <Button
+              component="a"
+              href={url}
+              download
+              variant="subtle"
+              size="compact-sm"
+              color="brand"
+            >
+              Download
+            </Button>
+          ) : null}
+        </Group>
+      </Stack>
+    </Modal>
+  )
+}

@@ -1,0 +1,33 @@
+# Private & Handover
+hidden/
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+*.sqlite3
+*.db
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# IDE & OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

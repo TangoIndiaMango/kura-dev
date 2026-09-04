@@ -1,0 +1,17 @@
+{
+  "name": "kura-frontend-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npx concurrently -k -n 'client,admin' -c 'cyan,magenta' 'npm run dev:client' 'npm run dev:admin'",
+    "dev:client": "npm --workspace client run dev",
+    "dev:admin": "npm --workspace admin run dev",
+    "build": "npm run build --workspaces --if-present",
+    "build:client": "npm --workspace client run build",
+    "build:admin": "npm --workspace admin run build",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}
