@@ -84,10 +84,17 @@ def account_ids_touching_hubs(hub_ids: list[UUID]) -> list:
 
 
 def vehicle_q_for_hubs(hub_ids: list[UUID]) -> Q:
-    """Vehicles mounted at hub or that have swapped at hub."""
-    from mobility.models import Swap
+    """Vehicles mounted at hub, swapped at hub, reserved at hub, or owned by hub-touching accounts."""
+    from mobility.models import Reservation, Swap
 
     if not hub_ids:
         return Q(pk__in=[])
     swapped = Swap.objects.filter(hub_id__in=hub_ids).values("vehicle_id")
-    return Q(current_battery__current_hub_id__in=hub_ids) | Q(id__in=swapped)
+    reserved = Reservation.objects.filter(hub_id__in=hub_ids, vehicle_id__isnull=False).values("vehicle_id")
+    touching_accounts = account_ids_touching_hubs(hub_ids)
+    return (
+        Q(current_battery__current_hub_id__in=hub_ids)
+        | Q(id__in=swapped)
+        | Q(id__in=reserved)
+        | Q(account_id__in=touching_accounts)
+    )

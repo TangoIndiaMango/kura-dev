@@ -312,13 +312,13 @@ def vehicles_for(user) -> QuerySet[Vehicle]:
     qs = Vehicle.objects.select_related(
         "vehicle_model", "current_battery", "account"
     ).order_by("-created_at")
+    if _can_read_all_mobility(user):
+        return qs
     scope = hub_ids_for(user)
     if scope is not None:
         if not scope:
             return qs.none()
         return qs.filter(vehicle_q_for_hubs(scope)).distinct()
-    if _can_read_all_mobility(user):
-        return qs
     own = _own_account_ids(user)
     if not own:
         return qs.none()

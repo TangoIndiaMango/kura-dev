@@ -31,29 +31,29 @@ __all__ = [
 
 def accounts_for(user: User) -> QuerySet[Account]:
     qs = Account.objects.order_by("-created_at")
+    if user_has_capability(user, "accounts:read") or user_has_capability(
+        user, "accounts:manage"
+    ):
+        return qs
     scope = hub_ids_for(user)
     if scope is not None:
         if not scope:
             return qs.none()
         return qs.filter(id__in=account_ids_touching_hubs(scope))
-    if user_has_capability(user, "accounts:read") or user_has_capability(
-        user, "accounts:manage"
-    ):
-        return qs
     return qs.filter(owner_user=user)
 
 
 def drivers_for(user: User) -> QuerySet[Driver]:
     qs = Driver.objects.select_related("user", "account").order_by("-created_at")
+    if user_has_capability(user, "accounts:read") or user_has_capability(
+        user, "accounts:manage"
+    ):
+        return qs
     scope = hub_ids_for(user)
     if scope is not None:
         if not scope:
             return qs.none()
         return qs.filter(account_id__in=account_ids_touching_hubs(scope))
-    if user_has_capability(user, "accounts:read") or user_has_capability(
-        user, "accounts:manage"
-    ):
-        return qs
     return qs.filter(user=user)
 
 

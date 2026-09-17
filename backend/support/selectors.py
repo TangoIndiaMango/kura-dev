@@ -26,13 +26,13 @@ def cases_for(user) -> QuerySet[SupportCase]:
     qs = SupportCase.objects.select_related(
         "account", "assigned_to", "opened_by", "driver"
     ).prefetch_related("events__attachment", "events__actor")
+    if user_has_capability(user, "cases:read"):
+        return qs
     scope = hub_ids_for(user)
     if scope is not None:
         if not scope:
             return qs.none()
         return qs.filter(account_id__in=account_ids_touching_hubs(scope))
-    if user_has_capability(user, "cases:read"):
-        return qs
     own = _own_account_ids(user)
     if not own:
         return qs.none()
