@@ -117,10 +117,7 @@ class AccountCrmListSerializer(serializers.ModelSerializer):
         return sub.plan.name if sub else None
 
     def get_wallet_available_kobo(self, obj: Account) -> int | None:
-        try:
-            return obj.wallet.available_balance_kobo
-        except ObjectDoesNotExist:
-            return None
+        return None
 
 
 class AccountCrmDetailSerializer(AccountCrmListSerializer):

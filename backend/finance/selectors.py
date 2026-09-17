@@ -20,13 +20,10 @@ def _own_account_ids(user) -> list:
 def _can_read_all_finance(user) -> bool:
     if user_has_capability(user, "wallets:manage"):
         return True
-    role = getattr(user, "role", "") or ""
-    is_staff = bool(getattr(user, "is_staff", False) or role in STAFF_ROLES)
-    if not is_staff:
+    if not user_has_capability(user, "finance:read"):
         return False
-    return user_has_capability(user, "finance:read") or user_has_capability(
-        user, "accounts:read"
-    )
+    role = getattr(user, "role", "") or ""
+    return bool(getattr(user, "is_staff", False) or role in STAFF_ROLES)
 
 
 def wallets_for(user) -> QuerySet[Wallet]:
