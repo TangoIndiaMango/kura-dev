@@ -78,6 +78,8 @@ export type HubDailyMetric = {
   energy_kwh: number
   solar_kw: number
   grid_kw: number
+  revenue_kobo?: number
+  revenue_naira?: number
 }
 
 export type HubDetailStats = {
@@ -98,4 +100,9 @@ export type HubDetailStats = {
   daily_metrics: HubDailyMetric[]
   start_date: string
   end_date: string
+  revenue_kobo_total?: number
+  revenue_naira_total?: number
+  daily_revenue_naira_avg?: number
+  expected_swaps_today?: number
+  estimated_revenue_today_naira?: number
 }

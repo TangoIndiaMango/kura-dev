@@ -6,9 +6,11 @@ import {
   ArrowDataTransferHorizontalIcon,
   BatteryCharging02Icon,
   CheckmarkCircle02Icon,
+  Coins01Icon,
   EnergyIcon,
   Sun01Icon,
 } from 'hugeicons-react'
+import { formatNaira } from '@shared/utils/currency'
 import { DateRangePicker } from '@shared/components/date-range/DateRangePicker'
 import { useHubDetailStats } from '../hooks/use-hubs'
 import type { HubDetailApi, HubSlotApi } from '../types'
@@ -92,6 +94,17 @@ export function HubEnergyThroughputCockpit({
       desc: `${ready} ready packs · ${charging} charging`,
     },
     {
+      label: 'Hub Revenue',
+      icon: <Coins01Icon size={16} className="text-[#27AE60]" />,
+      value: formatNaira(stats?.revenue_kobo_total ?? 0, { fromKobo: true }),
+      sub: stats?.daily_revenue_naira_avg
+        ? `₦${stats.daily_revenue_naira_avg.toLocaleString()}/day avg`
+        : 'In selected period',
+      desc: stats?.estimated_revenue_today_naira
+        ? `Est. today: ₦${stats.estimated_revenue_today_naira.toLocaleString()} (${stats.expected_swaps_today ?? 0} swaps projected)`
+        : 'Station swap earnings',
+    },
+    {
       label: 'Station Uptime',
       icon: <CheckmarkCircle02Icon size={16} className="text-[#27AE60]" />,
       value: extras.uptime30d || (hub.status === 'ONLINE' ? '99.8%' : hub.status === 'MAINTENANCE' ? 'Maintenance' : 'Offline'),
@@ -143,8 +156,8 @@ export function HubEnergyThroughputCockpit({
         </div>
       </div>
 
-      {/* 4 Metric Tiles */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 5 Metric Tiles */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {tiles.map((t) => (
           <div key={t.label} className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)]">
             <div className="flex items-center justify-between text-[var(--mu)]">

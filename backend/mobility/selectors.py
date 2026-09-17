@@ -110,6 +110,10 @@ def hub_detail_stats(
     days_count = max(1, (end_d - start_d).days + 1)
     swaps_per_day = round(total_swaps / days_count, 1)
 
+    rev_agg = scoped_swaps.aggregate(rev=Sum("amount_kobo"))["rev"] or 0
+    total_revenue_kobo = int(rev_agg)
+    total_revenue_naira = round(total_revenue_kobo / 100, 2)
+
     energy_expr = ExpressionWrapper(
         (F("issued_charge_pct") - F("returned_charge_pct")) * 3.24 / 100.0,
         output_field=FloatField(),
@@ -121,6 +125,7 @@ def hub_detail_stats(
         .annotate(
             c=Count("id"),
             energy=Sum(energy_expr),
+            rev=Sum("amount_kobo"),
         )
     )
     daily_map = {row["day"]: row for row in daily_rows if row["day"]}
@@ -141,10 +146,29 @@ def hub_detail_stats(
             "energy_kwh": energy,
             "solar_kw": round(solar_base, 1),
             "grid_kw": round(max(1.0, energy * 0.3), 1),
+            "revenue_kobo": int(row["rev"] or 0) if row else 0,
+            "revenue_naira": round((row["rev"] or 0) / 100, 2) if row else 0.0,
         })
         cur += timedelta(days=1)
 
     total_energy_kwh = round(sum(d["energy_kwh"] for d in daily_metrics), 1)
+
+    from analytics.selectors.demand import hub_demand_forecast
+
+    forecasts = hub_demand_forecast(user=None, lookback_days=28)
+    hub_forecast = next((f for f in forecasts if f["hub_id"] == str(hub.id)), None)
+    expected_swaps_today = (
+        hub_forecast["expected_swaps_next_24h"]
+        if hub_forecast
+        else (round(swaps_per_day) if swaps_per_day > 0 else 8)
+    )
+    avg_fee_kobo = (
+        round(total_revenue_kobo / max(1, total_swaps))
+        if total_swaps > 0
+        else 150000
+    )
+    estimated_revenue_today_kobo = expected_swaps_today * avg_fee_kobo
+    estimated_revenue_today_naira = round(estimated_revenue_today_kobo / 100, 2)
 
     slots_qs = HubSlot.objects.filter(hub=hub)
     ready_count = slots_qs.filter(state=HubSlot.State.READY).count()
@@ -168,6 +192,11 @@ def hub_detail_stats(
         "swaps_count": total_swaps,
         "swaps_per_day": swaps_per_day,
         "energy_kwh_total": total_energy_kwh,
+        "revenue_kobo_total": total_revenue_kobo,
+        "revenue_naira_total": total_revenue_naira,
+        "daily_revenue_naira_avg": round((total_revenue_kobo / days_count) / 100, 2),
+        "expected_swaps_today": expected_swaps_today,
+        "estimated_revenue_today_naira": estimated_revenue_today_naira,
         "daily_metrics": daily_metrics,
         "start_date": start_d.isoformat(),
         "end_date": end_d.isoformat(),
