@@ -43,10 +43,10 @@ export const PhoneScreen: React.FC<PhoneScreenProps> = ({
           loading={loading}
           disabled={loading || !ready}
         >
-          Send code
+          Continue
         </OperatorPrimaryButton>
         <p className="text-center text-[11px] text-[var(--kura-muted)]">
-          We’ll text a 6-digit code to this number.
+          We’ll send a verification code or ask for your PIN.
         </p>
       </div>
     </div>
