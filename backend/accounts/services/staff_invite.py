@@ -34,6 +34,7 @@ def invite_staff(
     password: str | None = None,
     cooperative_id: str | None = None,
     hub_ids: list[UUID] | None = None,
+    base_url: str | None = None,
 ) -> tuple[User, dict]:
     from accounts.services.cooperatives import CooperativeService
     from accounts.services.invites import (
@@ -106,7 +107,9 @@ def invite_staff(
         )
 
     _row, raw_token = issue_password_setup_token(user=user)
-    enqueue_staff_invite_email(user_id=str(user.id), raw_token=raw_token)
+    enqueue_staff_invite_email(
+        user_id=str(user.id), raw_token=raw_token, base_url=base_url
+    )
     expires_hours = int(INVITE_TTL.total_seconds() // 3600)
 
     after: dict = {
@@ -152,7 +155,9 @@ def invite_staff(
 
 
 @transaction.atomic
-def resend_invite(*, user: User, actor: User) -> dict:
+def resend_invite(
+    *, user: User, actor: User, base_url: str | None = None
+) -> dict:
     from accounts.services.invites import (
         INVITE_TTL,
         enqueue_staff_invite_email,
@@ -178,7 +183,9 @@ def resend_invite(*, user: User, actor: User) -> dict:
             http=409,
         )
     _row, raw_token = issue_password_setup_token(user=user)
-    enqueue_staff_invite_email(user_id=str(user.id), raw_token=raw_token)
+    enqueue_staff_invite_email(
+        user_id=str(user.id), raw_token=raw_token, base_url=base_url
+    )
     expires_hours = int(INVITE_TTL.total_seconds() // 3600)
     emit_event(
         action="user.invite_resent",

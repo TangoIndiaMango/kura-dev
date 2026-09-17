@@ -24,10 +24,10 @@
   --kura-text-inverse: #ffffff;
   --kura-overlay: rgba(0, 0, 0, 0.55);
   --kura-map-scrim: rgba(0, 0, 0, 0.55);
-  --kura-glass-fill: rgba(12, 28, 37, 0.42);
-  --kura-glass-border: rgba(255, 255, 255, 0.16);
-  --kura-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --kura-glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.4);
+  --kura-glass-fill: rgba(10, 24, 32, 0.84);
+  --kura-glass-border: rgba(255, 255, 255, 0.14);
+  --kura-glass-highlight: inset 0 1px 0.5px rgba(255, 255, 255, 0.22);
+  --kura-glass-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
@@ -49,10 +49,10 @@
   --kura-text-inverse: #ffffff;
   --kura-overlay: rgba(0, 20, 30, 0.4);
   --kura-map-scrim: rgba(255, 255, 255, 0.88);
-  --kura-glass-fill: rgba(255, 255, 255, 0.48);
+  --kura-glass-fill: rgba(255, 255, 255, 0.86);
   --kura-glass-border: rgba(0, 49, 83, 0.12);
-  --kura-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  --kura-glass-shadow: 0 10px 36px rgba(0, 49, 83, 0.12);
+  --kura-glass-highlight: inset 0 1px 0.5px rgba(255, 255, 255, 0.95);
+  --kura-glass-shadow: 0 14px 36px -4px rgba(0, 49, 83, 0.16), 0 4px 12px rgba(0, 49, 83, 0.08);
   color-scheme: light;
 }
 
@@ -361,8 +361,9 @@ a,
   background: var(--kura-glass-fill);
   border: 1px solid var(--kura-glass-border);
   box-shadow: var(--kura-glass-shadow), var(--kura-glass-highlight);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  isolation: isolate;
 }
 
 @media (prefers-reduced-motion: no-preference) {

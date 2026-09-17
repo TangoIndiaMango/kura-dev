@@ -51,9 +51,10 @@ def validate_password_strength(password: str) -> None:
         )
 
 
-def admin_setup_url(*, raw_token: str, email: str) -> str:
+def admin_setup_url(*, raw_token: str, email: str, base_url: str | None = None) -> str:
     base = (
-        getattr(settings, "FRONTEND_ADMIN_URL", None)
+        base_url
+        or getattr(settings, "FRONTEND_ADMIN_URL", None)
         or "http://localhost:5176"
     ).rstrip("/")
     qs = urlencode({"token": raw_token, "email": email})
@@ -157,7 +158,9 @@ def _load_valid_token(raw_token: str) -> PasswordSetupToken:
     return token
 
 
-def enqueue_staff_invite_email(*, user_id: str, raw_token: str) -> None:
+def enqueue_staff_invite_email(
+    *, user_id: str, raw_token: str, base_url: str | None = None
+) -> None:
     """Send invite after commit via Django Tasks (ImmediateBackend locally)."""
     from django.db import transaction
 
@@ -174,7 +177,9 @@ def enqueue_staff_invite_email(*, user_id: str, raw_token: str) -> None:
             if user.assigned_role_id
             else (user.get_role_display() if hasattr(user, "get_role_display") else user.role)
         )
-        setup_url = admin_setup_url(raw_token=raw_token, email=user.email)
+        setup_url = admin_setup_url(
+            raw_token=raw_token, email=user.email, base_url=base_url
+        )
         send_templated_email_task.enqueue(
             to=user.email,
             subject="Set up your Kura console password",

@@ -1,6 +1,8 @@
 """Staff IAM ViewSet — invite / activate / deactivate."""
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -17,6 +19,15 @@ from accounts.services import UserService
 from accounts.services.users import staff_users_qs
 from core.pagination import KuraPageNumberPagination
 from core.responses import created, ok
+
+
+def _extract_frontend_url(request) -> str | None:
+    origin = request.headers.get("Origin") or request.headers.get("Referer")
+    if origin:
+        parsed = urlparse(origin)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+    return None
 
 
 class StaffUserViewSet(viewsets.ModelViewSet):
@@ -91,6 +102,7 @@ class StaffUserViewSet(viewsets.ModelViewSet):
             password=data.get("password") or None,
             cooperative_id=str(coop_id) if coop_id else None,
             hub_ids=data.get("hub_ids"),
+            base_url=_extract_frontend_url(request),
         )
         payload = UserSerializer(user).data
         payload.update(invite_meta)
@@ -114,7 +126,11 @@ class StaffUserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="resend-invite")
     def resend_invite(self, request, pk=None):
-        meta = UserService.resend_invite(user=self.get_object(), actor=request.user)
+        meta = UserService.resend_invite(
+            user=self.get_object(),
+            actor=request.user,
+            base_url=_extract_frontend_url(request),
+        )
         return ok(meta)
 
     @action(detail=True, methods=["post"], url_path="deactivate")
