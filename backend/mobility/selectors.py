@@ -180,7 +180,16 @@ def batteries_queryset(user=None) -> QuerySet[Battery]:
     ).order_by("-created_at")
     if user is None:
         return qs
-    return _apply_hub_scope(qs, hub_ids_for(user), "current_hub_id")
+    if user_has_capability(user, "batteries:read") or _can_read_all_mobility(user):
+        return qs
+    scope = hub_ids_for(user)
+    if scope is not None:
+        if not scope:
+            return qs.none()
+        return qs.filter(
+            Q(current_hub_id__in=scope) | Q(mounted_vehicle__isnull=False)
+        )
+    return qs
 
 
 def battery_stats(user=None) -> dict[str, Any]:
@@ -341,11 +350,11 @@ def reservations_for(user) -> QuerySet[Reservation]:
     qs = Reservation.objects.select_related(
         "hub", "vehicle", "driver__user", "account", "battery"
     ).order_by("-created_at")
+    if _can_read_all_mobility(user):
+        return qs
     scope = hub_ids_for(user)
     if scope is not None:
         return _apply_hub_scope(qs, scope, "hub_id")
-    if _can_read_all_mobility(user):
-        return qs
     own = _own_account_ids(user)
     if not own:
         return qs.none()
@@ -364,11 +373,11 @@ def swaps_for(user) -> QuerySet[Swap]:
         "reservation",
         "payment",
     ).order_by("-created_at")
+    if _can_read_all_mobility(user):
+        return qs
     scope = hub_ids_for(user)
     if scope is not None:
         return _apply_hub_scope(qs, scope, "hub_id")
-    if _can_read_all_mobility(user):
-        return qs
     own = _own_account_ids(user)
     if not own:
         return qs.none()
