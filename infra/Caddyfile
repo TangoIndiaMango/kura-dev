@@ -1,0 +1,5 @@
+# Local edge proxy. Prod: lock origin to Cloudflare ranges + origin TLS.
+:80 {
+	encode zstd gzip
+	reverse_proxy api:8000
+}

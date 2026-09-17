@@ -39,6 +39,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return fallback({ error, reset: this.reset })
     }
 
-    return <ErrorFallback {...fallbackProps} error={error} />
+    return (
+      <ErrorFallback {...fallbackProps} error={error} onReset={this.reset} />
+    )
   }
 }

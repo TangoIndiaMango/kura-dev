@@ -1,3 +1,19 @@
+export { KuraLogo } from './KuraLogo'
+export { OperatorPrimaryButton } from './operator/OperatorPrimaryButton'
+export { OperatorSubtleButton } from './operator/OperatorSubtleButton'
+export { HoldFillButton } from './operator/HoldFillButton'
+export { OperatorPhoneField } from './operator/OperatorPhoneField'
+export { PinDigitInputs } from './operator/PinDigitInputs'
+export { IllustrationHero } from './IllustrationHero'
+export { OperatorListPagination } from './operator/OperatorListPagination'
+export { OperatorBackHeader } from './operator/OperatorBackHeader'
+export {
+  ActivityTypeIcon,
+  activityIconFromTitle,
+} from './operator/ActivityTypeIcon'
+export { ConfirmDialog } from './ConfirmDialog'
+export { ProgressMotionBar } from './ProgressMotionBar'
+
 export {
   RouteLoadingFallback,
   CardGridSkeleton,
@@ -12,14 +28,16 @@ export {
 export { IllustratedModalLayout } from './IllustratedModalLayout'
 export { IllustratedFormModal } from './IllustratedFormModal'
 export { IllustratedStatusModal } from './IllustratedStatusModal'
+export { KuraIllustrationModal } from './KuraIllustrationModal'
 export type { IllustratedModalLayoutProps } from './IllustratedModalLayout'
 export type { IllustratedFormModalProps } from './IllustratedFormModal'
 export type { IllustratedStatusModalProps } from './IllustratedStatusModal'
+export type { KuraIllustrationModalProps } from './KuraIllustrationModal'
 
 export { DetailsDrawer } from './DetailsDrawer'
 export type { DetailsDrawerProps, DetailsDrawerRow } from './DetailsDrawer'
 
-export { ErrorBoundary, ErrorFallback, RouteErrorFallback } from './error'
+export { ErrorBoundary, ErrorFallback, RouteErrorFallback, RouteErrorBoundary } from './error'
 export type { ErrorFallbackProps } from './error'
 
 export {
@@ -87,3 +105,6 @@ export type { PageBreadcrumbItem, GoBackLinkProps } from './page-header'
 
 export { RevealImage } from './media/RevealImage'
 export { FilePreviewModal } from './media/FilePreviewModal'
+export { MediaDropzone } from './media-upload/MediaDropzone'
+export type { MediaDropzoneProps } from './media-upload/MediaDropzone'
+export { UploadProgressLoader } from './media-upload/UploadProgressLoader'

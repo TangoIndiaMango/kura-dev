@@ -56,8 +56,8 @@ export function TableFilterModal({
             onClick={handleReset}
             styles={{
               root: {
-                borderColor: '#DEE2E6',
-                color: '#495057',
+                borderColor: 'var(--bd)',
+                color: 'var(--tx)',
                 fontWeight: 600,
                 minWidth: 100,
               },
@@ -70,7 +70,7 @@ export function TableFilterModal({
             onClick={handleApply}
             styles={{
               root: {
-                backgroundColor: '#008751',
+                backgroundColor: 'var(--pr)',
                 fontWeight: 600,
                 minWidth: 120,
               },

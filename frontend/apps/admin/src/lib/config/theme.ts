@@ -1,4 +1,6 @@
 import { createTheme, type MantineColorsTuple, Button, TextInput, PasswordInput, NumberInput, Select, Modal, Drawer, ActionIcon } from '@mantine/core'
+import { ArrowDown01Icon } from 'hugeicons-react'
+import { createElement } from 'react'
 
 export const themeColors = {
   primaryGreen: '#0D7C8F',
@@ -50,12 +52,37 @@ export const theme = createTheme({
         radius: 'md',
       },
     }),
+    ActionIcon: ActionIcon.extend({
+      defaultProps: {
+        radius: 'md',
+      },
+    }),
+    TextInput: TextInput.extend({
+      defaultProps: {
+        radius: 'md',
+      },
+    }),
+    Select: Select.extend({
+      defaultProps: {
+        radius: 'md',
+        rightSection: createElement(ArrowDown01Icon, { size: 16 }),
+        rightSectionPointerEvents: 'none',
+      },
+    }),
     Modal: Modal.extend({
       defaultProps: {
-        radius: 'lg',
+        radius: 'md',
         overlayProps: {
           backgroundOpacity: 0.5,
           blur: 3,
+        },
+      },
+    }),
+    Drawer: Drawer.extend({
+      defaultProps: {
+        overlayProps: {
+          backgroundOpacity: 0.4,
+          blur: 2,
         },
       },
     }),

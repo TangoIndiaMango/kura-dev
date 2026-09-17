@@ -35,10 +35,12 @@ export function useTableFilterModal(
   const apply = useCallback(
     (next: TableFilterValues) => {
       setSearchParams(
-        (current) =>
-          writeFilterValuesToParams(fields, next, current, {
+        (current) => {
+          const patched = writeFilterValuesToParams(fields, next, current, {
             resetPageKey: options?.resetPageKey,
-          }),
+          })
+          return patched.toString() === current.toString() ? current : patched
+        },
         { replace: true },
       )
     },
@@ -47,10 +49,12 @@ export function useTableFilterModal(
 
   const reset = useCallback(() => {
     setSearchParams(
-      (current) =>
-        clearFilterParams(fields, current, {
+      (current) => {
+        const patched = clearFilterParams(fields, current, {
           resetPageKey: options?.resetPageKey,
-        }),
+        })
+        return patched.toString() === current.toString() ? current : patched
+      },
       { replace: true },
     )
   }, [fields, options?.resetPageKey, setSearchParams])

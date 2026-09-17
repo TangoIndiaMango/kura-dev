@@ -1,0 +1,8 @@
+You are in{% if first_name %}, {{ first_name }}{% endif %}
+
+Someone on the ops team invited you to the Kura admin console as {{ role_label }}.
+
+Create your password here (one time use, expires in {{ expires_hours }} hours):
+{{ setup_url }}
+
+{% if support_email %}Need a hand? Write {{ support_email }}{% endif %}

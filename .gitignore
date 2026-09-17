@@ -3,6 +3,7 @@ hidden/
 .env
 .env.*
 !.env.example
+!infra/.env.example
 
 # Python
 .venv/
@@ -20,6 +21,7 @@ htmlcov/
 
 # Node / Frontend
 node_modules/
+.pnpm-store/
 dist/
 build/
 .turbo/
@@ -30,4 +32,9 @@ build/
 .DS_Store
 .idea/
 .vscode/
+.cursor/
+.cursorrules
 *.swp
+
+# Docker
+infra/.env

@@ -30,7 +30,7 @@ export function buildGeneralTableFilters(
         type: 'multiCheckbox',
         key: 'status',
         label: 'Status',
-        required: true,
+        required: false,
         presentation: 'popover',
         placeholder: 'Select an Option',
         options: statusOptions,
@@ -40,7 +40,7 @@ export function buildGeneralTableFilters(
         type: 'select',
         key: 'status',
         label: 'Status',
-        required: true,
+        required: false,
         placeholder: 'Select an Option',
         options: statusOptions,
       })
@@ -52,7 +52,7 @@ export function buildGeneralTableFilters(
       type: 'dateRange',
       key: 'dateRange',
       label: 'Start Date - End Date',
-      required: true,
+      required: false,
       placeholder: 'DD/MM/YYYY - DD/MM/YYYY',
     })
   }
@@ -62,7 +62,7 @@ export function buildGeneralTableFilters(
       type: 'sortOrder',
       key: 'nameSort',
       label: 'Order Arrangement (Name)',
-      required: true,
+      required: false,
       options: NAME_SORT_OPTIONS,
     })
   }
@@ -72,7 +72,7 @@ export function buildGeneralTableFilters(
       type: 'sortOrder',
       key: 'valueSort',
       label: 'Order Arrangement (Value)',
-      required: true,
+      required: false,
       options: VALUE_SORT_OPTIONS,
     })
   }

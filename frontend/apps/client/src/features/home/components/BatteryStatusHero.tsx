@@ -1,0 +1,1 @@
+export { BatteryHeroWithSwitcher } from './BatteryHeroSwitcher'

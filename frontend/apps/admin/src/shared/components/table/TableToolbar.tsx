@@ -23,9 +23,9 @@ export function TableToolbar({
       gap="md"
       px="md"
       py="md"
-      className="border-b border-[#EAECF0]"
+      className="border-b border-[var(--bd)]"
     >
-      <Text fw={600} fz="lg" c="#101828">
+      <Text fw={600} fz="lg" c="var(--tx)">
         {title}
       </Text>
 
@@ -35,13 +35,14 @@ export function TableToolbar({
             placeholder={searchPlaceholder}
             value={searchQuery ?? ''}
             onChange={(event) => onSearchChange(event.currentTarget.value)}
-            leftSection={<Search01Icon size={16} color="#667085" />}
+            leftSection={<Search01Icon size={16} color="var(--mu)" />}
             className="w-full sm:w-[280px]"
             radius="md"
             styles={{
               input: {
-                backgroundColor: '#F9FAFB',
-                borderColor: '#EAECF0',
+                backgroundColor: 'var(--in)',
+                borderColor: 'var(--bd)',
+                color: 'var(--tx)',
               },
             }}
           />
@@ -54,8 +55,9 @@ export function TableToolbar({
             onClick={onFilter}
             styles={{
               root: {
-                borderColor: '#EAECF0',
-                color: '#344054',
+                borderColor: 'var(--bd)',
+                color: 'var(--tx)',
+                backgroundColor: 'var(--sf)',
                 fontWeight: 500,
               },
             }}
@@ -75,8 +77,9 @@ export function TableToolbar({
                 disabled={isExporting}
                 styles={{
                   root: {
-                    borderColor: '#EAECF0',
-                    color: '#344054',
+                    borderColor: 'var(--bd)',
+                    color: 'var(--tx)',
+                    backgroundColor: 'var(--sf)',
                     fontWeight: 500,
                   },
                 }}
@@ -104,8 +107,9 @@ export function TableToolbar({
             disabled={isExporting}
             styles={{
               root: {
-                borderColor: '#EAECF0',
-                color: '#344054',
+                borderColor: 'var(--bd)',
+                color: 'var(--tx)',
+                backgroundColor: 'var(--sf)',
                 fontWeight: 500,
               },
             }}

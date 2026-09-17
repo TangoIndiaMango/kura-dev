@@ -5,7 +5,9 @@
     "types": ["node"],
     "skipLibCheck": true,
     "module": "ESNext",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "noEmit": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.js"]
 }

@@ -1,0 +1,75 @@
+import React from 'react'
+import {
+  ArrowDataTransferHorizontalIcon,
+  Wallet01Icon,
+  Coins01Icon,
+  QrCode01Icon,
+} from 'hugeicons-react'
+import type { TabId } from '../../layout/FloatingGlassBottomBar'
+
+interface QuickActionsRowProps {
+  onNavigateTab: (tab: TabId) => void
+  onOpenSwaps: () => void
+  hasActivePass?: boolean
+  onFund: () => void
+}
+
+export const QuickActionsRow: React.FC<QuickActionsRowProps> = ({
+  onNavigateTab,
+  onOpenSwaps,
+  hasActivePass = false,
+  onFund,
+}) => {
+  const actions: Array<{
+    id: string
+    label: string
+    icon: React.ComponentType<{ size?: number }>
+    onClick: () => void
+  }> = [
+    {
+      id: 'swap',
+      label: hasActivePass ? 'My holds' : 'Book swap',
+      icon: hasActivePass ? QrCode01Icon : ArrowDataTransferHorizontalIcon,
+      onClick: () => {
+        if (hasActivePass) onOpenSwaps()
+        else {
+          sessionStorage.setItem('kura_swap_intent', 'book')
+          onNavigateTab('swap')
+        }
+      },
+    },
+    {
+      id: 'plans',
+      label: 'Plans',
+      icon: Coins01Icon,
+      onClick: () => onNavigateTab('plans'),
+    },
+    {
+      id: 'fund',
+      label: 'Fund',
+      icon: Wallet01Icon,
+      onClick: onFund,
+    },
+  ]
+
+  return (
+    <section className="grid grid-cols-3 gap-2.5">
+      {actions.map((action) => {
+        const Icon = action.icon
+        return (
+          <button
+            key={action.id}
+            type="button"
+            onClick={action.onClick}
+            className="flex flex-col items-center gap-2 rounded-xl border border-[var(--kura-teal)]/35 bg-[var(--kura-bg-elevated)] px-1 py-3 transition hover:border-[var(--kura-teal)]"
+          >
+            <Icon size={20} />
+            <span className="text-center text-[11px] font-semibold text-[var(--kura-text)]/90">
+              {action.label}
+            </span>
+          </button>
+        )
+      })}
+    </section>
+  )
+}

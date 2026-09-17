@@ -1,12 +1,19 @@
 import { Center, Loader, Progress, Stack, Text } from '@mantine/core'
 import { useLocation } from 'react-router-dom'
-import { ZapIcon } from 'hugeicons-react'
 
-const AUTH_PATHS = ['/login', '/sign-up', '/create-password', '/reset-password'] as const
+const FULL_VIEWPORT_PATHS = [
+  '/onboarding',
+  '/login',
+  '/sign-up',
+  '/create-password',
+  '/reset-password',
+] as const
 
 function isFullViewportPath(pathname: string) {
   if (pathname === '/') return true
-  return AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  return FULL_VIEWPORT_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  )
 }
 
 export function RouteLoadingFallback() {
@@ -37,9 +44,14 @@ export function RouteLoadingFallback() {
       role="status"
     >
       <Stack align="center" gap="xl" w={220}>
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#0D7C8F] to-[#2FBECF] flex items-center justify-center shadow-lg shadow-cyan-950/40 animate-pulse">
-          <ZapIcon size={28} color="#ffffff" />
-        </div>
+        <img
+          src="/brand/kura-mark.png"
+          alt=""
+          width={48}
+          height={48}
+          className="rounded-[12px] bg-[#050b10] object-contain p-1.5"
+          aria-hidden
+        />
 
         <Stack align="center" gap="md" w="100%">
           <Progress
@@ -54,7 +66,7 @@ export function RouteLoadingFallback() {
           />
           <Loader color="brand" type="dots" size="sm" aria-label="Loading page" />
           <Text fz="xs" c="dimmed" ta="center">
-            Connecting to KURA Network...
+            Loading…
           </Text>
         </Stack>
       </Stack>

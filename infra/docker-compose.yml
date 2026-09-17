@@ -1,0 +1,106 @@
+# Local / early deploy: Postgres + Redis + API (+ worker) in containers.
+# Later: detach db/redis to managed services; keep the same API image.
+name: kura
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kura}
+      POSTGRES_USER: ${POSTGRES_USER:-kura}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kura_dev_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kura} -d ${POSTGRES_DB:-kura}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - log_min_duration_statement=200
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      DATABASE_URL: postgres://${POSTGRES_USER:-kura}:${POSTGRES_PASSWORD:-kura_dev_password}@db:5432/${POSTGRES_DB:-kura}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PORT:-8001}:8000"
+    command:
+      - sh
+      - -c
+      - >-
+        python manage.py migrate --noinput &&
+        gunicorn config.wsgi:application
+        --bind 0.0.0.0:8000
+        --workers 1
+        --reload
+        --reload-engine poll
+        --timeout 30
+        --access-logfile -
+    volumes:
+      - ../backend:/app
+    profiles: ["full", "api"]
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      DATABASE_URL: postgres://${POSTGRES_USER:-kura}:${POSTGRES_PASSWORD:-kura_dev_password}@db:5432/${POSTGRES_DB:-kura}
+      REDIS_URL: redis://redis:6379/0
+      TASKS_BACKEND: database
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "manage.py", "run_task_worker"]
+    volumes:
+      - ../backend:/app
+    profiles: ["full"]
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${CADDY_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+    profiles: ["full"]
+
+volumes:
+  pgdata:
+  caddy_data:

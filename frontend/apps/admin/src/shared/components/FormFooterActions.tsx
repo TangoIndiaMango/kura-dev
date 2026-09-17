@@ -25,7 +25,7 @@ export function FormFooterActions({
   secondaryActions,
 }: FormFooterActionsProps) {
   return (
-    <Box pt="xl" className="shrink-0 border-t border-gray-2 w-full bg-white">
+    <Box pt="xl" className="w-full shrink-0 border-t border-[var(--bd)] bg-transparent">
       <Group justify="space-between" align="center" wrap="nowrap" w="100%">
         {showBack ? (
           <Button

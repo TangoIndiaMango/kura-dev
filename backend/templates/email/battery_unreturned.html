@@ -1,0 +1,24 @@
+{% extends "email/base.html" %}
+{% block title %}Battery still out{% endblock %}
+{% block content %}
+<p style="margin:0 0 10px;font-size:20px;font-weight:700;color:#003153;">
+  Battery still out
+</p>
+<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#243B4A;">
+  Pack <strong>{{ serial }}</strong> passed the 48 hour return window.
+  We paused account <strong>{{ account_label }}</strong> until the pack comes back.
+</p>
+{% if cooperative_name %}
+<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#243B4A;">
+  Cooperative: <strong>{{ cooperative_name }}</strong>
+</p>
+{% endif %}
+{% if link_url %}
+<p style="margin:0 0 8px;">
+  <a href="{{ link_url }}"
+     style="display:inline-block;background:#0D7C8F;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;padding:12px 20px;border-radius:8px;">
+    Open details
+  </a>
+</p>
+{% endif %}
+{% endblock %}

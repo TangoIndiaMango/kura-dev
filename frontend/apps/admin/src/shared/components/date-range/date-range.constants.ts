@@ -42,7 +42,7 @@ export const DATE_RANGE_PRESETS: DateRangePreset[] = [
     label: 'This Month',
     getRange: () => {
       const start = dayjs().startOf('month')
-      const end = dayjs()
+      const end = dayjs().endOf('month')
       return [start.toDate(), end.toDate()]
     },
   },

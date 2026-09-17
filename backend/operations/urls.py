@@ -1,9 +1,30 @@
+from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import ShiftViewSet, OverrideViewSet, AlertViewSet
+
+from operations.views import (
+    AlertViewSet,
+    CashDepositViewSet,
+    InventoryCountViewSet,
+    OverrideViewSet,
+    ShiftViewSet,
+)
+from operations.views.command_centre import CommandCentreView, OpsActivityView
 
 router = DefaultRouter()
-router.register(r'shifts', ShiftViewSet, basename='shifts')
-router.register(r'overrides', OverrideViewSet, basename='overrides')
-router.register(r'alerts', AlertViewSet, basename='alerts')
+router.register(r"shifts", ShiftViewSet, basename="shifts")
+router.register(r"cash-deposits", CashDepositViewSet, basename="cash-deposits")
+router.register(r"overrides", OverrideViewSet, basename="overrides")
+router.register(r"alerts", AlertViewSet, basename="alerts")
+router.register(
+    r"inventory-counts", InventoryCountViewSet, basename="inventory-counts"
+)
 
-urlpatterns = router.urls
+urlpatterns = [
+    path(
+        "command-centre/",
+        CommandCentreView.as_view(),
+        name="ops-command-centre",
+    ),
+    path("activity/", OpsActivityView.as_view(), name="ops-activity"),
+    *router.urls,
+]

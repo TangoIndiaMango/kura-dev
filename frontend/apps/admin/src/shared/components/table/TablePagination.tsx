@@ -31,8 +31,8 @@ function PaginationButton({
       className={[
         'inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-sm font-medium transition-colors',
         active
-          ? 'border-[var(--mantine-color-brand-9)] bg-[var(--mantine-color-brand-9)] text-white'
-          : 'border-[#D0D5DD] bg-white text-[#667085] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50',
+          ? 'border-[var(--pr)] bg-[var(--pr)] text-white'
+          : 'border-[var(--bd)] bg-[var(--sf)] text-[var(--mu)] hover:bg-[var(--hv)] hover:text-[var(--tx)] disabled:cursor-not-allowed disabled:opacity-50',
       ].join(' ')}
     >
       {children}
@@ -54,12 +54,23 @@ export function TablePagination({
     return null
   }
 
+  const goPrev = () => {
+    if (onPrevious) onPrevious()
+    else onPageChange(Math.max(1, page - 1))
+  }
+  const goNext = () => {
+    if (onNext) onNext()
+    else onPageChange(Math.min(totalPages, page + 1))
+  }
+
   if (variant === 'controls') {
     return (
-      <div className="flex flex-col items-center justify-between gap-4 border-t border-[#EAECF0] bg-white p-4 sm:flex-row">
+      <div className="flex flex-col items-center justify-between gap-4 border-t border-[var(--bd)] bg-[var(--sf)] p-4 sm:flex-row">
         {onPageSizeChange && (
-          <Group gap={8} className="text-sm font-medium text-[#475467]">
-            <Text span>Show</Text>
+          <Group gap={8} className="text-sm font-medium text-[var(--mu)]">
+            <Text span c="var(--mu)">
+              Show
+            </Text>
             <Select
               data={['05', '10', '20', '50', '100']}
               value={pageSize || '10'}
@@ -74,33 +85,42 @@ export function TablePagination({
               classNames={{
                 input: 'font-semibold cursor-pointer',
               }}
+              styles={{
+                input: {
+                  backgroundColor: 'var(--in)',
+                  borderColor: 'var(--bd)',
+                  color: 'var(--tx)',
+                },
+              }}
             />
-            <Text span>entries</Text>
+            <Text span c="var(--mu)">
+              entries
+            </Text>
           </Group>
         )}
 
-        <Text fz="sm" c="#475467" fw={500}>
+        <Text fz="sm" c="var(--mu)" fw={500}>
           Page {page} of {totalPages}
         </Text>
 
-        <div className="flex items-center overflow-hidden rounded-lg border border-[#EAECF0] bg-white shadow-sm">
+        <div className="flex items-center overflow-hidden rounded-lg border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
           <button
             type="button"
-            onClick={onPrevious}
+            onClick={goPrev}
             disabled={page === 1}
-            className="flex items-center gap-2 border-r border-[#EAECF0] px-3.5 py-2 text-sm font-semibold text-[#344054] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 border-r border-[var(--bd)] px-3.5 py-2 text-sm font-semibold text-[var(--tx)] transition-colors hover:bg-[var(--hv)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowLeft01Icon size={16} />
             Previous
           </button>
-          <div className="border-r border-[#EAECF0] bg-white px-4 py-2 text-sm font-semibold text-[#344054]">
+          <div className="border-r border-[var(--bd)] bg-[var(--in)] px-4 py-2 text-sm font-semibold text-[var(--tx)]">
             {page}
           </div>
           <button
             type="button"
-            onClick={onNext}
+            onClick={goNext}
             disabled={page === totalPages}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-[#344054] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-[var(--tx)] transition-colors hover:bg-[var(--hv)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next
             <ArrowRight01Icon size={16} />
@@ -113,7 +133,7 @@ export function TablePagination({
   const pages = getPaginationRange(page, totalPages)
 
   return (
-    <div className="border-t border-[#EAECF0] bg-white px-4 py-4">
+    <div className="border-t border-[var(--bd)] bg-[var(--sf)] px-4 py-4">
       <Group gap={4} justify="flex-start">
         <PaginationButton
           ariaLabel="Previous page"
@@ -127,7 +147,7 @@ export function TablePagination({
           item === 'ellipsis' ? (
             <span
               key={`ellipsis-${index}`}
-              className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-[#D0D5DD] bg-white px-1 text-sm text-[#667085]"
+              className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-[var(--bd)] bg-[var(--sf)] px-1 text-sm text-[var(--mu)]"
             >
               ...
             </span>

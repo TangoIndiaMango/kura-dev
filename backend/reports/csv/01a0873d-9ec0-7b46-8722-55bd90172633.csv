@@ -1,0 +1,2 @@
+battery_id,serial,battery_type,status,charge_pct,health_pct,cycle_count,health_band,hub_code,hub_name,created_at
+01a0873d-9e93-7d7e-920a-677593b3d23f,BAT-RPT-1,TestPack,AVAILABLE,90,95,40,GOOD,TST-HUB,Test Hub,2026-09-09T17:35:57.587637+00:00

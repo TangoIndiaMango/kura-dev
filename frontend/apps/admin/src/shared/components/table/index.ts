@@ -1,4 +1,4 @@
-export { DynamicTableSection } from './DynamicTableSection'
+export { DynamicTableSection, TableRowViewButton } from './DynamicTableSection'
 export { LoadingState } from './LoadingState'
 export { TablePagination } from './TablePagination'
 export { TableStatusBadge } from './TableStatusBadge'

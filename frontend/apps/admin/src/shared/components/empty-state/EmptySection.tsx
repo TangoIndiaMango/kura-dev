@@ -23,7 +23,7 @@ export function EmptySection({
   }
 
   return (
-    <Card withBorder radius="md" padding="lg" bg="white">
+    <Card withBorder radius="md" padding="lg" bg="var(--sf)" style={{ borderColor: 'var(--bd)' }}>
       <EmptyState title={title} description={description} icon={icon} />
     </Card>
   )

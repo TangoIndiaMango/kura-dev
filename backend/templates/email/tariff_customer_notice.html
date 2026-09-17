@@ -1,0 +1,21 @@
+{% extends "email/base.html" %}
+{% block title %}Tariff change notice{% endblock %}
+{% block content %}
+<p style="margin:0 0 10px;font-size:20px;font-weight:700;color:#003153;">
+  Tariff change notice
+</p>
+<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#243B4A;">
+  Hi {{ first_name }}, new <strong>{{ vehicle_type }}</strong> rates on Kura take effect
+  on <strong>{{ effective_from }}</strong>.
+</p>
+<ul style="margin:0 0 14px;padding-left:18px;font-size:15px;line-height:1.6;color:#243B4A;">
+  <li>Daily: {{ daily }}</li>
+  <li>Weekly: {{ weekly }}</li>
+  <li>Monthly: {{ monthly }}</li>
+  <li>Pay-per-swap: {{ pay_per_swap }}</li>
+</ul>
+<p style="margin:0;font-size:13px;line-height:1.5;color:#5A6B76;">
+  This is a customer notice for an upcoming tariff change. Your next renewal or swap
+  will use the rate in effect on that date.
+</p>
+{% endblock %}

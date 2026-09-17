@@ -3,12 +3,24 @@ import { RevealImage } from './RevealImage'
 
 type FileKind = 'image' | 'pdf' | 'video' | 'audio' | 'document'
 
-function getFileKind(url: string, preferImage?: boolean): FileKind {
+function getFileKind(
+  url: string,
+  preferImage?: boolean,
+  contentType?: string | null,
+): FileKind {
+  if (preferImage) return 'image'
+  const mime = (contentType ?? '').toLowerCase()
+  if (mime.startsWith('image/')) return 'image'
+  if (mime === 'application/pdf') return 'pdf'
+  if (mime.startsWith('video/')) return 'video'
+  if (mime.startsWith('audio/')) return 'audio'
+
   const path = url.split('?')[0]?.toLowerCase() ?? url.toLowerCase()
   if (
-    preferImage ||
-    /\.(jpe?g|png|gif|webp|bmp|svg)$/.test(path) ||
-    /cloudinary/i.test(url)
+    /\.(jpe?g|png|gif|webp|bmp|svg|heic|avif)$/.test(path) ||
+    /\/image\/upload\//i.test(url) ||
+    /cloudinary/i.test(url) ||
+    /res\.cloudinary\.com/i.test(url)
   ) {
     return 'image'
   }
@@ -27,12 +39,13 @@ function fileNameFromUrl(url: string) {
   }
 }
 
-interface FilePreviewModalProps {
+export interface FilePreviewModalProps {
   opened: boolean
   onClose: () => void
   url: string | null
   title?: string
   preferImage?: boolean
+  contentType?: string | null
 }
 
 export function FilePreviewModal({
@@ -41,8 +54,9 @@ export function FilePreviewModal({
   url,
   title,
   preferImage,
+  contentType,
 }: FilePreviewModalProps) {
-  const kind = url ? getFileKind(url, preferImage) : 'document'
+  const kind = url ? getFileKind(url, preferImage, contentType) : 'document'
   const heading = title || (url ? fileNameFromUrl(url) : 'Attachment')
 
   return (
@@ -61,7 +75,7 @@ export function FilePreviewModal({
     >
       <Stack gap="md">
         {url && kind === 'image' ? (
-          <Box className="overflow-hidden rounded-lg bg-gray-100">
+          <Box className="media-zoom overflow-hidden rounded-lg bg-[var(--kura-bg-muted,#F5F8FA)]">
             <RevealImage
               src={url}
               alt={heading}
@@ -74,14 +88,10 @@ export function FilePreviewModal({
 
         {url && (kind === 'pdf' || kind === 'document') ? (
           <Box
-            className="overflow-hidden rounded-lg bg-gray-50"
+            className="overflow-hidden rounded-lg bg-[var(--kura-bg-muted,#F5F8FA)]"
             h={{ base: 360, sm: 520 }}
           >
-            <iframe
-              title={heading}
-              src={url}
-              className="h-full w-full border-0"
-            />
+            <iframe title={heading} src={url} className="h-full w-full border-0" />
           </Box>
         ) : null}
 
@@ -94,20 +104,33 @@ export function FilePreviewModal({
         ) : null}
 
         <Group justify="space-between" wrap="wrap" gap="sm">
-          <Text fz="xs" c="gray.6">
-            Previewing this file in the app.
+          <Text fz="xs" c="dimmed">
+            Preview works with Cloudinary and direct file links.
           </Text>
           {url ? (
-            <Button
-              component="a"
-              href={url}
-              download
-              variant="subtle"
-              size="compact-sm"
-              color="brand"
-            >
-              Download
-            </Button>
+            <Group gap="xs">
+              <Button
+                component="a"
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="subtle"
+                size="compact-sm"
+                color="brand"
+              >
+                Open
+              </Button>
+              <Button
+                component="a"
+                href={url}
+                download
+                variant="subtle"
+                size="compact-sm"
+                color="brand"
+              >
+                Download
+              </Button>
+            </Group>
           ) : null}
         </Group>
       </Stack>

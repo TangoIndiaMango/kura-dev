@@ -1,0 +1,16 @@
+export const VEHICLES_ENDPOINTS = {
+  list: '/mobility/vehicles/',
+  vehicle: (id: string) => `/mobility/vehicles/${id}/`,
+  stats: '/mobility/vehicles/stats/',
+  export: '/mobility/vehicles/export/',
+  models: '/mobility/vehicles/models/',
+  vehicleModels: {
+    list: '/mobility/vehicle-models/',
+    detail: (id: string) => `/mobility/vehicle-models/${id}/`,
+    stats: '/mobility/vehicle-models/stats/',
+  },
+  status: (id: string) => `/mobility/vehicles/${id}/status/`,
+  qr: (id: string) => `/mobility/vehicles/${id}/qr/`,
+  rotateQr: (id: string) => `/mobility/vehicles/${id}/rotate-qr/`,
+  retire: (id: string) => `/mobility/vehicles/${id}/retire/`,
+} as const

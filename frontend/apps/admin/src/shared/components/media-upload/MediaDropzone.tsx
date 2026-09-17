@@ -100,8 +100,8 @@ export function MediaDropzone({
             left={0}
             right={0}
             bottom={0}
-            bg="rgba(0, 0, 0, 0.5)"
-            className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+            bg="rgba(0, 0, 0, 0.45)"
+            className="opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100"
           >
             <Group gap="md">
               <Dropzone

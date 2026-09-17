@@ -12,10 +12,10 @@ export function GoBackLink({ to, label = 'Go Back' }: GoBackLinkProps) {
     <Anchor
       component={Link}
       to={to}
-      c="gray.7"
+      c="var(--mu)"
       fz="sm"
       td="none"
-      className="inline-flex w-fit items-center gap-2"
+      className="inline-flex w-fit items-center gap-2 hover:text-[var(--tx)]"
     >
       <Group gap={8} wrap="nowrap">
         <ArrowLeft01Icon size={16} />

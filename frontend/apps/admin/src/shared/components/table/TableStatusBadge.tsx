@@ -9,6 +9,7 @@ type TableStatusTone =
   | 'danger'
   | 'info'
   | 'neutral'
+  | 'default'
 
 const TONE_STYLES: Record<
   TableStatusTone,
@@ -21,6 +22,7 @@ const TONE_STYLES: Record<
   danger: { bg: '#FEF3F2', color: '#B42318' },
   info: { bg: '#EFF8FF', color: '#175CD3' },
   neutral: { bg: '#F2F4F7', color: '#344054' },
+  default: { bg: '#F2F4F7', color: '#344054' },
 }
 
 interface TableStatusBadgeProps {
@@ -32,7 +34,7 @@ export function TableStatusBadge({
   label,
   tone = 'neutral',
 }: TableStatusBadgeProps) {
-  const styles = TONE_STYLES[tone]
+  const styles = TONE_STYLES[tone] ?? TONE_STYLES.neutral
 
   return (
     <Badge

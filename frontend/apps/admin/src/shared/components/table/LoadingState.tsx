@@ -13,7 +13,7 @@ export function LoadingState({
 }: LoadingStateProps) {
   const content = (
     <div className="space-y-4">
-      <div className="flex gap-4 border-b border-[#EAECF0] py-3">
+      <div className="flex gap-4 border-b border-[var(--bd)] py-3">
         {Array.from({ length: cols }).map((_, index) => (
           <Skeleton key={index} height={14} className="flex-1" radius="sm" />
         ))}
@@ -36,7 +36,13 @@ export function LoadingState({
   }
 
   return (
-    <Card withBorder radius="md" padding="lg" bg="white">
+    <Card
+      withBorder
+      radius="md"
+      padding="lg"
+      bg="var(--sf)"
+      style={{ borderColor: 'var(--bd)' }}
+    >
       {content}
     </Card>
   )

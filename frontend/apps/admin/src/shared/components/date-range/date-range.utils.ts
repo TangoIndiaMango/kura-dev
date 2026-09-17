@@ -49,7 +49,7 @@ export function formatDateRangeDisplay(range: DatesRangeValue<string>) {
   const [startDate, endDate] = range
   if (!startDate || !endDate) return ''
 
-  return `${dayjs(startDate).format(DISPLAY_DATE_FORMAT)} - ${dayjs(endDate).format(DISPLAY_DATE_FORMAT)}`
+  return `${dayjs(startDate).format(DISPLAY_DATE_FORMAT)} – ${dayjs(endDate).format(DISPLAY_DATE_FORMAT)}`
 }
 
 export function datesToRangeValue(range: [Date, Date]): DatesRangeValue<string> {

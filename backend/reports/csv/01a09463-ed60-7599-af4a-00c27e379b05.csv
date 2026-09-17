@@ -1,0 +1,2 @@
+date,hub_id,hub_code,hub_name,swaps,revenue_wallet_kobo,revenue_cash_kobo,revenue_other_kobo,revenue_total_kobo,batteries_ready_avg,no_shows,overrides
+2026-09-12,01a09463-ed4c-7c85-9204-e820ac03a518,TST-HUB,Test Hub,12,50000,20000,0,70000,8.50,1,0

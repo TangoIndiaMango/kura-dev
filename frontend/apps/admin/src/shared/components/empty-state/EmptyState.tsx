@@ -19,15 +19,15 @@ export function EmptyState({
         <Center
           w={56}
           h={56}
-          className="rounded-full bg-[#F9FAFB] text-[#667085]"
+          className="rounded-full bg-[var(--in)] text-[var(--mu)]"
         >
           {icon ?? <InboxIcon size={24} />}
         </Center>
         <Stack gap={4} align="center">
-          <Text fw={600} fz="md" c="#101828" ta="center">
+          <Text fw={600} fz="md" className="text-[var(--tx)]" ta="center">
             {title}
           </Text>
-          <Text fz="sm" c="#667085" ta="center" lh={1.6}>
+          <Text fz="sm" className="text-[var(--mu)]" ta="center" lh={1.6}>
             {description}
           </Text>
         </Stack>

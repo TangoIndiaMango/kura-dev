@@ -27,7 +27,13 @@ export function useTableFilters<TTab extends string = string>(
   const patch = useCallback(
     (next: TableFilterPatch<TTab>, replace = false) => {
       setSearchParams(
-        (current) => patchTableFilters(current, config, next),
+        (current) => {
+          const patched = patchTableFilters(current, config, next)
+          // Same query string → return `current` so RR skips navigation.
+          // Otherwise setPage(1)/filter effects can pushState in a tight loop
+          // and Chrome throttles all navigation (table row clicks look dead).
+          return patched.toString() === current.toString() ? current : patched
+        },
         { replace },
       )
     },
