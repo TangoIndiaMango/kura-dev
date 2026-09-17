@@ -33,6 +33,17 @@ def settle_swap_payment(
     if fee <= 0:
         return SettleResult()
 
+    if (
+        reservation
+        and reservation.hold_amount_kobo > 0
+        and mode != Reservation.PaymentMode.WALLET
+    ):
+        WalletHoldService.release(
+            account=reservation.account,
+            amount_kobo=reservation.hold_amount_kobo,
+            reference=reservation.code,
+        )
+
     if mode == Reservation.PaymentMode.WALLET:
         if reservation and reservation.hold_amount_kobo > 0:
             payment = WalletHoldService.capture(

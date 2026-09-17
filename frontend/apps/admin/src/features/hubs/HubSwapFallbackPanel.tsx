@@ -665,6 +665,7 @@ export function HubSwapFallbackPanel() {
       const settle = buildSettlePlan(reservation, actor, {
         isWalkIn,
         vehicleType: live?.vehicleType,
+        holdAmountKobo: live?.holdAmountKobo,
       })
 
       const next: Identified = {
@@ -923,18 +924,27 @@ export function HubSwapFallbackPanel() {
       identified.vehicleType ?? identified.makeModel,
     )
     const due = settleDiscount?.dueNaira ?? listDue
+    const bookedWithWallet =
+      !identified.isWalkIn && identified.reservation.paymentMode === 'WALLET'
+    const holdNaira =
+      (identified.liveMeta?.holdAmountKobo ?? (bookedWithWallet ? due * 100 : 0)) / 100
     const base = buildSettlePlan(identified.reservation, settleActor, {
       isWalkIn: identified.isWalkIn,
       overridden: identified.overridden,
       dueNaira: due,
       vehicleType: identified.vehicleType,
+      holdAmountKobo: identified.liveMeta?.holdAmountKobo,
     })
+    const effectiveWallet = bookedWithWallet
+      ? liveWalletNaira + holdNaira
+      : liveWalletNaira
     const fundedWallet =
-      liveWalletNaira + (topUpRef ? Math.max(0, due - liveWalletNaira) : 0)
+      effectiveWallet + (topUpRef ? Math.max(0, due - effectiveWallet) : 0)
+    const shortfall = bookedWithWallet ? 0 : Math.max(0, due - fundedWallet)
     return describeMode(settleMode, {
       due,
       wallet: fundedWallet,
-      shortfall: Math.max(0, due - fundedWallet),
+      shortfall,
       allowed: base.allowed,
       isWalkIn: identified.isWalkIn,
       reservation: identified.reservation,
@@ -1780,7 +1790,9 @@ export function HubSwapFallbackPanel() {
                   setIdentified({
                     ...identified,
                     paymentLabel: settleModeLabel(m),
-                    needsSettlement: m === 'CASH_AT_HUB' || m === 'WALLET',
+                    needsSettlement:
+                      m === 'CASH_AT_HUB' ||
+                      (m === 'WALLET' && identified.isWalkIn),
                   })
                   pushLog('Confirm', `Payment method: ${settleModeLabel(m)}`)
                 }}

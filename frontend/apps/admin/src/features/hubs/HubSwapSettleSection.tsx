@@ -42,7 +42,7 @@ export function HubSwapSettleSection({
     label: settleModeLabel(m),
   }))
 
-  const walletShort = mode === 'WALLET' && plan.walletBalance < due && !topUpRef
+  const walletShort = mode === 'WALLET' && plan.shortfallNaira > 0 && !topUpRef
   const cashReady = mode === 'CASH_AT_HUB' && Boolean(cashReceiptRef)
   const topUpNeeded = mode === 'WALLET' && plan.shortfallNaira > 0 && !topUpRef
   const showDiscount = mode !== 'PLAN'
@@ -209,7 +209,7 @@ export function settleCompleteBlocked(
   if (mode === 'CASH_AT_HUB' && !cashReceiptRef) {
     return `Mark cash collected for ${formatNaira(plan.dueNaira)} first.`
   }
-  if (mode === 'WALLET' && plan.walletBalance < plan.dueNaira && !topUpRef) {
+  if (mode === 'WALLET' && plan.shortfallNaira > 0 && !topUpRef) {
     return 'Wallet short. Top up or switch to cash.'
   }
   return null

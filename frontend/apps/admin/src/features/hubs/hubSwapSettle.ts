@@ -43,23 +43,28 @@ export function buildSettlePlan(
     overridden?: boolean
     dueNaira?: number
     vehicleType?: string | null
+    holdAmountKobo?: number
   },
 ): SettlePlan {
   const due =
     opts?.dueNaira ??
     listSwapDueNaira(opts?.vehicleType ?? reservation.vehicleReg)
   const wallet = actor?.walletBalanceNaira ?? 0
-  const shortfall = Math.max(0, due - wallet)
   const isWalkIn = Boolean(opts?.isWalkIn || reservation.code === 'WALK-IN')
   const planCovers = Boolean(actor?.planCovers)
   const creditOk = Boolean(actor?.creditOk)
+  const bookedWithWallet = !isWalkIn && reservation.paymentMode === 'WALLET'
+  const holdNaira =
+    (opts?.holdAmountKobo ?? (reservation as any).holdAmountKobo ?? (bookedWithWallet ? due * 100 : 0)) / 100
+  const effectiveWallet = bookedWithWallet ? wallet + holdNaira : wallet
+  const shortfall = bookedWithWallet ? 0 : Math.max(0, due - effectiveWallet)
 
   const allowed: BaySettleMode[] = []
   if (planCovers && reservation.paymentMode === 'PLAN' && !opts?.overridden) {
     allowed.push('PLAN')
   }
   if (creditOk || reservation.paymentMode === 'CREDIT') allowed.push('CREDIT')
-  if (wallet >= due || reservation.paymentMode === 'WALLET') allowed.push('WALLET')
+  if (effectiveWallet >= due || reservation.paymentMode === 'WALLET') allowed.push('WALLET')
   allowed.push('CASH_AT_HUB')
 
   let recommended: BaySettleMode = reservation.paymentMode
@@ -80,7 +85,7 @@ export function buildSettlePlan(
 
   return describeMode(recommended, {
     due,
-    wallet,
+    wallet: effectiveWallet,
     shortfall,
     allowed,
     isWalkIn,
@@ -126,10 +131,11 @@ export function describeMode(
   }
   if (mode === 'WALLET') {
     const booked = !isWalkIn && reservation.paymentMode === 'WALLET'
+    const shortfallForMode = booked ? 0 : shortfall
     return {
       dueNaira: due,
       walletBalance: wallet,
-      shortfallNaira: shortfall,
+      shortfallNaira: shortfallForMode,
       allowed,
       recommended: mode,
       cashCollect: false,
