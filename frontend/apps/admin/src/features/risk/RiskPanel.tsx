@@ -18,6 +18,7 @@ import {
   RISK_ENDPOINTS,
   useRiskEvents,
   useRiskEventStats,
+  useRiskRules,
   type RiskEventListApi,
 } from '@features/risk'
 import {
@@ -29,6 +30,7 @@ import {
   ruleLabel,
   severityTone,
 } from './riskQueueMetrics'
+import { RiskRulesTab, riskRulesKpis } from './RiskRulesTab'
 
 const RISK_HEADERS: TableHeader[] = [
   { key: 'rule', label: 'RULE' },
@@ -54,6 +56,7 @@ const SEVERITY_OPTIONS = [
 
 export function RiskPanel() {
   const navigate = useNavigate()
+  const [tab, setTab] = useState<'queue' | 'rules'>('queue')
   const [exporting, setExporting] = useState(false)
   const [cursor, setCursor] = useState<string | undefined>()
 
@@ -110,9 +113,11 @@ export function RiskPanel() {
     start_date: controls.dateRange.start_date || undefined,
     end_date: controls.dateRange.end_date || undefined,
   })
+  const { rules } = useRiskRules()
 
   const donut = useMemo(() => riskDonutFromStats(stats), [stats])
   const kpis = useMemo(() => riskKpisFromStats(stats), [stats])
+  const rulesKpisList = useMemo(() => riskRulesKpis(rules), [rules])
 
   const pagination: TablePaginationConfig = {
     page: cursor ? 2 : 1,
@@ -150,81 +155,99 @@ export function RiskPanel() {
     <>
       <AdminModuleLayout
         title="Risk"
-        subtitle="Fraud and compliance review queue"
-        dateRangeSlot={controls.dateRangeSlot}
-        kpis={kpis}
+        subtitle={
+          tab === 'queue'
+            ? 'Fraud and compliance review queue'
+            : 'Fraud detection and asset protection rulebook'
+        }
+        dateRangeSlot={tab === 'queue' ? controls.dateRangeSlot : null}
+        tabs={[
+          { id: 'queue', label: 'Review Queue' },
+          { id: 'rules', label: 'Risk Rules' },
+        ]}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as 'queue' | 'rules')}
+        kpis={tab === 'queue' ? kpis : rulesKpisList}
         chartsSlot={
-          <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)] lg:max-w-md">
-            <h3 className="mb-2 text-[14px] font-bold text-[var(--tx)]">
-              Opened by rule
-            </h3>
-            <AdminDonutChart
-              data={
-                donut.length
-                  ? donut
-                  : [{ name: 'No events', value: 1, color: ADMIN_CHART_COLORS.teal }]
-              }
-              height={200}
-              centerValue={stats?.period.opened ?? 0}
-              centerLabel="Opened"
-            />
-          </div>
+          tab === 'queue' ? (
+            <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)] lg:max-w-md">
+              <h3 className="mb-2 text-[14px] font-bold text-[var(--tx)]">
+                Opened by rule
+              </h3>
+              <AdminDonutChart
+                data={
+                  donut.length
+                    ? donut
+                    : [{ name: 'No events', value: 1, color: ADMIN_CHART_COLORS.teal }]
+                }
+                height={200}
+                centerValue={stats?.period.opened ?? 0}
+                centerLabel="Opened"
+              />
+            </div>
+          ) : undefined
         }
       >
-        {isPending ? <Skeleton height={280} radius="md" /> : null}
-        {isError ? (
-          <p className="mb-4 text-[13px] text-[var(--mu)]">
-            Could not load risk events (need risk:read).
-          </p>
-        ) : null}
-        {!isPending && !isError ? (
-          <DynamicTableSection<RiskEventListApi>
-            variant="embedded"
-            headers={RISK_HEADERS}
-            data={events}
-            pagination={pagination}
-            getRowKey={(item) => item.id}
-            toolbar={{
-              title: 'Risk queue',
-              searchQuery: controls.searchQuery,
-              onSearchChange: controls.setSearchQuery,
-              searchPlaceholder: 'Search rule, operator, or subject…',
-              onFilter: controls.openFilter,
-              showFilter: true,
-              showExport: true,
-              onExportFormat: handleExport,
-              isExporting: exporting,
-            }}
-            onRowClick={(item) => navigate(`/risk/${item.id}`)}
-            emptyTitle="No risk events"
-            emptyMessage="Flag an operator from CRM, or wait for rule hits."
-            renderItems={(item) => [
-              <span key="rule" className="text-xs font-bold text-[var(--tx)]">
-                {ruleLabel(item.rule_code)}
-              </span>,
-              <span key="op" className="text-xs text-[var(--mu)]">
-                {item.account_kura_id
-                  ? `${item.account_kura_id} · ${item.account_display_name}`
-                  : `${item.subject_type}:${item.subject_id}`}
-              </span>,
-              <TableStatusBadge
-                key="sev"
-                label={item.severity}
-                tone={severityTone(item.severity)}
-              />,
-              <TableStatusBadge
-                key="st"
-                label={item.status.replace(/_/g, ' ')}
-                tone={riskStatusTone(item.status)}
-              />,
-              <span key="age" className="text-xs text-[var(--mu)]">
-                {formatAge(item.created_at)}
-              </span>,
-            ]}
-          />
-        ) : null}
+        {tab === 'queue' ? (
+          <>
+            {isPending ? <Skeleton height={280} radius="md" /> : null}
+            {isError ? (
+              <p className="mb-4 text-[13px] text-[var(--mu)]">
+                Could not load risk events (need risk:read).
+              </p>
+            ) : null}
+            {!isPending && !isError ? (
+              <DynamicTableSection<RiskEventListApi>
+                variant="embedded"
+                headers={RISK_HEADERS}
+                data={events}
+                pagination={pagination}
+                getRowKey={(item) => item.id}
+                toolbar={{
+                  title: 'Risk queue',
+                  searchQuery: controls.searchQuery,
+                  onSearchChange: controls.setSearchQuery,
+                  searchPlaceholder: 'Search rule, operator, or subject…',
+                  onFilter: controls.openFilter,
+                  showFilter: true,
+                  showExport: true,
+                  onExportFormat: handleExport,
+                  isExporting: exporting,
+                }}
+                onRowClick={(item) => navigate(`/risk/${item.id}`)}
+                emptyTitle="No risk events"
+                emptyMessage="Flag an operator from CRM, or wait for rule hits."
+                renderItems={(item) => [
+                  <span key="rule" className="text-xs font-bold text-[var(--tx)]">
+                    {ruleLabel(item.rule_code)}
+                  </span>,
+                  <span key="op" className="text-xs text-[var(--mu)]">
+                    {item.account_kura_id
+                      ? `${item.account_kura_id} · ${item.account_display_name}`
+                      : `${item.subject_type}:${item.subject_id}`}
+                  </span>,
+                  <TableStatusBadge
+                    key="sev"
+                    label={item.severity}
+                    tone={severityTone(item.severity)}
+                  />,
+                  <TableStatusBadge
+                    key="st"
+                    label={item.status.replace(/_/g, ' ')}
+                    tone={riskStatusTone(item.status)}
+                  />,
+                  <span key="age" className="text-xs text-[var(--mu)]">
+                    {formatAge(item.created_at)}
+                  </span>,
+                ]}
+              />
+            ) : null}
+          </>
+        ) : (
+          <RiskRulesTab />
+        )}
       </AdminModuleLayout>
-      {controls.filterModal}
+      {tab === 'queue' ? controls.filterModal : null}
     </>
   )
 }

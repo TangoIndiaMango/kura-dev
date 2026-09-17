@@ -7,6 +7,7 @@ class RiskRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = RiskRule
         fields = ["id", "code", "name", "severity", "action", "enabled", "params"]
+        read_only_fields = ["id", "code"]
 
 
 class RiskEventListSerializer(serializers.ModelSerializer):

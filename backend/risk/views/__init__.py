@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -43,11 +43,21 @@ EVENT_EXPORT_HEADERS = [
 ]
 
 
-class RiskRuleViewSet(viewsets.ReadOnlyModelViewSet):
+class RiskRuleViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     permission_classes = [IsAuthenticated, HasCapability]
     serializer_class = RiskRuleSerializer
     pagination_class = KuraPageNumberPagination
-    capability_map = {"list": "risk:read", "retrieve": "risk:read"}
+    capability_map = {
+        "list": "risk:read",
+        "retrieve": "risk:read",
+        "update": "risk:review",
+        "partial_update": "risk:review",
+    }
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

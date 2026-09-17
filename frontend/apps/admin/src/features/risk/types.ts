@@ -68,3 +68,32 @@ export type RiskEventStats = {
   }
   by_severity: Array<{ severity: string; count: number }>
 }
+
+export type PagePaginated<T> = {
+  count: number
+  page_size: number
+  current_page: number
+  total_pages: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+export type RiskRuleApi = {
+  id: string
+  code: string
+  name: string
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  action: 'FLAG' | 'STEP_UP' | 'BLOCK' | 'FREEZE' | 'RESTRICT' | 'SUSPEND' | string
+  enabled: boolean
+  params: Record<string, unknown>
+}
+
+export type UpdateRiskRulePayload = {
+  id?: string
+  name?: string
+  severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  action?: string
+  enabled?: boolean
+  params?: Record<string, unknown>
+}

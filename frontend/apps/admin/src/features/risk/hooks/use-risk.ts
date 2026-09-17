@@ -1,13 +1,16 @@
-import { useFetchData, usePostData } from '@shared/hooks/api'
+import { useFetchData, usePatchData, usePostData } from '@shared/hooks/api'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { RISK_ENDPOINTS } from '../constants'
 import type {
   CursorPaginated,
   FlagRiskPayload,
+  PagePaginated,
   RiskEventDetailApi,
   RiskEventListApi,
   RiskEventStats,
+  RiskRuleApi,
   ReviewRiskPayload,
+  UpdateRiskRulePayload,
 } from '../types'
 
 const INVALIDATE = [RISK_ENDPOINTS.events, RISK_ENDPOINTS.stats]
@@ -124,6 +127,28 @@ export function useReviewRiskEvent(eventId: string) {
   return usePostData<ReviewRiskPayload, RiskEventDetailApi>(
     RISK_ENDPOINTS.review(eventId),
     INVALIDATE,
+    { silentError: true },
+  )
+}
+
+export function useRiskRules(options?: { enabled?: boolean }) {
+  const { can } = useCapabilities()
+  const enabled = options?.enabled !== false && can('risk:read')
+  const query = useFetchData<PagePaginated<RiskRuleApi>>(
+    RISK_ENDPOINTS.rules,
+    { page_size: 100 },
+    { enabled, staleTime: 30_000 },
+  )
+  return {
+    ...query,
+    rules: query.data?.results ?? [],
+  }
+}
+
+export function useUpdateRiskRule() {
+  return usePatchData<UpdateRiskRulePayload & { id: string }, RiskRuleApi>(
+    (variables) => `${RISK_ENDPOINTS.rules}${variables.id}/`,
+    [RISK_ENDPOINTS.rules],
     { silentError: true },
   )
 }

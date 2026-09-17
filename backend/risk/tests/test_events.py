@@ -109,3 +109,28 @@ class RiskEventApiTests(TestCase):
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual(res["Content-Type"], "application/pdf")
         self.assertTrue(res.content.startswith(b"%PDF"))
+
+    def test_list_and_update_risk_rule(self):
+        res = self.client.get("/api/v1/risk/rules/")
+        self.assertEqual(res.status_code, 200)
+        results = res.json()["results"]
+        self.assertGreaterEqual(len(results), 10)
+        rule = next(r for r in results if r["code"] == "SWAP_VELOCITY")
+        self.assertTrue(rule["enabled"])
+        self.assertEqual(rule["action"], "BLOCK")
+
+        # Update action and toggle enabled
+        patch_res = self.client.patch(
+            f"/api/v1/risk/rules/{rule['id']}/",
+            {
+                "enabled": False,
+                "action": "FLAG",
+                "params": {"MAX_SWAPS_PER_VEHICLE_DAY": 6},
+            },
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, 200)
+        updated = patch_res.json()
+        self.assertFalse(updated["enabled"])
+        self.assertEqual(updated["action"], "FLAG")
+        self.assertEqual(updated["params"]["MAX_SWAPS_PER_VEHICLE_DAY"], 6)
