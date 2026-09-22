@@ -1,4 +1,4 @@
-/** Hub detail tabs: live holds, swaps, cash shifts. */
+/** Hub detail tabs: live holds, swaps, collections. */
 import { Link, useNavigate } from 'react-router-dom'
 import { Skeleton } from '@mantine/core'
 import {
@@ -13,6 +13,7 @@ import { useHubSwaps } from './hooks/use-hubs'
 import { mapReservationApi } from './hubBayLiveMap'
 
 export { HubCashLiveTable } from './HubCashLiveTable'
+export { HubCollectionsPanel } from './HubCollectionsPanel'
 
 const SWAP_HEADERS: TableHeader[] = [
   { key: 'when', label: 'WHEN' },

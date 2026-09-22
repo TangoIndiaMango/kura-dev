@@ -26,6 +26,7 @@ export type WalletDetailApi = WalletListApi & {
 export type PaymentApi = {
   id: string
   account_id: string
+  hub_id: string | null
   channel: string
   amount_kobo: number
   vat_kobo: number

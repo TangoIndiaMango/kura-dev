@@ -61,6 +61,8 @@ class CashShiftApiTests(TestCase):
             actor=self.agent,
         )
         self.assertEqual(deposit.status, CashDeposit.Status.SUCCESS)
+        self.assertIsNotNone(deposit.payment_id)
+        self.assertEqual(deposit.payment.hub_id, self.hub.id)
         closed = ShiftService.close_shift(
             shift=shift, closing_cash_kobo=140_000, actor=self.agent
         )

@@ -13,94 +13,101 @@ import {
   cashStatusTone,
 } from '@features/payments/cashReconHelpers'
 
-export function HubCashLiveTable({ hubId }: { hubId: string }) {
-  const shifts = useShifts({ hub: hubId, page: 1 })
+export function HubCashLiveTable({
+  hubId,
+  enabled = true,
+  startDate,
+  endDate,
+}: {
+  hubId: string
+  enabled?: boolean
+  startDate?: string
+  endDate?: string
+}) {
+  const shifts = useShifts({
+    hub: hubId,
+    page: 1,
+    enabled,
+    start_date: startDate,
+    end_date: endDate,
+  })
   if (shifts.isPending) return <Skeleton height={140} radius="md" />
   const rows = (shifts.data?.results ?? []).map(mapShiftToCashRow)
   if (rows.length === 0) {
     return (
       <p className="text-[13px] text-[var(--mu)]">
-        No agent shifts at this hub yet. Cash appears here when an agent clocks
-        in and takes cash payments.
+        No duty windows in this period. Rows appear when an agent clocks in
+        with cash float at this hub.
       </p>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="m-0 text-[12.5px] leading-relaxed text-[var(--mu)]">
-        Collect at the bay → count the drawer → lodge to bank. Each card is one
-        agent shift.
-      </p>
-      <ul className="m-0 list-none space-y-2.5 p-0">
-        {rows.map((r) => (
-          <li
-            key={r.id}
-            className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] px-3.5 py-3 shadow-[var(--sh)]"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="m-0 text-[14px] font-bold text-[var(--tx)]">
-                  {r.agent}
-                </p>
-                <p className="mt-0.5 text-[11.5px] text-[var(--mu)]">
-                  {r.status === 'ON_DUTY'
-                    ? `Opened ${new Date(r.openedAt).toLocaleString()}`
-                    : r.closedAt
-                      ? `Closed ${new Date(r.closedAt).toLocaleString()}`
-                      : '—'}
-                </p>
-              </div>
-              <TableStatusBadge
-                label={cashStatusLabel(r.status)}
-                tone={cashStatusTone(r.status)}
-              />
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Metric
-                label="Opening float"
-                value={formatNaira(r.openingNaira)}
-              />
-              <Metric
-                label="Cash takes"
-                value={
-                  r.collectedNaira != null
-                    ? formatNaira(r.collectedNaira)
-                    : r.takeCount > 0
-                      ? `${r.takeCount} receipt${r.takeCount === 1 ? '' : 's'}`
-                      : 'None yet'
-                }
-              />
-              <Metric
-                label="Variance"
-                value={
-                  r.varianceNaira != null
-                    ? formatNaira(r.varianceNaira)
-                    : 'After count'
-                }
-              />
-              <Metric
-                label="Bank lodge"
-                value={r.lodged ? formatNaira(r.depositedNaira) : 'Not yet'}
-              />
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--bd)] pt-2.5">
-              <p className="m-0 max-w-[28rem] text-[12px] leading-snug text-[var(--mu)]">
-                {cashPhaseHint(r.status)}
+    <ul className="m-0 list-none space-y-2.5 p-0">
+      {rows.map((r) => (
+        <li
+          key={r.id}
+          className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] px-3.5 py-3 shadow-[var(--sh)]"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="m-0 text-[14px] font-bold text-[var(--tx)]">
+                {r.agent}
               </p>
-              <Link
-                to={`/payments/${r.id}`}
-                className="shrink-0 rounded-lg bg-[var(--pr)] px-3 py-1.5 text-[12px] font-bold text-white no-underline hover:opacity-90"
-              >
-                {cashNextActionLabel(r.status)}
-              </Link>
+              <p className="mt-0.5 text-[11.5px] text-[var(--mu)]">
+                {r.status === 'ON_DUTY'
+                  ? `Opened ${new Date(r.openedAt).toLocaleString()}`
+                  : r.closedAt
+                    ? `Closed ${new Date(r.closedAt).toLocaleString()}`
+                    : '—'}
+              </p>
             </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+            <TableStatusBadge
+              label={cashStatusLabel(r.status)}
+              tone={cashStatusTone(r.status)}
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Metric label="Opening float" value={formatNaira(r.openingNaira)} />
+            <Metric
+              label="Cash takes"
+              value={
+                r.collectedNaira != null
+                  ? formatNaira(r.collectedNaira)
+                  : r.takeCount > 0
+                    ? `${r.takeCount} receipt${r.takeCount === 1 ? '' : 's'}`
+                    : 'None yet'
+              }
+            />
+            <Metric
+              label="Variance"
+              value={
+                r.varianceNaira != null
+                  ? formatNaira(r.varianceNaira)
+                  : 'After count'
+              }
+            />
+            <Metric
+              label="Bank lodge"
+              value={r.lodged ? formatNaira(r.depositedNaira) : 'Not yet'}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--bd)] pt-2.5">
+            <p className="m-0 max-w-[28rem] text-[12px] leading-snug text-[var(--mu)]">
+              {cashPhaseHint(r.status)}
+            </p>
+            <Link
+              to={`/payments/${r.id}`}
+              className="shrink-0 rounded-lg bg-[var(--pr)] px-3 py-1.5 text-[12px] font-bold text-white no-underline hover:opacity-90"
+            >
+              {cashNextActionLabel(r.status)}
+            </Link>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 

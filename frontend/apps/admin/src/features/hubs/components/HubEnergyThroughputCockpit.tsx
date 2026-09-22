@@ -6,11 +6,9 @@ import {
   ArrowDataTransferHorizontalIcon,
   BatteryCharging02Icon,
   CheckmarkCircle02Icon,
-  Coins01Icon,
   EnergyIcon,
   Sun01Icon,
 } from 'hugeicons-react'
-import { formatNaira } from '@shared/utils/currency'
 import { DateRangePicker } from '@shared/components/date-range/DateRangePicker'
 import { useHubDetailStats } from '../hooks/use-hubs'
 import type { HubDetailApi, HubSlotApi } from '../types'
@@ -94,15 +92,14 @@ export function HubEnergyThroughputCockpit({
       desc: `${ready} ready packs · ${charging} charging`,
     },
     {
-      label: 'Hub Revenue',
-      icon: <Coins01Icon size={16} className="text-[#27AE60]" />,
-      value: formatNaira(stats?.revenue_kobo_total ?? 0, { fromKobo: true }),
-      sub: stats?.daily_revenue_naira_avg
-        ? `₦${stats.daily_revenue_naira_avg.toLocaleString()}/day avg`
-        : 'In selected period',
-      desc: stats?.estimated_revenue_today_naira
-        ? `Est. today: ₦${stats.estimated_revenue_today_naira.toLocaleString()} (${stats.expected_swaps_today ?? 0} swaps projected)`
-        : 'Station swap earnings',
+      label: 'Energy Delivered',
+      icon: <EnergyIcon size={16} className="text-[#27AE60]" />,
+      value: `${(stats?.energy_kwh_total ?? 0).toFixed(1)} kWh`,
+      sub: range.start_date === range.end_date ? 'on date' : 'in selected period',
+      desc:
+        totalSwaps > 0
+          ? `${totalSwaps} completed swaps · station throughput`
+          : 'No completed swaps in period',
     },
     {
       label: 'Station Uptime',

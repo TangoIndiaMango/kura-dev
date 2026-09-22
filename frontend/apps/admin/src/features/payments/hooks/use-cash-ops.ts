@@ -41,6 +41,8 @@ export function useShifts(params?: {
   enabled?: boolean
   hub?: string
   agent?: string
+  start_date?: string
+  end_date?: string
 }) {
   return useFetchData<Page<ShiftRow>>(
     OPS_ENDPOINTS.shifts,
@@ -50,6 +52,8 @@ export function useShifts(params?: {
       ...(params?.status ? { status: params.status } : {}),
       ...(params?.hub ? { hub: params.hub } : {}),
       ...(params?.agent ? { agent: params.agent } : {}),
+      ...(params?.start_date ? { start_date: params.start_date } : {}),
+      ...(params?.end_date ? { end_date: params.end_date } : {}),
     },
     {
       enabled: params?.enabled !== false,

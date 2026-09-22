@@ -1,41 +1,47 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Skeleton } from '@mantine/core'
-import { notifications } from '@mantine/notifications'
 import {
-  AdminConfirmModal,
   AdminDetailPage,
-  KuraIllustrationModal,
   type AdminDetailAction,
 } from '@shared/components'
-import { apiErrorMessage } from '@lib/api/auth'
 import { useCapabilities } from '../auth/useCapabilities'
 import { buildBayBoardCardsFromSlots } from './hubBayBoardModel'
 import {
   agentsForHub,
-  HUB_ACTION_META,
   stationExtrasForDetail,
   type HubAction,
 } from './hubDetailHelpers'
 import { HubBayStatusGrid } from './HubBayStatusGrid'
 import { HubStationOverview, HubStatusBanner } from './HubStationOverview'
-import { HubCashLiveTable, HubHoldsLiveTable, HubSwapsLiveTable } from './HubDetailLiveTables'
+import {
+  HubCollectionsPanel,
+  HubHoldsLiveTable,
+  HubSwapsLiveTable,
+} from './HubDetailLiveTables'
 import {
   HubAgentsLiveTable,
   HubAlertsLiveTable,
 } from './HubDetailOpsLive'
 import { useHub, useHubSlots, useSetHubStatus } from './hooks/use-hubs'
-import { useUrlTab } from '@shared/hooks/useUrlTab'
 import { HubEnergyThroughputCockpit } from './components/HubEnergyThroughputCockpit'
+import { HubStatusModals } from './HubStatusModals'
 
 export function HubsDetailPanel({ id }: { id: string }) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { can } = useCapabilities()
-  const [tab] = useUrlTab('bays', {
-    valid: ['bays', 'agents', 'swaps', 'holds', 'cash', 'alerts'],
-  })
+  const tab = searchParams.get('tab') || 'bays'
+  const collectionsTab = tab === 'collections' || tab === 'cash'
   const [pending, setPending] = useState<HubAction | null>(null)
   const [success, setSuccess] = useState<HubAction | null>(null)
+
+  useEffect(() => {
+    if (searchParams.get('tab') !== 'cash') return
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', 'collections')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const { hub, isPending, isError } = useHub(id)
   const { slots, isPending: slotsPending } = useHubSlots(id, {
@@ -83,11 +89,6 @@ export function HubsDetailPanel({ id }: { id: string }) {
       : hub.status === 'MAINTENANCE'
         ? 'warning'
         : 'danger'
-  const meta = pending
-    ? HUB_ACTION_META[pending]
-    : success
-      ? HUB_ACTION_META[success]
-      : null
   const canManage = can('hubs:manage')
   const lastSync = hub.updated_at
     ? new Date(hub.updated_at).toLocaleString()
@@ -208,9 +209,15 @@ export function HubsDetailPanel({ id }: { id: string }) {
             content: <HubHoldsLiveTable hubId={hub.id} />,
           },
           {
-            id: 'cash',
-            label: 'Cash',
-            content: <HubCashLiveTable hubId={hub.id} />,
+            id: 'collections',
+            label: 'Collections',
+            content: (
+              <HubCollectionsPanel
+                hubId={hub.id}
+                hubName={hub.name}
+                enabled={collectionsTab}
+              />
+            ),
           },
           {
             id: 'alerts',
@@ -234,49 +241,14 @@ export function HubsDetailPanel({ id }: { id: string }) {
         ) : null}
       </AdminDetailPage>
 
-      {pending && meta ? (
-        <AdminConfirmModal
-          opened
-          onClose={() => setPending(null)}
-          title={meta.confirmTitle}
-          body={meta.confirmBody}
-          confirmTone={meta.confirmTone}
-          confirmLabel={pending === 'deactivate' ? 'Deactivate' : pending === 'activate' ? 'Set online' : 'Confirm'}
-          reasonRequired={pending === 'deactivate'}
-          illustrationId={pending === 'deactivate' ? 'confirm-delete' : 'confirm-action'}
-          loading={setStatus.isPending}
-          onConfirm={async (reason) => {
-            const action = pending
-            try {
-              await setStatus.mutateAsync({
-                status: meta.nextStatus,
-                ...(reason ? { note: reason } : {}),
-              })
-              setPending(null)
-              setSuccess(action)
-            } catch (err) {
-              notifications.show({
-                color: 'red',
-                message: apiErrorMessage(err, 'Could not update hub status'),
-              })
-            }
-          }}
-        />
-      ) : null}
-
-      {success && meta ? (
-        <KuraIllustrationModal
-          opened
-          onClose={() => setSuccess(null)}
-          illustrationId={meta.illustrationId}
-          title={meta.successTitle}
-          description={meta.successBody(hub.name)}
-          primaryAction={{
-            label: 'Done',
-            onClick: () => setSuccess(null),
-          }}
-        />
-      ) : null}
+      <HubStatusModals
+        hubName={hub.name}
+        pending={pending}
+        success={success}
+        setPending={setPending}
+        setSuccess={setSuccess}
+        setStatus={setStatus}
+      />
     </>
   )
 }

@@ -77,7 +77,10 @@ export function usePayments(
     status?: string
     channel?: string
     purpose?: string
+    hub?: string
     search?: string
+    start_date?: string
+    end_date?: string
     cursor?: string
     page_size?: number
   },
@@ -95,7 +98,10 @@ export function usePayments(
         ? { channel: params.channel }
         : {}),
       ...(params?.purpose ? { purpose: params.purpose } : {}),
+      ...(params?.hub ? { hub: params.hub } : {}),
       ...(params?.search ? { search: params.search } : {}),
+      ...(params?.start_date ? { start_date: params.start_date } : {}),
+      ...(params?.end_date ? { end_date: params.end_date } : {}),
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
     { enabled, keepPreviousData: true, staleTime: 30_000 },

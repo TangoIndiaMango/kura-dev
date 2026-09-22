@@ -92,6 +92,7 @@ class WalletHoldService:
         amount_kobo: int,
         reference: str,
         purpose: str = "SWAP",
+        hub=None,
     ):
         """Consume hold + balance; post Payment + revenue/VAT ledger."""
         if amount_kobo <= 0:
@@ -123,6 +124,7 @@ class WalletHoldService:
                 vat_kobo=vat_kobo,
                 purpose=purpose,
                 status="SUCCESS",
+                hub=hub,
             )
             LedgerService.post_transaction(
                 kind=LedgerTransaction.Kind.CAPTURE,

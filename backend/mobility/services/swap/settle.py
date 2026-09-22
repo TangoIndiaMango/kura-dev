@@ -51,6 +51,7 @@ def settle_swap_payment(
                 amount_kobo=reservation.hold_amount_kobo,
                 reference=reservation.code,
                 purpose="SWAP",
+                hub=hub,
             )
             return SettleResult(payment=payment)
         account = Account.objects.get(pk=account_id)
@@ -61,6 +62,7 @@ def settle_swap_payment(
             amount_kobo=fee,
             reference=ref,
             purpose="SWAP",
+            hub=hub,
         )
         return SettleResult(payment=payment)
 

@@ -19,6 +19,7 @@ class PaymentService:
         status: str = Payment.Status.SUCCESS,
         psp_reference: str | None = None,
         idempotency_key: str | None = None,
+        hub=None,
     ) -> Payment:
         key = (idempotency_key or "").strip() or None
         if key:
@@ -40,6 +41,7 @@ class PaymentService:
                         receipt_code=generate_receipt_code(),
                         psp_reference=psp_reference or None,
                         idempotency_key=key,
+                        hub=hub,
                     )
             except IntegrityError as exc:
                 last_error = exc

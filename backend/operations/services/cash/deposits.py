@@ -105,6 +105,7 @@ class CashDepositService:
                     vat_kobo=0,
                     purpose=purpose_norm,
                     status=Payment.Status.SUCCESS,
+                    hub=hub,
                 )
                 receipt = payment.receipt_code or generate_receipt_code()
                 deposit = CashDeposit.objects.create(

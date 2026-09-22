@@ -37,7 +37,9 @@ def wallets_for(user) -> QuerySet[Wallet]:
 
 
 def payments_for(user) -> QuerySet[Payment]:
-    qs = Payment.objects.select_related("account").order_by("-created_at", "-id")
+    qs = Payment.objects.select_related("account", "hub").order_by(
+        "-created_at", "-id"
+    )
     if _can_read_all_finance(user):
         return qs
     own = _own_account_ids(user)

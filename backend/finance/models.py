@@ -129,6 +129,14 @@ class Payment(BaseModel):
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.SUCCESS)
     purpose = models.CharField(max_length=50, default="SWAP")
+    hub = models.ForeignKey(
+        "mobility.Hub",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+        help_text="Station where this payment was collected or earned; null for remote funding.",
+    )
     idempotency_key = models.CharField(
         max_length=64, unique=True, null=True, blank=True, db_index=True
     )

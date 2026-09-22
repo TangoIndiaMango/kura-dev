@@ -11,6 +11,7 @@ from accounts.selectors.scope import hub_ids_for
 from core.pagination import KuraPageNumberPagination
 from core.responses import created, ok
 from mobility.models import Hub
+from operations.filters.shifts import ShiftFilter
 from operations.models import Override, Shift
 from operations.serializers import OverrideCreateSerializer, OverrideSerializer
 from operations.serializers_cash import (
@@ -29,7 +30,7 @@ class ShiftViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, HasCapability]
     pagination_class = KuraPageNumberPagination
     http_method_names = ["get", "post", "head", "options"]
-    filterset_fields = ["status", "hub", "agent"]
+    filterset_class = ShiftFilter
     ordering_fields = ["opened_at", "closed_at"]
     capability_map = {
         "list": "shifts:manage",

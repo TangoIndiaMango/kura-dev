@@ -93,6 +93,64 @@ class FinanceWalletsApiTests(TestCase):
         body = res.json()
         self.assertGreaterEqual(len(body["results"]), 1)
         self.assertEqual(body["results"][0]["amount_kobo"], 10_000)
+        self.assertIn("hub_id", body["results"][0])
+        self.assertIsNone(body["results"][0]["hub_id"])
+
+    def test_payments_filter_by_hub_and_dates(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+        from finance.models import Payment
+        from mobility.models import Hub
+
+        hub = Hub.objects.create(
+            code="HUB-PAY-01",
+            name="Pay Hub",
+            address="Lagos",
+            lat=6.4,
+            lng=3.4,
+            slot_count=4,
+            status=Hub.Status.ONLINE,
+        )
+        pay = Payment.objects.create(
+            account=self.account,
+            channel=Payment.Channel.AGENT_CASH,
+            amount_kobo=5_000,
+            purpose="SWAP",
+            status=Payment.Status.SUCCESS,
+            hub=hub,
+        )
+        other = Payment.objects.create(
+            account=self.account,
+            channel=Payment.Channel.CARD,
+            amount_kobo=7_000,
+            purpose="FUND",
+            status=Payment.Status.SUCCESS,
+        )
+        today = timezone.now().date().isoformat()
+        res = self.client.get(
+            "/api/v1/finance/payments/",
+            {
+                "hub": str(hub.id),
+                "start_date": today,
+                "end_date": today,
+            },
+        )
+        self.assertEqual(res.status_code, 200)
+        ids = {r["id"] for r in res.json()["results"]}
+        self.assertIn(str(pay.id), ids)
+        self.assertNotIn(str(other.id), ids)
+        old = timezone.now().date() - timedelta(days=40)
+        res_old = self.client.get(
+            "/api/v1/finance/payments/",
+            {
+                "hub": str(hub.id),
+                "start_date": old.isoformat(),
+                "end_date": old.isoformat(),
+            },
+        )
+        self.assertEqual(res_old.status_code, 200)
+        self.assertEqual(len(res_old.json()["results"]), 0)
 
     def test_driver_only_sees_own_wallet(self):
         other = User.objects.create(phone="+2348013330002", role=User.Role.DRIVER)
