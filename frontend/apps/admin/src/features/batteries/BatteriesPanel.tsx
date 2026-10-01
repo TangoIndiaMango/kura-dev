@@ -41,6 +41,8 @@ export function BatteriesPanel() {
     scope: 'batteries',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter batteries',
+    showDateRange: false,
+    includeDateRangeInFilter: false,
   })
 
   useEffect(() => {

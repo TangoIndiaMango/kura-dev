@@ -69,6 +69,8 @@ export function HubsPanel() {
     scope: 'hubs',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter hubs',
+    showDateRange: false,
+    includeDateRangeInFilter: false,
   })
 
   useEffect(() => {

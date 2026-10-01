@@ -58,6 +58,8 @@ export function SegmentsPanel() {
     scope: 'segments',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter segments',
+    showDateRange: false,
+    includeDateRangeInFilter: false,
   })
 
   useEffect(() => {

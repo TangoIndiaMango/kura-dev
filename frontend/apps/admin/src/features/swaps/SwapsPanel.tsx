@@ -127,11 +127,20 @@ export function SwapsPanel() {
 
   useEffect(() => {
     setSwapCursor(undefined)
-  }, [swapsControls.filterValues])
+  }, [
+    swapsControls.filterValues,
+    swapsControls.dateRange.start_date,
+    swapsControls.dateRange.end_date,
+  ])
 
   useEffect(() => {
     setRsvCursor(undefined)
-  }, [reservationsControls.filterValues, reservationsControls.search])
+  }, [
+    reservationsControls.filterValues,
+    reservationsControls.search,
+    reservationsControls.dateRange.start_date,
+    reservationsControls.dateRange.end_date,
+  ])
 
   const {
     swaps,
@@ -144,6 +153,8 @@ export function SwapsPanel() {
       status: readFilter(swapsControls.filterValues, 'status'),
       hub: readFilter(swapsControls.filterValues, 'hub'),
       payment_mode: readFilter(swapsControls.filterValues, 'payment_mode'),
+      start_date: swapsControls.dateRange.start_date || undefined,
+      end_date: swapsControls.dateRange.end_date || undefined,
       cursor: swapCursor,
       page_size: swapsControls.pageSize,
     },
@@ -161,6 +172,8 @@ export function SwapsPanel() {
       status: readFilter(reservationsControls.filterValues, 'status'),
       hub: readFilter(reservationsControls.filterValues, 'hub'),
       code: reservationsControls.search.trim() || undefined,
+      start_date: reservationsControls.dateRange.start_date || undefined,
+      end_date: reservationsControls.dateRange.end_date || undefined,
       cursor: rsvCursor,
       page_size: reservationsControls.pageSize,
     },

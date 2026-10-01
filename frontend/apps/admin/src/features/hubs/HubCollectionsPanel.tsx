@@ -56,7 +56,8 @@ export function HubCollectionsPanel({
   const paymentsCashHref =
     `/payments?tab=cash&hub=${encodeURIComponent(hubId)}` +
     `&hub_label=${encodeURIComponent(hubName)}` +
-    `&start_date=${range.start_date}&end_date=${range.end_date}`
+    `&payments_cash_start_date=${range.start_date}` +
+    `&payments_cash_end_date=${range.end_date}`
 
   const loading =
     enabled &&

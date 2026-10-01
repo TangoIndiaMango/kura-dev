@@ -77,6 +77,8 @@ export function VehiclesPanel() {
     scope: 'vehicles',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter vehicles',
+    showDateRange: false,
+    includeDateRangeInFilter: false,
   })
 
   useEffect(() => {

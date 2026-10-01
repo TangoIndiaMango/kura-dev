@@ -29,6 +29,8 @@ export function useSwaps(
     payment_mode?: string
     hub?: string
     account?: string
+    start_date?: string
+    end_date?: string
     cursor?: string
     page_size?: number
   },
@@ -48,6 +50,8 @@ export function useSwaps(
         : {}),
       ...(params?.hub ? { hub: params.hub } : {}),
       ...(params?.account ? { account: params.account } : {}),
+      ...(params?.start_date ? { start_date: params.start_date } : {}),
+      ...(params?.end_date ? { end_date: params.end_date } : {}),
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
     { enabled, keepPreviousData: true, staleTime: 30_000 },
@@ -119,6 +123,8 @@ export function useReservations(
     status?: string
     hub?: string
     code?: string
+    start_date?: string
+    end_date?: string
     cursor?: string
     page_size?: number
   },
@@ -136,6 +142,8 @@ export function useReservations(
         : {}),
       ...(params?.hub ? { hub: params.hub } : {}),
       ...(params?.code ? { code: params.code } : {}),
+      ...(params?.start_date ? { start_date: params.start_date } : {}),
+      ...(params?.end_date ? { end_date: params.end_date } : {}),
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
     { enabled, keepPreviousData: true, staleTime: 30_000 },

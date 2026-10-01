@@ -195,6 +195,7 @@ export const SECTIONS: NavSection[] = [
 ]
 
 export const NAV_CAPABILITY: Partial<Record<AdminModuleId, string>> = {
+  dashboard: 'hubs:manage',
   hubs: 'hubs:read',
   batteries: 'batteries:read',
   vehicles: 'vehicles:read',

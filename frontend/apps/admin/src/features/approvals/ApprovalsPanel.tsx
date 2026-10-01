@@ -38,6 +38,8 @@ export function ApprovalsPanel() {
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter approvals',
     pageSize: 25,
+    showDateRange: false,
+    includeDateRangeInFilter: false,
   })
 
   const statusFilter =

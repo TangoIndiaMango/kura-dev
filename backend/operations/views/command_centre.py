@@ -126,7 +126,7 @@ def build_activity(*, limit: int = 25) -> list[dict]:
 
 class CommandCentreView(APIView):
     permission_classes = [IsAuthenticated, HasCapability]
-    required_capability = "hubs:read"
+    required_capability = "hubs:manage"
 
     @extend_schema(responses={200: dict})
     def get(self, request):
@@ -140,7 +140,7 @@ class CommandCentreView(APIView):
 
 class OpsActivityView(APIView):
     permission_classes = [IsAuthenticated, HasCapability]
-    required_capability = "hubs:read"
+    required_capability = "hubs:manage"
 
     @extend_schema(responses={200: dict})
     def get(self, request):

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   AdminModuleLayout,
@@ -80,6 +80,15 @@ export function PaymentsPanel() {
   })
   const controls = tab === 'payments' ? paymentsControls : cashControls
   const dateRange = controls.dateRange
+
+  useEffect(() => {
+    setCursor(undefined)
+  }, [
+    dateRange.start_date,
+    dateRange.end_date,
+    paymentsControls.filterValues,
+    paymentsControls.search,
+  ])
 
   const shiftsQuery = useShifts({
     enabled: tab === 'cash',

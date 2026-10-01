@@ -10,13 +10,15 @@ import {
 } from './adminAuthSession'
 import { apiErrorMessage, staffLogin } from '../../lib/api/auth'
 import { useAuth } from './AuthProvider'
+import { staffHomePath } from './staffHomePath'
 
 const MAX_ATTEMPTS = 5
 const LOCK_MS = 60_000
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { isAuthenticated, setAuthenticatedFromTokens, clearSession } = useAuth()
+  const { isAuthenticated, me, setAuthenticatedFromTokens, clearSession } =
+    useAuth()
   const [params] = useSearchParams()
   const sessionExpired = params.get('reason') === 'session_expired'
   const nextPath = params.get('next')
@@ -38,9 +40,7 @@ export function LoginPage() {
   if (!hydrated) return <AuthShellSkeleton />
 
   if (isAuthenticated) {
-    const safe =
-      nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/'
-    return <Navigate to={safe} replace />
+    return <Navigate to={staffHomePath(me, nextPath)} replace />
   }
 
   const locked = Date.now() < lockedUntil
@@ -68,7 +68,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       const result = await staffLogin(trimmed, values.password)
-      await setAuthenticatedFromTokens()
+      const profile = await setAuthenticatedFromTokens()
       const name =
         [result.user.first_name, result.user.last_name].filter(Boolean).join(' ') ||
         values.remembered?.name ||
@@ -77,9 +77,7 @@ export function LoginPage() {
       const role = result.user.role || values.remembered?.role || 'Staff'
 
       writeRememberedAdmin({ email: trimmed, name, role })
-      const safe =
-        nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/'
-      navigate(safe, { replace: true })
+      navigate(staffHomePath(profile, nextPath), { replace: true })
     } catch (err) {
       const next = attempts + 1
       setAttempts(next)
