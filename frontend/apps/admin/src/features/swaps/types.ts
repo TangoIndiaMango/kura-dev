@@ -1,4 +1,5 @@
 import { formatNaira } from '@shared/utils/currency'
+import { nowMs } from '@shared/time/serverClock'
 
 export type CursorPaginated<T> = {
   results: T[]
@@ -95,7 +96,7 @@ export function formatSwapWhen(iso: string | null | undefined): string {
 }
 
 export function expiresInLabel(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now()
+  const ms = new Date(iso).getTime() - nowMs()
   if (!Number.isFinite(ms)) return '—'
   if (ms <= 0) return 'Expired'
   const mins = Math.ceil(ms / 60_000)
@@ -111,7 +112,7 @@ export function reservationUiStatus(
   if (status === 'USED') return 'USED'
   if (status === 'PENDING' || status === 'CONFIRMED') {
     if (expiresAt) {
-      const ms = new Date(expiresAt).getTime() - Date.now()
+      const ms = new Date(expiresAt).getTime() - nowMs()
       if (Number.isFinite(ms) && ms <= 0) return 'EXPIRED'
     }
     return 'ACTIVE'

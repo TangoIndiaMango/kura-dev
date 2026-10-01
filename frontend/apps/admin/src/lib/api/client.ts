@@ -10,6 +10,7 @@ import {
   getRefreshToken,
   setTokens,
 } from './token-storage'
+import { noteServerTime } from '../../shared/time/serverClock'
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -117,7 +118,19 @@ axiosInstance.interceptors.request.use((config) => {
 })
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const headers = response.headers ?? {}
+    const raw =
+      headers['x-kura-server-time'] ??
+      headers['X-Kura-Server-Time'] ??
+      headers.date ??
+      headers.Date
+    if (typeof raw === 'string' && raw) {
+      const serverMs = Date.parse(raw)
+      if (!Number.isNaN(serverMs)) noteServerTime(serverMs)
+    }
+    return response
+  },
   async (error: AxiosError) => {
     const status = error.response?.status
     const originalConfig = error.config as InternalAxiosRequestConfig | undefined

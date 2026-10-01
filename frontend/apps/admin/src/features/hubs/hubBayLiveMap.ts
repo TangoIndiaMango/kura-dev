@@ -2,9 +2,10 @@
 import type { BatteryRecord, ReservationRecord } from '@shared/mock/adminMockData'
 import type { BatteryListApi } from '@features/batteries/types'
 import type { ReservationApi, ReservationLookupApi } from './hooks/use-bay-swap'
+import { nowMs } from '@shared/time/serverClock'
 
 function expiresLabel(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now()
+  const ms = new Date(iso).getTime() - nowMs()
   if (!Number.isFinite(ms)) return '—'
   if (ms <= 0) return 'Expired'
   const mins = Math.ceil(ms / 60_000)
