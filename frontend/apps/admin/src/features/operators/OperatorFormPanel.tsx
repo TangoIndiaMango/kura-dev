@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'
 import { Title } from '@mantine/core'
@@ -8,7 +8,6 @@ import {
   SidebarFormLayout,
 } from '@shared/components'
 import { apiErrorMessage } from '@lib/api/auth'
-import { OperatorFormExtraSteps } from './components/OperatorFormExtraSteps'
 import {
   OperatorProfileFields,
   type OperatorIdType,
@@ -20,11 +19,9 @@ import {
 import { useOperator } from './hooks/use-operators'
 import { useOperatorRegistration } from './hooks/use-operator-registration'
 
-const STEPS = [
-  { label: 'Profile' },
-  { label: 'Vehicle' },
-  { label: 'Plan' },
-] as const
+// Vehicles are added on the Vehicles form (owner pre-selected after this);
+// plans are bought by the rider with their PIN, never by staff.
+const STEPS = [{ label: 'Profile' }] as const
 
 const REGISTER_TIPS = [
   'Search before you create — duplicates block the operator at the hub.',
@@ -39,12 +36,13 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
   const registration = useOperatorRegistration()
   const [saved, setSaved] = useState(false)
   const [step, setStep] = useState(0)
-  const [autoRenew, setAutoRenew] = useState(true)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [idNumber, setIdNumber] = useState('')
   const [registeredKuraId, setRegisteredKuraId] = useState('')
+  const [registeredAccountId, setRegisteredAccountId] = useState('')
+  const leavingTo = useRef<string | null>(null)
   const [idFrontPhoto, setIdFrontPhoto] = useState<File | null>(null)
   const [idBackPhoto, setIdBackPhoto] = useState<File | null>(null)
   const [facePhoto, setFacePhoto] = useState<File | null>(null)
@@ -130,6 +128,7 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
           { service: consentService, dataSharing: consentDataSharing },
         )
         setRegisteredKuraId(result.kuraId)
+        setRegisteredAccountId(result.accountId)
         setKycSubmitted(result.kycSubmitted)
         if (!result.kycSubmitted) {
           notifications.show({
@@ -171,9 +170,7 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
             submitLabel={
               editing
                 ? 'Save changes'
-                : step < lastStep
-                  ? 'Continue'
-                  : 'Register & send invite'
+                : 'Register & send invite'
             }
             submitType="button"
             disabled={busy}
@@ -189,7 +186,7 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--mu)]">
             {editing
               ? 'Update cooperative only. Name and ID are updated by the rider.'
-              : `Fill in the ${stepLabel.toLowerCase()} below. Required fields are marked with an asterisk.`}
+              : 'Rider details, ID and consent. You can add their vehicle right after.'}
           </p>
         </div>
 
@@ -224,29 +221,30 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
           />
         )}
 
-        <OperatorFormExtraSteps
-          operator={operator}
-          editing={editing}
-          autoRenew={autoRenew}
-          setAutoRenew={setAutoRenew}
-          showVehicle={editing || step === 1}
-          showPlan={editing || step === 2}
-        />
       </SidebarFormLayout>
 
       <AdminFormSuccessModal
         opened={saved}
         onClose={() => {
           setSaved(false)
-          navigate(backTo)
+          navigate(leavingTo.current ?? backTo)
+          leavingTo.current = null
         }}
         title={editing ? 'Operator updated' : 'Operator registered'}
         description={
           editing
             ? 'Cooperative assignment saved.'
-            : `${registeredKuraId ? `KURA ID ${registeredKuraId} · ` : ''}Wallet and virtual account created. An invite email was sent so they can set their password (expires in 72 hours). ${kycSubmitted ? 'ID photos submitted — identity is pending review. ' : ''}Add a vehicle and plan from the operator page.`
+            : `${registeredKuraId ? `KURA ID ${registeredKuraId} · ` : ''}Wallet created and transfer account requested. An invite email was sent (expires in 72 hours). ${kycSubmitted ? 'ID photos submitted — identity is pending review. ' : ''}Next, add their vehicle. The rider picks a plan in the app.`
         }
-        actionLabel={editing ? 'View operator' : 'View operators'}
+        actionLabel={editing ? 'View operator' : 'Add vehicle'}
+        onAction={
+          editing || !registeredAccountId
+            ? undefined
+            : () => {
+                const owner = `${fullName.trim()}${registeredKuraId ? ` · ${registeredKuraId}` : ''}`
+                leavingTo.current = `/vehicles/new?account=${registeredAccountId}&owner=${encodeURIComponent(owner)}`
+              }
+        }
       />
     </>
   )

@@ -10,7 +10,7 @@ export function DashboardKpiGrid() {
   if (isPending && !k) {
     return (
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} height={88} radius={12} />
         ))}
       </div>
@@ -38,9 +38,9 @@ export function DashboardKpiGrid() {
       tone: 'default',
     },
     {
-      title: 'Revenue today',
+      title: 'Collected today',
       value: formatNaira(k?.today_revenue_kobo ?? 0, { fromKobo: true }),
-      sub: 'Successful payments',
+      sub: 'Swaps and plans (not top-ups)',
       tone: 'success',
     },
     {
@@ -50,9 +50,9 @@ export function DashboardKpiGrid() {
       tone: (k?.active_alerts ?? 0) > 0 ? 'danger' : 'default',
     },
     {
-      title: 'Agent cash today',
+      title: 'Cash taken today',
       value: formatNaira(k?.today_cash_kobo ?? 0, { fromKobo: true }),
-      sub: 'Cash deposits recorded',
+      sub: 'At hub counters',
       tone: 'default',
     },
   ]

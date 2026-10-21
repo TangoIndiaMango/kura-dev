@@ -86,7 +86,7 @@ def hub_detail_stats(
     from django.utils import timezone
     from django.utils.dateparse import parse_date
     from django.db.models import Count, ExpressionWrapper, F, FloatField, Sum
-    from django.db.models.functions import TruncDate
+    from django.db.models.functions import Cast, TruncDate
 
     today = timezone.now().date()
     end_d = parse_date(end_date) if end_date else today
@@ -118,8 +118,11 @@ def hub_detail_stats(
     total_revenue_kobo = int(rev_agg)
     total_revenue_naira = round(total_revenue_kobo / 100, 2)
 
+    # Charge handed over × the issued pack's rated capacity (not a fixed 3.24 kWh).
     energy_expr = ExpressionWrapper(
-        (F("issued_charge_pct") - F("returned_charge_pct")) * 3.24 / 100.0,
+        (F("issued_charge_pct") - F("returned_charge_pct"))
+        * Cast(F("issued_battery__battery_type__capacity_kwh"), FloatField())
+        / 100.0,
         output_field=FloatField(),
     )
 
@@ -134,8 +137,9 @@ def hub_detail_stats(
     )
     daily_map = {row["day"]: row for row in daily_rows if row["day"]}
 
-    solar_cap = float(hub.solar_capacity_kw or 10.0)
-    solar_base = solar_cap * 0.75
+    # Rated capacity is config; live output needs inverter telemetry (parked),
+    # so it is reported as unknown rather than estimated.
+    solar_cap = float(hub.solar_capacity_kw or 0)
 
     daily_metrics = []
     cur = start_d
@@ -148,8 +152,6 @@ def hub_detail_stats(
             "label": cur.strftime("%d %b"),
             "swaps": c,
             "energy_kwh": energy,
-            "solar_kw": round(solar_base, 1),
-            "grid_kw": round(max(1.0, energy * 0.3), 1),
             "revenue_kobo": int(row["rev"] or 0) if row else 0,
             "revenue_naira": round((row["rev"] or 0) / 100, 2) if row else 0.0,
         })
@@ -161,18 +163,18 @@ def hub_detail_stats(
 
     forecasts = hub_demand_forecast(user=None, lookback_days=28)
     hub_forecast = next((f for f in forecasts if f["hub_id"] == str(hub.id)), None)
+    # No history → no forecast (never a made-up default).
     expected_swaps_today = (
         hub_forecast["expected_swaps_next_24h"]
         if hub_forecast
-        else (round(swaps_per_day) if swaps_per_day > 0 else 8)
+        else (round(swaps_per_day) if swaps_per_day > 0 else None)
     )
-    avg_fee_kobo = (
-        round(total_revenue_kobo / max(1, total_swaps))
-        if total_swaps > 0
-        else 150000
+    avg_fee_kobo = round(total_revenue_kobo / total_swaps) if total_swaps > 0 else None
+    estimated_revenue_today_naira = (
+        round(expected_swaps_today * avg_fee_kobo / 100, 2)
+        if expected_swaps_today is not None and avg_fee_kobo is not None
+        else None
     )
-    estimated_revenue_today_kobo = expected_swaps_today * avg_fee_kobo
-    estimated_revenue_today_naira = round(estimated_revenue_today_kobo / 100, 2)
 
     slots_qs = HubSlot.objects.filter(hub=hub)
     ready_count = slots_qs.filter(state=HubSlot.State.READY).count()
@@ -187,8 +189,7 @@ def hub_detail_stats(
         "name": hub.name,
         "status": hub.status,
         "solar_capacity_kw": solar_cap,
-        "solar_output_kw": round(solar_base if hub.status == Hub.Status.ONLINE else 0.0, 1),
-        "solar_output_is_estimate": True,
+        "solar_output_kw": None,
         "total_slots": total_slots,
         "ready_count": ready_count,
         "charging_count": charging_count,

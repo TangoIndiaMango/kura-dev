@@ -32,9 +32,9 @@ export function HubEnergyThroughputCockpit({
 
   const { data: stats, isLoading: statsLoading } = useHubDetailStats(hub.id, range)
 
-  const solarCap = Number(stats?.solar_capacity_kw || hub.solar_capacity_kw || extras.solarCapacityKw) || 10
-  const solarOutput = stats?.solar_output_kw ?? (hub.status === 'ONLINE' ? Number((solarCap * 0.75).toFixed(1)) : 0)
-  const solarPct = Math.min(100, Math.round((solarOutput / (solarCap || 1)) * 100))
+  const solarCap = Number(stats?.solar_capacity_kw || hub.solar_capacity_kw || extras.solarCapacityKw) || 0
+  // Live output needs inverter telemetry; never estimate it from capacity.
+  const solarOutput = stats?.solar_output_kw ?? null
 
   const ready = stats?.ready_count ?? hub.ready_count
   const charging = stats?.charging_count ?? hub.charging_count
@@ -58,8 +58,7 @@ export function HubEnergyThroughputCockpit({
     return stats.daily_metrics.map((m) => ({
       label: m.label,
       swaps: m.swaps,
-      solar_kw: m.solar_kw,
-      grid_kw: m.grid_kw,
+      energy_kwh: m.energy_kwh,
     }))
   }, [stats?.daily_metrics])
 
@@ -71,11 +70,11 @@ export function HubEnergyThroughputCockpit({
 
   const tiles = [
     {
-      label: 'Solar Output',
+      label: 'Solar',
       icon: <Sun01Icon size={16} className="text-[#F5A623]" />,
-      value: `${solarOutput.toFixed(1)} kW`,
-      sub: `/ ${solarCap.toFixed(1)} kW rated`,
-      desc: solarPct > 50 ? 'High solar offset · Battery charging optimal' : 'Grid supplementing',
+      value: solarOutput != null ? `${solarOutput.toFixed(1)} kW` : solarCap ? `${solarCap.toFixed(1)} kW` : '—',
+      sub: solarOutput != null ? `/ ${solarCap.toFixed(1)} kW rated` : solarCap ? 'rated capacity' : 'not configured',
+      desc: 'Live output appears once the hub inverter reports',
     },
     {
       label: 'Swap Fulfillment',
@@ -102,11 +101,11 @@ export function HubEnergyThroughputCockpit({
           : 'No completed swaps in period',
     },
     {
-      label: 'Station Uptime',
+      label: 'Station status',
       icon: <CheckmarkCircle02Icon size={16} className="text-[#27AE60]" />,
-      value: extras.uptime30d || (hub.status === 'ONLINE' ? '99.8%' : hub.status === 'MAINTENANCE' ? 'Maintenance' : 'Offline'),
-      sub: '30D rolling',
-      desc: `Station status: ${extras.healthLabel || hub.status}`,
+      value: extras.healthLabel,
+      sub: extras.lastSyncAt ? `synced ${dayjs(extras.lastSyncAt).format('D MMM, HH:mm')}` : 'never synced',
+      desc: 'Uptime history needs hub heartbeats',
     },
   ]
 
@@ -121,23 +120,16 @@ export function HubEnergyThroughputCockpit({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-[15px] font-bold text-[var(--tx)]">
-                Station Telemetry & Energy Throughput
+                Swaps and energy delivered
               </h2>
-              <span className="rounded-full bg-[var(--tn)] px-2 py-0.5 text-[11px] font-semibold text-[var(--pr)]">
-                Modelled energy
-              </span>
             </div>
             <p className="mt-0.5 text-[12.5px] text-[var(--mu)]">
-              Swap throughput is live; solar output is estimated from rated capacity until meter telemetry is connected.
+              From completed swaps at this hub. Solar output and grid draw appear once the hub meter reports.
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="flex items-center gap-1.5 rounded-lg border border-[#27AE60]/30 bg-[#27AE60]/10 px-2.5 py-1 text-[11.5px] font-semibold text-[#27AE60]">
-            <CheckmarkCircle02Icon size={14} />
-            <span>Clean Energy {solarPct}% Active</span>
-          </span>
           <div className="relative z-30">
             <DateRangePicker
               date={range}
@@ -177,10 +169,10 @@ export function HubEnergyThroughputCockpit({
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-[13.5px] font-bold text-[var(--tx)]">
-                Swap Demand & Energy Telemetry
+                Daily swaps and energy
               </h3>
               <p className="mt-0.5 text-[11.5px] text-[var(--mu)]">
-                Swap volume bars plotted against active solar generation and grid draw (kW)
+                Completed swaps per day, with energy handed to riders (kWh)
               </p>
             </div>
             <span className="rounded-[6px] bg-[var(--in)] px-2 py-0.5 text-[10.5px] font-bold tracking-wide text-[var(--mu)]">
@@ -195,9 +187,9 @@ export function HubEnergyThroughputCockpit({
           ) : chartData.length === 0 ? (
             <div className="mt-2 flex min-h-[220px] flex-col items-center justify-center rounded-[10px] border border-dashed border-[var(--bd)] bg-[var(--in)]/40 p-6 text-center">
               <EnergyIcon size={28} className="mb-1.5 text-[var(--mu)]" />
-              <p className="text-[13px] font-semibold text-[var(--tx)]">No telemetry data recorded</p>
+              <p className="text-[13px] font-semibold text-[var(--tx)]">No swaps in this period</p>
               <p className="mt-0.5 max-w-xs text-[11.5px] text-[var(--mu)]">
-                Zero swap transactions or energy draw between {formattedStart} and {formattedEnd}.
+                Nothing was swapped at this hub between {formattedStart} and {formattedEnd}.
               </p>
             </div>
           ) : (
@@ -208,8 +200,7 @@ export function HubEnergyThroughputCockpit({
                 dataKey="label"
                 series={[
                   { name: 'swaps', label: 'Swaps fulfilled', type: 'bar', color: '#0D7C8F' },
-                  { name: 'solar_kw', label: 'Solar Output (kW)', type: 'line', color: '#F5A623' },
-                  { name: 'grid_kw', label: 'Grid Draw (kW)', type: 'line', color: '#CBD5E1' },
+                  { name: 'energy_kwh', label: 'Energy delivered (kWh)', type: 'line', color: '#F5A623' },
                 ]}
                 curveType="natural"
                 tickLine="none"

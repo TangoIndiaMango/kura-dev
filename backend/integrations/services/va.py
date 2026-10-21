@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 import secrets
+from datetime import timedelta
 from uuid import UUID
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
 from accounts.models import Account
 from core.exceptions import DomainError
@@ -47,6 +49,102 @@ def schedule_va_provision(
             )
 
     transaction.on_commit(_run)
+
+
+# E1.5: 5 m, 15 m, then hourly for 24 h. Attempt N waits RETRY_DELAYS[N-1].
+RETRY_DELAYS = (timedelta(minutes=5), timedelta(minutes=15)) + (timedelta(hours=1),) * 24
+
+
+def _record_attempt(account: Account, *, error: str = "") -> None:
+    """Count this try and schedule the next one (None once the schedule is spent)."""
+    va = VirtualAccount.objects.filter(account=account).first()
+    if va is None or va.status == VirtualAccount.Status.ACTIVE:
+        return
+    now = timezone.now()
+    attempts = va.provision_attempts + 1
+    delay = RETRY_DELAYS[attempts - 1] if attempts <= len(RETRY_DELAYS) else None
+    VirtualAccount.objects.filter(pk=va.pk).update(
+        provision_attempts=attempts,
+        last_attempt_at=now,
+        next_attempt_at=now + delay if delay else None,
+        last_error=error[:255],
+        updated_at=now,
+    )
+
+
+def _identity_number(account: Account) -> str | None:
+    """Latest BVN/NIN on file, for PSP customer validation on retry."""
+    from accounts.models import IdentityDocument
+    from core.helpers.crypto import decrypt_text
+
+    doc = (
+        IdentityDocument.objects.filter(
+            account=account,
+            doc_type__in=[IdentityDocument.DocType.BVN, IdentityDocument.DocType.NIN],
+        )
+        .exclude(number_encrypted="")
+        .order_by("-created_at")
+        .first()
+    )
+    if doc is None:
+        return None
+    try:
+        return decrypt_text(doc.number_encrypted) or None
+    except Exception:
+        logger.warning("va_retry_id_decrypt_failed", extra={"account_id": str(account.id)})
+        return None
+
+
+def retry_pending_virtual_accounts(*, limit: int = 50) -> dict:
+    """Worker sweep: re-request NUBANs still PENDING once their retry is due.
+
+    Covers both a failed PSP call and an accepted request whose assign webhook
+    never arrived. When the schedule is spent, ops are told once.
+    """
+    from risk.services.notify_staff import notify_risk_reviewers
+
+    now = timezone.now()
+    due = list(
+        VirtualAccount.objects.filter(
+            status=VirtualAccount.Status.PENDING,
+            next_attempt_at__isnull=False,
+            next_attempt_at__lte=now,
+        )
+        .select_related("account", "account__owner_user")
+        .order_by("next_attempt_at")[:limit]
+    )
+    retried = assigned = gave_up = 0
+    for va in due:
+        account = va.account
+        retried += 1
+        try:
+            provision_virtual_account_for(account, bvn_or_nin=_identity_number(account))
+        except Exception:
+            pass  # provision_virtual_account_for logged and recorded the error
+        va.refresh_from_db()
+        if va.status == VirtualAccount.Status.ACTIVE:
+            assigned += 1
+        elif va.next_attempt_at is None:
+            gave_up += 1
+            emit_event(
+                action="virtual_account.provision_gave_up",
+                subject_type="virtual_account",
+                subject_id=str(account.id),
+                subject_label=account.kura_id,
+                after={"attempts": va.provision_attempts, "status": va.status},
+                metadata={"last_error": va.last_error},
+            )
+            notify_risk_reviewers(
+                title="Transfer account not issued",
+                body=(
+                    f"{account.kura_id} ({account.display_name}) still has no NUBAN after "
+                    f"{va.provision_attempts} tries. Check their ID and the PSP dashboard."
+                    + (f" Last error: {va.last_error}" if va.last_error else "")
+                ),
+                link_path=f"/operators/{account.id}",
+                dedupe_key=f"va.gave_up:{account.id}",
+            )
+    return {"retried": retried, "assigned": assigned, "gave_up": gave_up}
 
 
 def _dev_va_allowed() -> bool:
@@ -145,6 +243,7 @@ def provision_virtual_account_for(account: Account, *, bvn_or_nin: str | None = 
             )
         account.kyc_status = Account.KycStatus.PENDING_PSP
         account.save(update_fields=["kyc_status", "updated_at"])
+        _record_attempt(account, error=str(exc))
         logger.exception(
             "va_provision_failed",
             extra={"account_id": str(account.id), "psp": psp_code},
@@ -163,6 +262,9 @@ def provision_virtual_account_for(account: Account, *, bvn_or_nin: str | None = 
         VirtualAccount.objects.filter(account=account).update(
             psp_reference=result.psp_reference
         )
+    if result.pending:
+        # Accepted; the NUBAN arrives by webhook. Retry later in case it never does.
+        _record_attempt(account)
 
     if not result.pending and result.nuban and result.bank_name and result.account_name:
         va = WalletService.assign_virtual_account(

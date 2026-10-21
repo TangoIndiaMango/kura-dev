@@ -102,13 +102,15 @@ export function HubStationOverview({
         <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
           <Field label="Hub operators on duty" value={`${agentsOnDuty}/${agentsTotal}`} />
           <Field label="Last sync" value={lastSync} />
-          <Field label="Uptime" value={extras.uptime30d} />
-          <Field label="Health" value={extras.healthLabel} />
+          <Field label="Status" value={extras.healthLabel} />
           <Field label="Hours" value={extras.hours} />
-          <Field label="Battery types" value={extras.batteryTypes.join(' · ')} />
+          <Field
+            label="Battery types in stock"
+            value={extras.batteryTypes.length ? extras.batteryTypes.join(' · ') : 'None in stock'}
+          />
           <Field
             label="Solar"
-            value={`${extras.solarOutputKw.toFixed(1)} / ${extras.solarCapacityKw.toFixed(1)} kW`}
+            value={extras.solarCapacityKw ? `${extras.solarCapacityKw.toFixed(1)} kW rated` : 'Not configured'}
           />
           <Field label="Station ID" value={stationId} />
           <div className="min-w-0 sm:col-span-2">

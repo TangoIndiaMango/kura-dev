@@ -14,6 +14,7 @@ from core.tasks.pricing import activate_due_price_matrices_task
 from core.tasks.settlement import auto_close_shifts_task, reconcile_cash_settlements_task
 from core.tasks.subscriptions import renew_subscriptions_task
 from core.tasks.unreturned import flag_unreturned_batteries_task
+from core.tasks.virtual_accounts import retry_virtual_accounts_task
 from mobility.tasks.mock_iot import tick_mock_iot_task
 from mobility.tasks.swap_lifecycle import sweep_swap_lifecycle_task
 
@@ -94,6 +95,7 @@ class Command(BaseCommand):
                 renew_subscriptions_task.enqueue(limit=100)
             if do_pricing:
                 activate_due_price_matrices_task.enqueue(limit=100)
+            retry_virtual_accounts_task.enqueue(limit=50)
             if do_credit:
                 from django.core.cache import cache
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 export type AccountHubTab =
   | 'profile'
@@ -42,8 +42,38 @@ export const AccountHubTabs: React.FC<AccountHubTabsProps> = ({
   if (!showDriversTab) tabs = tabs.filter((t) => t.id !== 'drivers')
   if (!showSpendTab) tabs = tabs.filter((t) => t.id !== 'spend')
 
+  // More tabs than fit on a phone: fade whichever edge hides tabs, no scrollbar.
+  const scroller = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ left: false, right: false })
+  const measure = () => {
+    const el = scroller.current
+    if (!el) return
+    setEdges({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    })
+  }
+  useEffect(() => {
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [tabs.length])
+  useEffect(() => {
+    scroller.current
+      ?.querySelector<HTMLElement>(`[data-tab="${active}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [active])
+
+  const mask = `linear-gradient(to right, ${edges.left ? 'transparent' : '#000'}, #000 28px, #000 calc(100% - 28px), ${edges.right ? 'transparent' : '#000'})`
+
   return (
-    <div className="-mx-1 overflow-x-auto pb-1">
+    <div
+      ref={scroller}
+      onScroll={measure}
+      role="tablist"
+      className="-mx-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      style={{ maskImage: mask, WebkitMaskImage: mask }}
+    >
       <div className="flex min-w-max gap-1.5 px-1">
         {tabs.map((tab) => {
           const on = tab.id === active
@@ -51,6 +81,9 @@ export const AccountHubTabs: React.FC<AccountHubTabsProps> = ({
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={on}
+              data-tab={tab.id}
               onClick={() => onChange(tab.id)}
               className={`rounded-xl px-3.5 py-2 text-[12px] font-bold transition ${
                 on

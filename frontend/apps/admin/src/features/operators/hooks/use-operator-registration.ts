@@ -23,7 +23,12 @@ export function useOperatorRegistration() {
     payload: RegisterOperatorPayload,
     photos: RegistrationPhotos,
     consent: { service: boolean; dataSharing: boolean },
-  ): Promise<{ kuraId: string; kycSubmitted: boolean; kycError: string | null }> {
+  ): Promise<{
+    accountId: string
+    kuraId: string
+    kycSubmitted: boolean
+    kycError: string | null
+  }> {
     const created = await registerOperator.mutateAsync(payload)
     let kycSubmitted = false
     let kycError: string | null = null
@@ -52,7 +57,7 @@ export function useOperatorRegistration() {
     } finally {
       setSubmittingPhotos(false)
     }
-    return { kuraId: created.kura_id || '', kycSubmitted, kycError }
+    return { accountId: created.id, kuraId: created.kura_id || '', kycSubmitted, kycError }
   }
 
   return {

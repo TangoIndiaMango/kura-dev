@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from django.core.cache import cache
+from datetime import timedelta
+
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import ExtractHour
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -17,9 +20,32 @@ from operations.models import Alert, CashDeposit
 
 CACHE_TTL = 30
 
+# Money earned from service. FUND (top-ups) is the rider's own money moving into
+# the wallet, and CREDIT_REPAY repays swaps already counted — both would double-count.
+REVENUE_PURPOSES = ("SWAP", "PLAN")
+
+
+def _hourly_completed(start, end) -> list[int]:
+    """Completed swaps per Lagos hour (0–23) in [start, end)."""
+    counts = [0] * 24
+    rows = (
+        Swap.objects.filter(
+            status=Swap.Status.COMPLETED, completed_at__gte=start, completed_at__lt=end
+        )
+        .annotate(h=ExtractHour("completed_at", tzinfo=timezone.get_current_timezone()))
+        .values("h")
+        .annotate(n=Count("id"))
+    )
+    for row in rows:
+        counts[row["h"]] = row["n"]
+    return counts
+
 
 def build_command_centre() -> dict:
-    today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    # Lagos business day (TIME_ZONE), not UTC midnight.
+    today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
+    yesterday = today - timedelta(days=1)
     hubs = []
     for hub in Hub.objects.all().order_by("code")[:50]:
         bat = Battery.objects.filter(current_hub=hub).aggregate(
@@ -56,11 +82,16 @@ def build_command_centre() -> dict:
             }
         )
 
-    today_swaps = Swap.objects.filter(created_at__gte=today).count()
+    today_swaps = Swap.objects.filter(
+        status=Swap.Status.COMPLETED, completed_at__gte=today, completed_at__lt=tomorrow
+    ).count()
     revenue = (
-        Payment.objects.filter(created_at__gte=today, status=Payment.Status.SUCCESS).aggregate(
-            t=Sum("amount_kobo")
-        )["t"]
+        Payment.objects.filter(
+            created_at__gte=today,
+            created_at__lt=tomorrow,
+            status=Payment.Status.SUCCESS,
+            purpose__in=REVENUE_PURPOSES,
+        ).aggregate(t=Sum("amount_kobo"))["t"]
         or 0
     )
     active_alerts = Alert.objects.filter(
@@ -82,6 +113,10 @@ def build_command_centre() -> dict:
             "today_cash_kobo": int(cash_today),
             "online_hubs": sum(1 for h in hubs if h["status"] == Hub.Status.ONLINE),
             "total_hubs": len(hubs),
+        },
+        "hourly_swaps": {
+            "today": _hourly_completed(today, tomorrow),
+            "yesterday": _hourly_completed(yesterday, today),
         },
         "generated_at": timezone.now().isoformat(),
     }
@@ -131,7 +166,7 @@ class CommandCentreView(APIView):
     @extend_schema(responses={200: dict})
     def get(self, request):
         payload = cache.get_or_set(
-            "ops:command_centre:v2",
+            "ops:command_centre:v3",
             build_command_centre,
             CACHE_TTL,
         )

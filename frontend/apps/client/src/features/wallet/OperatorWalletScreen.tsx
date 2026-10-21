@@ -52,6 +52,7 @@ function consumeWalletIntent(): string | null {
 }
 
 export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
+  onNavigateTab,
   onSeeHistory,
   onOpenReceipt,
 }) => {
@@ -195,7 +196,22 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
 
   const walletUsable = Boolean(nuban) || balanceNaira > 0 || txItems.length > 0
 
-  let walletHero = (
+  // The PSP issues the NUBAN against an ID number; without one it never comes.
+  const needsId = session.kycStatus === 'NONE' || session.kycStatus === 'REJECTED'
+  let walletHero = needsId ? (
+    <OperatorBannerEmptyState
+      image="/illustrations/wallet-provisioning.png"
+      badge="Action needed"
+      title="Add your ID to get a transfer account"
+      description="Your bank account number is issued in your name once your NIN or BVN is on file. Then you can top up from any banking app."
+      actionLabel="Add NIN or BVN"
+      onAction={() => {
+        sessionStorage.setItem('kura_account_open', 'identity')
+        onNavigateTab?.('account')
+      }}
+      footnote="Swaps still work in the meantime — pay cash at any hub."
+    />
+  ) : (
     <OperatorBannerEmptyState
       image="/illustrations/wallet-provisioning.png"
       badge="Setting up"

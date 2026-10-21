@@ -25,9 +25,19 @@ export type HubListApi = {
   created_at: string
 }
 
+/** Day → list of [open, close] pairs; empty object = open whenever ONLINE. */
+export type HubOperatingHours = Partial<
+  Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun', [string, string][]>
+>
+
 export type HubDetailApi = HubListApi & {
   lat: number
   lng: number
+  timezone?: string
+  operating_hours?: HubOperatingHours
+  last_sync_at?: string | null
+  /** Pack types physically at the hub now. */
+  battery_types?: string[]
   updated_at: string
 }
 
@@ -76,8 +86,6 @@ export type HubDailyMetric = {
   label: string
   swaps: number
   energy_kwh: number
-  solar_kw: number
-  grid_kw: number
   revenue_kobo?: number
   revenue_naira?: number
 }
@@ -88,7 +96,8 @@ export type HubDetailStats = {
   name: string
   status: HubStatus
   solar_capacity_kw: number
-  solar_output_kw: number
+  /** Null until hubs report inverter telemetry. */
+  solar_output_kw: number | null
   total_slots: number
   ready_count: number
   charging_count: number
@@ -103,6 +112,6 @@ export type HubDetailStats = {
   revenue_kobo_total?: number
   revenue_naira_total?: number
   daily_revenue_naira_avg?: number
-  expected_swaps_today?: number
-  estimated_revenue_today_naira?: number
+  expected_swaps_today?: number | null
+  estimated_revenue_today_naira?: number | null
 }

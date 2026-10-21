@@ -6,8 +6,7 @@ import {
   sliceTablePage,
   useAdminModuleControls,
 } from '@shared/components'
-import type { BatteryRecord, ReservationRecord } from '@shared/mock/adminMockData'
-import { buildBayBoardCards, type BayBoardCard, type BayBoardKind } from './hubBayBoardModel'
+import type { BayBoardCard, BayBoardKind } from './hubBayBoardModel'
 import { HubBayStatusCard } from './HubBayStatusCard'
 
 const PAGE_SIZE = 20
@@ -22,9 +21,6 @@ const KIND_OPTIONS = [
 
 export function HubBayStatusGrid({
   hubId,
-  batteries,
-  slots = 0,
-  reservations = [],
   boardCards,
   title = 'Live bay board',
   subtitle = 'Today · dock status',
@@ -34,10 +30,7 @@ export function HubBayStatusGrid({
   dateRangeSlot,
 }: {
   hubId: string
-  batteries?: BatteryRecord[]
-  slots?: number
-  reservations?: ReservationRecord[]
-  /** When set (live slots API), skips mock battery fleet mapping. */
+  /** Cards built from the live `/hubs/{id}/slots/` API. */
   boardCards?: BayBoardCard[]
   title?: string
   subtitle?: string
@@ -68,10 +61,7 @@ export function HubBayStatusGrid({
     ],
   })
 
-  const allCards = useMemo(() => {
-    if (boardCards) return boardCards
-    return buildBayBoardCards(batteries ?? [], slots, reservations)
-  }, [boardCards, batteries, slots, reservations])
+  const allCards = boardCards ?? []
 
   const cards = useMemo(() => {
     const q = controls.search.toLowerCase()
@@ -93,7 +83,7 @@ export function HubBayStatusGrid({
 
   useEffect(() => {
     setPage(1)
-  }, [filterKinds, slots, hubId, controls.search, controls.filterValues])
+  }, [filterKinds, hubId, controls.search, controls.filterValues])
 
   const { pageRows, totalPages, safePage } = sliceTablePage(cards, page, pageSize)
 
@@ -197,8 +187,6 @@ export function HubBayStatusGrid({
             ? peek.kind === 'empty'
               ? [
                   { label: 'Status', value: 'Dock open' },
-                  { label: 'Lock', value: peek.sohLabel },
-                  { label: 'Temp', value: peek.tempLabel },
                 ]
               : peek.kind === 'reserved' && peek.reserved
                 ? [
@@ -212,8 +200,8 @@ export function HubBayStatusGrid({
                     { label: 'Type', value: peek.battery?.type ?? peek.typeTag },
                     { label: 'Status', value: peek.statusLabel },
                     { label: 'Charge', value: peek.chargePct != null ? `${peek.chargePct}%` : '—' },
-                    { label: 'Health', value: peek.sohLabel },
-                    { label: 'Temp', value: peek.tempLabel },
+                    { label: 'Location', value: peek.sohLabel },
+                    ...(peek.tempLabel ? [{ label: 'Temp', value: peek.tempLabel }] : []),
                     { label: 'Serial', value: peek.serial },
                   ]
             : []

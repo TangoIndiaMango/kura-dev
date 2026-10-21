@@ -109,6 +109,11 @@ export const AdminShell: React.FC = () => {
           onToggleTheme={toggleTheme}
           unreadNotifications={unreadCount}
           onSignOut={() => setLogoutOpen(true)}
+          onSearch={
+            canSeeModule('operators', can)
+              ? (q) => navigate(`/operators?operators_search=${encodeURIComponent(q)}`)
+              : undefined
+          }
         />
 
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-[var(--bg)] p-4 sm:p-[22px_24px_40px]">

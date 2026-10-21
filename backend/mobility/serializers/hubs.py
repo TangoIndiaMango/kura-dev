@@ -51,6 +51,8 @@ class HubListSerializer(serializers.ModelSerializer):
 
 
 class HubDetailSerializer(HubListSerializer):
+    battery_types = serializers.SerializerMethodField()
+
     class Meta(HubListSerializer.Meta):
         fields = HubListSerializer.Meta.fields + [
             "lat",
@@ -58,8 +60,17 @@ class HubDetailSerializer(HubListSerializer):
             "timezone",
             "operating_hours",
             "last_sync_at",
+            "battery_types",
             "updated_at",
         ]
+
+    def get_battery_types(self, obj) -> list[str]:
+        """Pack types physically at this hub now (from inventory, not config)."""
+        return sorted(
+            set(
+                obj.stationed_batteries.values_list("battery_type__name", flat=True)
+            )
+        )
 
 
 class HubWriteSerializer(serializers.Serializer):

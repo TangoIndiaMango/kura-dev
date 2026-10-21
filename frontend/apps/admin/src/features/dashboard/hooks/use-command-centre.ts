@@ -23,6 +23,8 @@ export type CommandCentrePayload = {
     online_hubs: number
     total_hubs: number
   }
+  /** Completed swaps per Lagos hour, index 0–23. */
+  hourly_swaps?: { today: number[]; yesterday: number[] }
   generated_at: string
 }
 

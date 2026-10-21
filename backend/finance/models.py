@@ -42,6 +42,11 @@ class VirtualAccount(BaseModel):
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
     )
+    # E1.5 retry schedule while PENDING (5 m, 15 m, then hourly for 24 h).
+    provision_attempts = models.PositiveSmallIntegerField(default=0)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    next_attempt_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_error = models.CharField(max_length=255, blank=True, default="")
 
     def __str__(self):
         return f"VA {self.nuban or 'pending'} ({self.status})"

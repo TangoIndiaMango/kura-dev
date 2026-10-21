@@ -15,7 +15,7 @@ class DashboardStatsView(GenericAPIView):
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
 
         total_hubs = Hub.objects.count()
         online_hubs = Hub.objects.filter(status=Hub.Status.ONLINE).count()
@@ -30,13 +30,17 @@ class DashboardStatsView(GenericAPIView):
         issued_batteries = Battery.objects.filter(status=Battery.Status.ISSUED).count()
 
         total_swaps = Swap.objects.count()
-        today_swaps = Swap.objects.filter(created_at__gte=today_start).count()
+        today_swaps = Swap.objects.filter(
+            status=Swap.Status.COMPLETED, completed_at__gte=today_start
+        ).count()
         today_mismatches = Swap.objects.filter(
             created_at__gte=today_start, mismatch_flag=True
         ).count()
 
+        from operations.views.command_centre import REVENUE_PURPOSES
+
         today_revenue_agg = Payment.objects.filter(
-            created_at__gte=today_start, status="SUCCESS"
+            created_at__gte=today_start, status="SUCCESS", purpose__in=REVENUE_PURPOSES
         ).aggregate(total=Sum("amount_kobo"))
         today_revenue_kobo = today_revenue_agg["total"] or 0
 

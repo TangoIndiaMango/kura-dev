@@ -4,7 +4,8 @@ export const LOW_SOC = 40
 
 export function socTone(soc: number | null) {
   if (soc == null)
-    return { fill: '#8aa0a8', label: 'Unknown', glow: 'rgba(138,160,168,0.35)' }
+    // No telemetry yet — say so plainly rather than "Unknown".
+    return { fill: '#8aa0a8', label: 'No reading', glow: 'rgba(138,160,168,0.35)' }
   if (soc <= 20)
     return { fill: '#e74c3c', label: 'Critical', glow: 'rgba(231,76,60,0.45)' }
   if (soc <= LOW_SOC)
@@ -12,9 +13,12 @@ export function socTone(soc: number | null) {
   return { fill: '#2fbecf', label: 'Good', glow: 'rgba(47,190,207,0.35)' }
 }
 
+export function hasNoPack(vehicle: OperatorVehicle): boolean {
+  return !vehicle.battery || vehicle.battery === 'No pack mounted'
+}
+
 export function needsSwapCta(vehicle: OperatorVehicle): boolean {
-  const noPack = !vehicle.battery || vehicle.battery === 'No pack mounted'
-  if (noPack) return true
+  if (hasNoPack(vehicle)) return true
   if (vehicle.socPercent == null) return false
   return vehicle.socPercent <= LOW_SOC
 }

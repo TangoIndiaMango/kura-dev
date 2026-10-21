@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Select, TextInput, Title } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { useForm } from '@mantine/form'
@@ -41,8 +41,12 @@ const TIPS = [
 
 export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { can } = useCapabilities()
   const editing = Boolean(vehicleId)
+  // Opened from a just-registered operator: owner comes pre-selected.
+  const presetAccountId = editing ? '' : searchParams.get('account')?.trim() || ''
+  const presetOwnerLabel = searchParams.get('owner')?.trim() || 'Selected operator'
   const backTo =
     editing && vehicleId ? `/vehicles/${vehicleId}` : '/vehicles'
   const [savedId, setSavedId] = useState<string | null>(null)
@@ -64,7 +68,7 @@ export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
     initialValues: {
-      account_id: '',
+      account_id: presetAccountId,
       vehicle_model_id: '',
       registration_plate: '',
       hardware_id: '',
@@ -112,8 +116,11 @@ export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
         label: `${vehicle.owner_name} · ${vehicle.owner_kura_id}`,
       })
     }
+    if (presetAccountId && !rows.some((r) => r.value === presetAccountId)) {
+      rows.unshift({ value: presetAccountId, label: presetOwnerLabel })
+    }
     return rows
-  }, [operators, vehicle, form.values.account_id])
+  }, [operators, vehicle, form.values.account_id, presetAccountId, presetOwnerLabel])
 
   const canManage = can('vehicles:manage')
   const submitting = createVehicle.isPending || updateVehicle.isPending

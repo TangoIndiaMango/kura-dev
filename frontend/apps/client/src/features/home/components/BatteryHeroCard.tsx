@@ -2,6 +2,7 @@ import { ArrowRight01Icon } from 'hugeicons-react'
 import type { OperatorVehicle } from '../../../shared/session'
 import {
   LOW_SOC,
+  hasNoPack,
   kmUntilLow,
   needsSwapCta,
   packSignalLabel,
@@ -83,6 +84,7 @@ export function BatteryCard({
   active: boolean
 }) {
   const tone = socTone(vehicle.socPercent)
+  const badge = hasNoPack(vehicle) ? 'No pack' : tone.label
   const circumference = 2 * Math.PI * 54
   const soc = vehicle.socPercent
   const dash = soc == null ? 0 : (soc / 100) * circumference
@@ -117,7 +119,7 @@ export function BatteryCard({
             border: `1px solid color-mix(in srgb, ${tone.fill} 35%, transparent)`,
           }}
         >
-          {tone.label}
+          {badge}
         </span>
       </div>
 

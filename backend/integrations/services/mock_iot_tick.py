@@ -6,6 +6,7 @@ import logging
 import math
 from typing import Any
 
+from django.conf import settings
 from django.utils import timezone
 
 from integrations.providers.mock_iot.transform import normalize_mock_iot_payload
@@ -60,8 +61,10 @@ def _next_location(*, vehicle: Vehicle, battery: Battery) -> tuple[float, float]
 def tick_mock_iot(*, step: int | None = None, limit: int = 200) -> dict[str, Any]:
     """
     Apply one mock OEM reading per mounted ISSUED pack.
-    Safe to run from the task worker every loop.
+    Dev/demo only: in production this would overwrite real charge and GPS.
     """
+    if not getattr(settings, "MOCK_IOT_ENABLED", False):
+        return {"updated": 0, "batch": "", "disabled": True}
     vehicles = (
         Vehicle.objects.filter(
             status=Vehicle.Status.ACTIVE,

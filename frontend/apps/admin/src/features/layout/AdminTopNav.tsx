@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Menu01Icon,
   Search01Icon,
@@ -17,6 +17,8 @@ interface AdminTopNavProps {
   onToggleTheme?: () => void
   unreadNotifications?: number
   onSignOut?: () => void
+  /** Operator lookup (name, phone, KURA ID, plate). Hidden when absent. */
+  onSearch?: (query: string) => void
 }
 
 export const AdminTopNav: React.FC<AdminTopNavProps> = ({
@@ -28,7 +30,9 @@ export const AdminTopNav: React.FC<AdminTopNavProps> = ({
   onToggleTheme,
   unreadNotifications = 0,
   onSignOut,
+  onSearch,
 }) => {
+  const [query, setQuery] = useState('')
   return (
     <header className="h-16 flex-shrink-0 border-b border-[var(--bd)] bg-[var(--sf)] px-4 sm:px-6 flex items-center justify-between gap-4 transition-colors">
       <div className="flex min-w-0 flex-1 items-center gap-3.5">
@@ -54,14 +58,27 @@ export const AdminTopNav: React.FC<AdminTopNavProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5 flex-shrink-0">
-        <div className="hidden lg:flex items-center gap-2 px-3 py-2 border border-[var(--bd)] rounded-[8px] bg-[var(--in)] text-[12.5px] text-[var(--su)] w-[clamp(180px,24vw,280px)]">
-          <Search01Icon size={14} className="flex-shrink-0 opacity-70" />
-          <input
-            type="text"
-            placeholder="Search by name, phone, KURA ID, plate…"
-            className="bg-transparent border-0 outline-none text-[var(--tx)] text-[12.5px] w-full placeholder:text-[var(--su)]"
-          />
-        </div>
+        {onSearch ? (
+          <form
+            role="search"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const q = query.trim()
+              if (q) onSearch(q)
+            }}
+            className="hidden lg:flex items-center gap-2 px-3 py-2 border border-[var(--bd)] rounded-[8px] bg-[var(--in)] text-[12.5px] text-[var(--su)] w-[clamp(180px,24vw,280px)] focus-within:border-[var(--pr)]"
+          >
+            <Search01Icon size={14} className="flex-shrink-0 opacity-70" />
+            <input
+              type="search"
+              aria-label="Search operators"
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              placeholder="Search by name, phone, KURA ID, plate…"
+              className="bg-transparent border-0 outline-none text-[var(--tx)] text-[12.5px] w-full placeholder:text-[var(--su)]"
+            />
+          </form>
+        ) : null}
 
         <button
           type="button"

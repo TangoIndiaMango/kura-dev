@@ -68,7 +68,9 @@ class PaystackPsp:
     ) -> VaProvisionResult:
         if not self.secret_key:
             raise DomainError("INTEGRATION_ERROR", "PAYSTACK_SECRET_KEY is not configured.")
-        customer_email = email or f"acct-{account_id}@yopmail.com"
+        customer_email = email or (
+            f"acct-{account_id}@{getattr(settings, 'PSP_CUSTOMER_EMAIL_DOMAIN', 'customers.kura.eco')}"
+        )
         first = display_name.split(" ")[0] if display_name else "Operator"
         last = " ".join(display_name.split(" ")[1:]) or "KURA"
         customer = self._api(

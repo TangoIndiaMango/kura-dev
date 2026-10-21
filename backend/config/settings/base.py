@@ -312,6 +312,10 @@ NOMBA_WEBHOOK_SECRET = env("NOMBA_WEBHOOK_SECRET", "")
 NOMBA_ACCOUNT_ID = env("NOMBA_ACCOUNT_ID", "")
 # Local only: attach a generated NUBAN when the real PSP cannot (OTP_DEV_CODE pattern).
 PSP_ALLOW_DEV_VA = env_bool("PSP_ALLOW_DEV_VA", DEBUG)
+# Fake OEM telemetry ticks (charge drain + GPS) for demos without real IoT.
+MOCK_IOT_ENABLED = env_bool("MOCK_IOT_ENABLED", DEBUG)
+# PSP customers need an email; riders sign up by phone, so use a placeholder we own.
+PSP_CUSTOMER_EMAIL_DOMAIN = env("PSP_CUSTOMER_EMAIL_DOMAIN", "customers.kura.eco")
 
 # Email
 EMAIL_ENABLED = env_bool("EMAIL_ENABLED", False)

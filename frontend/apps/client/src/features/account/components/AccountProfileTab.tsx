@@ -79,7 +79,9 @@ export function AccountProfileTab({
                 ? session.verifiedLabel
                 : session.kycStatus === 'PENDING'
                   ? 'Ops reviewing · swaps still open'
-                  : 'Photos if ops asks for them',
+                  : session.kycStatus === 'REJECTED'
+                    ? session.verifiedLabel
+                    : 'Add your NIN or BVN to get a transfer account',
           },
           ...ACCOUNT_MENU_ITEMS.filter((item) =>
             ['theme', 'pin', 'help', 'logout'].includes(item.id),

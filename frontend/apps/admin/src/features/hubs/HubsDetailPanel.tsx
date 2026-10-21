@@ -84,9 +84,16 @@ export function HubsDetailPanel({ id }: { id: string }) {
         ? 'warning'
         : 'danger'
   const canManage = can('hubs:manage')
-  const lastSync = hub.updated_at
-    ? new Date(hub.updated_at).toLocaleString()
-    : '—'
+  // Last time the hub reported in — not when its record was edited.
+  const lastSync = hub.last_sync_at
+    ? new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Africa/Lagos',
+      }).format(new Date(hub.last_sync_at))
+    : 'Never'
 
   const actions: AdminDetailAction[] = [
     ...(canManage
@@ -177,7 +184,6 @@ export function HubsDetailPanel({ id }: { id: string }) {
                 <HubBayStatusGrid
                   hubId={hub.id}
                   boardCards={boardCards}
-                  slots={hub.slot_count}
                   subtitle="Live slot states"
                 />
               </div>

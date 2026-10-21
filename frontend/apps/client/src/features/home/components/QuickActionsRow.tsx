@@ -1,9 +1,9 @@
 import React from 'react'
 import {
-  ArrowDataTransferHorizontalIcon,
   Wallet01Icon,
   Coins01Icon,
   QrCode01Icon,
+  Invoice01Icon,
 } from 'hugeicons-react'
 import type { TabId } from '../../layout/FloatingGlassBottomBar'
 
@@ -28,14 +28,12 @@ export const QuickActionsRow: React.FC<QuickActionsRowProps> = ({
   }> = [
     {
       id: 'swap',
-      label: hasActivePass ? 'My holds' : 'Book swap',
-      icon: hasActivePass ? QrCode01Icon : ArrowDataTransferHorizontalIcon,
+      // The hero card already has "Book a swap"; this tile is for what you've done.
+      label: hasActivePass ? 'My holds' : 'Swap history',
+      icon: hasActivePass ? QrCode01Icon : Invoice01Icon,
       onClick: () => {
         if (hasActivePass) onOpenSwaps()
-        else {
-          sessionStorage.setItem('kura_swap_intent', 'book')
-          onNavigateTab('swap')
-        }
+        else onNavigateTab('swap')
       },
     },
     {

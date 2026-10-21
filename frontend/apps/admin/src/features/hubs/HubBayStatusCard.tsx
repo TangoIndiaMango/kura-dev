@@ -68,8 +68,8 @@ export function HubBayStatusCard({
             </div>
           ) : (
             <div className="mt-2 space-y-1 text-[12px] text-[var(--mu)]">
-              <div className="truncate">{card.sohLabel}</div>
-              <div className="tabular-nums">{card.tempLabel}</div>
+              {card.sohLabel ? <div className="truncate">{card.sohLabel}</div> : null}
+              {card.tempLabel ? <div className="tabular-nums">{card.tempLabel}</div> : null}
             </div>
           )}
         </div>
