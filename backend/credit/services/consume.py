@@ -5,10 +5,12 @@ from django.db import transaction
 
 from accounts.models import Account
 from core.exceptions import DomainError
+from core.money import split_vat_inclusive
 from core.services.config import ConfigService
 from core.services.events import emit_event
 from credit.models import CreditLine, Loan
-from finance.models import Payment
+from finance.models import LedgerAccount, LedgerTransaction, Payment
+from finance.services.ledger import LedgerService
 from finance.services.payments import PaymentService
 
 
@@ -17,6 +19,7 @@ def consume_swap_credit(
     account: Account,
     amount_kobo: int,
     reference: str,
+    hub=None,
 ) -> Payment:
     """
     Debit swap_credit_remaining_kobo on the active loan.
@@ -71,14 +74,47 @@ def consume_swap_credit(
         loan.swap_credit_remaining_kobo = remaining - amount_kobo
         loan.save(update_fields=["swap_credit_remaining_kobo", "updated_at"])
 
+        net_kobo, vat_kobo = split_vat_inclusive(amount_kobo)
         payment = PaymentService.create_payment(
             account=account,
             channel=Payment.Channel.CREDIT,
             amount_kobo=amount_kobo,
-            vat_kobo=0,
+            vat_kobo=vat_kobo,
             purpose="SWAP",
             status=Payment.Status.SUCCESS,
             idempotency_key=f"swap-credit:{reference}"[:64],
+            hub=hub,  # hub daily collections must include credit swaps
+        )
+        # Credit swap = revenue now, owed by the rider: receivable up, revenue +
+        # VAT recognised. Repayments (wallet_repay) credit the receivable back.
+        entries = [
+            {
+                "code": "asset:loan_receivable",
+                "type": LedgerAccount.AccountType.ASSET,
+                "debit": amount_kobo,
+                "credit": 0,
+            },
+            {
+                "code": "revenue:swap",
+                "type": LedgerAccount.AccountType.REVENUE,
+                "debit": 0,
+                "credit": net_kobo,
+            },
+        ]
+        if vat_kobo:
+            entries.append(
+                {
+                    "code": "vat_payable",
+                    "type": LedgerAccount.AccountType.LIABILITY,
+                    "debit": 0,
+                    "credit": vat_kobo,
+                }
+            )
+        LedgerService.post_transaction(
+            kind=LedgerTransaction.Kind.SWAP_FEE,
+            reference=f"CREDIT-{payment.receipt_code}"[:100],
+            description=f"Swap on credit {payment.receipt_code}",
+            entries=entries,
         )
 
     emit_event(

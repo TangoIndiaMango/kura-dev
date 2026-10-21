@@ -156,7 +156,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+# Business day = Lagos day: TruncDate, __date and localdate() bucket in WAT.
+# Storage stays UTC (USE_TZ). Was UTC, which split nightly totals at 01:00 WAT.
+TIME_ZONE = "Africa/Lagos"
 USE_I18N = True
 USE_TZ = True
 

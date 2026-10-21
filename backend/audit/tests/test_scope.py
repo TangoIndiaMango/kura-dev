@@ -54,20 +54,16 @@ class AuditScopeTests(TestCase):
         types = {row["subject_type"] for row in res.json()["results"]}
         self.assertEqual(types, {"account", "user", "wallet", "role"})
 
-    def test_government_viewer_finance_and_ops_only(self):
+    def test_government_viewer_cannot_read_audit(self):
+        # External viewers get analytics aggregates only — audit rows carry
+        # staff names and IPs (03_BACKEND_SPEC read-only roles).
         gov = User.objects.create(
             email="gov@test.eco",
             role=User.Role.GOVERNMENT_VIEWER,
             is_staff=True,
         )
         client = self._client_for(gov)
-        res = client.get("/api/v1/audit/")
-        self.assertEqual(res.status_code, 200)
-        types = {row["subject_type"] for row in res.json()["results"]}
-        self.assertEqual(types, {"wallet"})
-        self.assertNotIn("user", types)
-        self.assertNotIn("account", types)
-        self.assertNotIn("role", types)
+        self.assertEqual(client.get("/api/v1/audit/").status_code, 403)
 
     def test_commercial_sees_accounts_users_finance_not_roles(self):
         commercial = User.objects.create(
@@ -83,15 +79,16 @@ class AuditScopeTests(TestCase):
         self.assertNotIn("role", types)
 
     def test_stats_match_scoped_list(self):
-        gov = User.objects.create(
-            email="gov2@test.eco",
-            role=User.Role.GOVERNMENT_VIEWER,
+        commercial = User.objects.create(
+            email="commerce2@test.eco",
+            role=User.Role.COMMERCIAL_ADMIN,
             is_staff=True,
         )
-        client = self._client_for(gov)
+        client = self._client_for(commercial)
+        listed = client.get("/api/v1/audit/").json()["results"]
         stats = client.get("/api/v1/audit/stats/")
         self.assertEqual(stats.status_code, 200)
-        self.assertEqual(stats.json()["totals"]["all"], 1)
+        self.assertEqual(stats.json()["totals"]["all"], len(listed))
 
     def test_hub_agent_without_audit_read_forbidden(self):
         agent = User.objects.create(

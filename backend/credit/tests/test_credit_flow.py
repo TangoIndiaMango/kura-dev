@@ -136,6 +136,15 @@ class CreditFlowTests(TestCase):
         self.assertEqual(payment.channel, Payment.Channel.CREDIT)
         loan = Loan.objects.get(account=self.account)
         self.assertEqual(loan.swap_credit_remaining_kobo, 400_000)
+        # Revenue + VAT recognised at the swap, owed via the loan receivable.
+        tx = LedgerTransaction.objects.get(reference=f"CREDIT-{payment.receipt_code}")
+        by_code = {
+            e.ledger_account.code: (e.debit_kobo, e.credit_kobo)
+            for e in LedgerEntry.objects.filter(transaction=tx).select_related("ledger_account")
+        }
+        self.assertEqual(by_code["asset:loan_receivable"], (100_000, 0))
+        self.assertEqual(by_code["revenue:swap"][1] + by_code["vat_payable"][1], 100_000)
+        self.assertEqual(payment.vat_kobo, by_code["vat_payable"][1])
 
     def test_cap_gate_on_approve(self):
         app = CreditApplication.objects.create(

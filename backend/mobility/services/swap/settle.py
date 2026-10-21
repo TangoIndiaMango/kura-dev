@@ -110,6 +110,7 @@ def settle_swap_payment(
             account=account,
             amount_kobo=fee,
             reference=ref,
+            hub=hub,
         )
         return SettleResult(payment=payment)
 

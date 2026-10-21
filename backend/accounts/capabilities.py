@@ -138,26 +138,18 @@ ROLE_CAPABILITIES: Final[dict[str, list[str] | str]] = {
         "cases:read",
         "analytics:impact",
     ],
+    # Read-only external roles see analytics aggregates only — never raw operator
+    # tables (swaps, vehicles, payments, audit, cooperative members). 03 §roles.
     "GOVERNMENT_VIEWER": [
         "analytics:revenue",
-        "hubs:read",
-        "vehicles:read",
-        "swaps:read",
-        "audit:read",
-        "finance:read",
-        "cooperatives:read",
         "analytics:impact",
-        "telemetry:read",
+        "hubs:read",
     ],
     "PARTNER_VIEWER": [
         "analytics:revenue",
+        "analytics:impact",
         "hubs:read",
         "batteries:read",
-        "vehicles:read",
-        "swaps:read",
-        "finance:read",
-        "cooperatives:read",
-        "analytics:impact",
     ],
     "COOPERATIVE_CHAIRMAN": [
         "cooperatives:read",

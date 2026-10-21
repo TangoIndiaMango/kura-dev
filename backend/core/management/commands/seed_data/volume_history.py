@@ -16,7 +16,9 @@ from operations.models import Alert, AlertRule
 def _seed_payments(*, accounts: list[Account], hub: Hub | None) -> int:
     """Idempotent funding rows via WalletService (ledger-correct)."""
     created = 0
-    purposes = ("FUND", "SWAP", "PLAN", "FUND", "SWAP")
+    # No standalone SWAP rows: swap payments come from _seed_swaps so every
+    # swap has exactly one hub-tagged payment (hub collections reconcile).
+    purposes = ("FUND", "FUND", "PLAN", "FUND", "FUND")
     channels = (
         Payment.Channel.NUBAN_TRANSFER,
         Payment.Channel.WALLET_DEBIT,
@@ -46,7 +48,6 @@ def _seed_payments(*, accounts: list[Account], hub: Hub | None) -> int:
                     purpose=purpose,
                     status=Payment.Status.SUCCESS,
                     psp_reference=ref,
-                    hub=hub if purpose == "SWAP" else None,
                 )
             created += 1
     return created
@@ -91,9 +92,39 @@ def _seed_swaps(
                     client_event_id=key,
                 )
             )
-    if to_create:
-        Swap.objects.bulk_create(to_create, batch_size=100)
+    for swap in to_create:
+        swap.save()
+        settle_seed_wallet_swap(swap)
     return len(to_create)
+
+
+def settle_seed_wallet_swap(swap: Swap) -> None:
+    """Ledger-correct wallet debit for a seeded swap, tagged to its hub and day."""
+    from core.exceptions import DomainError
+    from finance.services import WalletHoldService
+
+    if swap.payment_id or swap.amount_kobo <= 0:
+        return
+    ref = f"seed-cap-{swap.client_event_id}"[:60]
+    try:
+        WalletHoldService.hold(account=swap.account, amount_kobo=swap.amount_kobo, reference=ref)
+    except DomainError:
+        WalletService.fund_wallet(
+            account=swap.account,
+            amount_kobo=swap.amount_kobo * 4,
+            channel=Payment.Channel.NUBAN_TRANSFER,
+            psp_reference=f"seed-topup-{swap.client_event_id}"[:120],
+        )
+        WalletHoldService.hold(account=swap.account, amount_kobo=swap.amount_kobo, reference=ref)
+    payment = WalletHoldService.capture(
+        account=swap.account,
+        amount_kobo=swap.amount_kobo,
+        reference=ref,
+        purpose="SWAP",
+        hub=swap.hub,
+    )
+    Payment.objects.filter(pk=payment.pk).update(created_at=swap.completed_at)
+    Swap.objects.filter(pk=swap.pk).update(payment=payment)
 
 
 def _seed_vcu_commands(*, vehicles: list[Vehicle], actor: User) -> int:

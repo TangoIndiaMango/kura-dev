@@ -3,6 +3,7 @@ export {
   useWalletByAccount,
   useAccountPayments,
   usePayments,
+  usePaymentStats,
   usePayment,
 } from './hooks/use-finance'
 export {

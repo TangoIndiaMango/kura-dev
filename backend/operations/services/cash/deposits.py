@@ -7,7 +7,7 @@ from django.db.models import Sum
 from accounts.models import Account, User
 from core.exceptions import DomainError
 from core.ids import receipt_code as generate_receipt_code
-from core.money import format_naira
+from core.money import format_naira, split_vat_inclusive
 from core.services.events import NotifySpec, emit_event
 from finance.models import LedgerAccount, LedgerTransaction, Payment, Wallet
 from finance.services import PaymentService
@@ -98,11 +98,16 @@ class CashDepositService:
 
         try:
             with transaction.atomic():
+                # Swap fees are VAT-inclusive (same split as wallet capture);
+                # wallet funding carries no VAT.
+                vat_kobo = (
+                    split_vat_inclusive(amount_kobo)[1] if purpose_norm == "SWAP" else 0
+                )
                 payment = PaymentService.create_payment(
                     account=account,
                     channel=Payment.Channel.AGENT_CASH,
                     amount_kobo=amount_kobo,
-                    vat_kobo=0,
+                    vat_kobo=vat_kobo,
                     purpose=purpose_norm,
                     status=Payment.Status.SUCCESS,
                     hub=hub,
@@ -197,10 +202,38 @@ class CashDepositService:
             kind = LedgerTransaction.Kind.FUNDING
             desc = f"Agent cash funding {receipt}"
         else:
-            credit_code = "revenue:swap"
-            credit_type = LedgerAccount.AccountType.REVENUE
-            kind = LedgerTransaction.Kind.AGENT_CASH
-            desc = f"Agent cash swap settle {receipt}"
+            # Net to swap revenue, VAT to vat_payable — matches wallet capture.
+            net_kobo, vat_kobo = split_vat_inclusive(amount_kobo)
+            entries = [
+                {
+                    "code": float_code,
+                    "type": LedgerAccount.AccountType.ASSET,
+                    "debit": amount_kobo,
+                    "credit": 0,
+                },
+                {
+                    "code": "revenue:swap",
+                    "type": LedgerAccount.AccountType.REVENUE,
+                    "debit": 0,
+                    "credit": net_kobo,
+                },
+            ]
+            if vat_kobo:
+                entries.append(
+                    {
+                        "code": "vat_payable",
+                        "type": LedgerAccount.AccountType.LIABILITY,
+                        "debit": 0,
+                        "credit": vat_kobo,
+                    }
+                )
+            LedgerService.post_transaction(
+                kind=LedgerTransaction.Kind.AGENT_CASH,
+                reference=f"CASH-{receipt}"[:100],
+                description=f"Agent cash swap settle {receipt}",
+                entries=entries,
+            )
+            return
         LedgerService.post_transaction(
             kind=kind,
             reference=f"CASH-{receipt}"[:100],

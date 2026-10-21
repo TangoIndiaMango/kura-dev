@@ -210,7 +210,7 @@ export const NAV_CAPABILITY: Partial<Record<AdminModuleId, string>> = {
   credit: 'credit:approve',
   offers: 'offers:manage',
   discounts: 'tariffs:manage',
-  revenue: 'finance:read',
+  revenue: 'analytics:revenue',
   impact: 'analytics:impact',
   health: 'batteries:read',
   telemetry: 'telemetry:read',

@@ -1,3 +1,4 @@
+import type { TableExportFormat } from '@shared/components/table/types'
 import {
   DynamicTableSection,
   LoadingState,
@@ -5,7 +6,6 @@ import {
   type TablePaginationConfig,
 } from '@shared/components'
 import { formatNaira } from '@shared/utils/currency'
-import { downloadCsv } from '@shared/utils/downloadCsv'
 import type { PaymentApi } from '@features/finance'
 import {
   paymentChannelLabel,
@@ -22,6 +22,7 @@ export function PaymentsLedgerTable({
   onSearchChange,
   onFilter,
   onRowClick,
+  onExport,
 }: {
   payments: PaymentApi[]
   pending: boolean
@@ -30,6 +31,8 @@ export function PaymentsLedgerTable({
   onSearchChange: (v: string) => void
   onFilter: () => void
   onRowClick: (item: PaymentApi) => void
+  /** Full server statement for the current filters (not just this page). */
+  onExport: (format: TableExportFormat) => void
 }) {
   if (pending) return <LoadingState variant="inline" cols={7} rows={8} />
 
@@ -47,30 +50,8 @@ export function PaymentsLedgerTable({
         searchPlaceholder: 'Search receipt or purpose…',
         onFilter,
         showFilter: true,
-        onExport: () =>
-          downloadCsv(
-            'payments.csv',
-            [
-              'receipt',
-              'date',
-              'account',
-              'hub',
-              'channel',
-              'purpose',
-              'amount_kobo',
-              'status',
-            ],
-            payments.map((p) => [
-              p.receipt_code,
-              p.created_at,
-              p.account_id,
-              p.hub_id ?? '',
-              p.channel,
-              p.purpose,
-              p.amount_kobo,
-              p.status,
-            ]),
-          ),
+        showExport: true,
+        onExportFormat: onExport,
       }}
       onRowClick={onRowClick}
       emptyTitle="No payments"

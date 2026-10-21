@@ -1,3 +1,4 @@
+import { formatNaira } from '@shared/utils/currency'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -11,8 +12,11 @@ import {
   ADMIN_LIST_PAGE_SIZE,
   buildCursorPagination,
 } from '@shared/utils/cursor-pagination'
-import { usePayments } from '@features/finance'
+import { usePaymentStats, usePayments } from '@features/finance'
 import { useCapabilities } from '@features/auth'
+import { notifications } from '@mantine/notifications'
+import { apiErrorMessage } from '@lib/api/auth'
+import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
 import { mapShiftToCashRow, useShifts } from './hooks/use-cash-ops'
 import { PaymentsCashTable } from './PaymentsCashTable'
 import { PaymentsLedgerTable } from './PaymentsLedgerTable'
@@ -123,6 +127,26 @@ export function PaymentsPanel() {
     { enabled: tab === 'payments' },
   )
 
+  // Server statement: every row for the current filters (not just this page),
+  // Lagos-day bounds, plus totals by channel and by account.
+  const exportStatement = async (format: 'csv' | 'pdf') => {
+    const stem = ['kura-payments', dateRange.start_date, dateRange.end_date]
+      .filter(Boolean)
+      .join('-')
+    try {
+      await downloadExportFromApi('/finance/payments/export/', `${stem}.${format}`, {
+        export: format,
+        status: statusFilter,
+        channel: channelFilter,
+        hub: hubScope,
+        start_date: dateRange.start_date,
+        end_date: dateRange.end_date,
+      })
+    } catch (err) {
+      notifications.show({ color: 'red', message: apiErrorMessage(err, 'Export failed') })
+    }
+  }
+
   const paymentsPagination = buildCursorPagination({
     page,
     setPage,
@@ -153,7 +177,17 @@ export function PaymentsPanel() {
     .filter((r) => r.status === 'ON_DUTY')
     .reduce((s, r) => s + Math.max(0, r.collectedNaira ?? r.openingNaira), 0)
 
-  const channelBar = useMemo(() => channelBarData(payments), [payments])
+  const { stats: paymentStats } = usePaymentStats(
+    {
+      status: statusFilter,
+      channel: channelFilter,
+      hub: hubScope,
+      start_date: dateRange.start_date,
+      end_date: dateRange.end_date,
+    },
+    { enabled: tab === 'payments' },
+  )
+  const channelBar = useMemo(() => channelBarData(paymentStats), [paymentStats])
   const cashVarianceBar = useMemo(
     () => cashVarianceBarData(cashMapped),
     [cashMapped],
@@ -177,14 +211,14 @@ export function PaymentsPanel() {
         }}
         kpis={
           tab === 'payments'
-            ? paymentTabKpis(payments, cashOnHand)
+            ? paymentTabKpis(paymentStats, cashOnHand)
             : cashTabKpis(cashMapped, cashOnHand, Boolean(hubScope))
         }
         chartsSlot={
           <div className="overflow-visible rounded-[14px] border border-[var(--bd)] bg-[var(--sf)] p-4 pb-5 shadow-[var(--sh)]">
             <h3 className="mb-3 text-[13px] font-bold text-[var(--tx)]">
               {tab === 'payments'
-                ? 'Success by channel · ₦ hundred thousands (page)'
+                ? 'Collected by channel · selected period (₦)'
                 : 'Cash variance by hub · ₦ thousands'}
             </h3>
             <AdminBarChart
@@ -200,6 +234,9 @@ export function PaymentsPanel() {
                 },
               ]}
               height={220}
+              {...(tab === 'payments'
+                ? { yAxisWidth: 64, valueFormatter: (v: number) => formatNaira(v) }
+                : {})}
             />
           </div>
         }
@@ -222,6 +259,7 @@ export function PaymentsPanel() {
             }}
             onFilter={paymentsControls.openFilter}
             onRowClick={(item) => navigate(`/payments/${item.id}`)}
+            onExport={exportStatement}
           />
         ) : (
           <PaymentsCashTable

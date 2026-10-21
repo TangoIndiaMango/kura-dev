@@ -124,3 +124,29 @@ export function usePayment(
   )
   return { ...query, payment: query.data ?? null }
 }
+
+export type PaymentStatsApi = {
+  success_kobo: number
+  success_count: number
+  pending_count: number
+  failed_count: number
+  by_channel: Array<{ channel: string; count: number; amount_kobo: number }>
+}
+
+/** Period totals for the same filters as the payments list / statement export. */
+export function usePaymentStats(
+  params: {
+    status?: string
+    channel?: string
+    hub?: string
+    start_date?: string
+    end_date?: string
+  },
+  options?: { enabled?: boolean },
+) {
+  const query = useFetchData<PaymentStatsApi>('/finance/payments/stats/', params, {
+    enabled: options?.enabled !== false,
+    staleTime: 30_000,
+  })
+  return { ...query, stats: query.data ?? null }
+}

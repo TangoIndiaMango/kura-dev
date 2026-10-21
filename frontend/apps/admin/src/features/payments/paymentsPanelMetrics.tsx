@@ -1,3 +1,4 @@
+import type { PaymentStatsApi } from '@features/finance/hooks/use-finance'
 import { Cancel01Icon } from 'hugeicons-react'
 import { formatNaira } from '@shared/utils/currency'
 import type { PaymentApi } from '@features/finance'
@@ -29,30 +30,26 @@ export function PaymentsHubScopeChip({
   )
 }
 
-export function paymentTabKpis(payments: PaymentApi[], cashOnHand: number) {
-  const successSum = payments
-    .filter((p) => p.status === 'SUCCESS')
-    .reduce((s, p) => s + p.amount_kobo, 0)
-  const pendingCount = payments.filter((p) => p.status === 'PENDING').length
-  const failedCount = payments.filter((p) => p.status === 'FAILED').length
+export function paymentTabKpis(stats: PaymentStatsApi | null, cashOnHand: number) {
+  const dash = (n: number | undefined) => (stats ? n : '—')
   return [
     {
-      title: 'Page success total',
-      value: formatNaira(successSum, { fromKobo: true }),
-      sub: 'Successful on this page',
+      title: 'Collected',
+      value: stats ? formatNaira(stats.success_kobo, { fromKobo: true }) : '—',
+      sub: `${dash(stats?.success_count)} successful · selected period`,
       tone: 'success' as const,
     },
     {
       title: 'Pending',
-      value: pendingCount,
+      value: dash(stats?.pending_count),
       sub: 'Awaiting confirm',
       tone: 'warning' as const,
     },
     {
       title: 'Failed',
-      value: failedCount,
-      sub: 'On this page',
-      tone: (failedCount > 0 ? 'danger' : 'default') as 'danger' | 'default',
+      value: dash(stats?.failed_count),
+      sub: 'Selected period',
+      tone: ((stats?.failed_count ?? 0) > 0 ? 'danger' : 'default') as 'danger' | 'default',
     },
     {
       title: 'Cash on hand',
@@ -102,15 +99,10 @@ export function cashTabKpis(
   ]
 }
 
-export function channelBarData(payments: PaymentApi[]) {
-  const map = new Map<string, number>()
-  for (const p of payments) {
-    if (p.status !== 'SUCCESS') continue
-    map.set(p.channel, (map.get(p.channel) ?? 0) + p.amount_kobo)
-  }
-  return [...map.entries()].map(([channel, kobo]) => ({
+export function channelBarData(stats: PaymentStatsApi | null) {
+  return (stats?.by_channel ?? []).map(({ channel, amount_kobo: kobo }) => ({
     label: paymentChannelLabel(channel).split(' ')[0] ?? channel,
-    amount: Math.round(kobo / 100_000) / 10,
+    amount: Math.round(kobo / 100),
   }))
 }
 

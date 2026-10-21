@@ -2,6 +2,7 @@
 import { useMemo } from 'react'
 import { useStaffUsers } from '@features/users/hooks/use-users'
 import { useShifts } from '@features/payments/hooks/use-cash-ops'
+import { useCapabilities } from '@features/auth/useCapabilities'
 
 export type HubStationAgent = {
   id: string
@@ -11,16 +12,18 @@ export type HubStationAgent = {
 }
 
 export function useHubStationAgents(hubId: string | undefined, enabled = true) {
+  // Staff names/shifts are internal — viewer roles skip these calls entirely.
+  const { can } = useCapabilities()
   const staff = useStaffUsers({
     role: 'HUB_AGENT',
     hub: hubId,
     page_size: 50,
-    enabled: Boolean(hubId) && enabled,
+    enabled: Boolean(hubId) && enabled && can('users:read'),
   })
   const shifts = useShifts({
     hub: hubId ?? '',
     page: 1,
-    enabled: Boolean(hubId) && enabled,
+    enabled: Boolean(hubId) && enabled && can('shifts:manage'),
   })
   const onDutyIds = useMemo(() => {
     const open = (shifts.data?.results ?? []).filter((s) => s.status === 'OPEN')
