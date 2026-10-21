@@ -27,6 +27,8 @@ export function useAccountVehicles() {
       id: v.id,
       name: `${v.make} ${v.model_name}`,
       status: STATUS_LABEL[v.status] ?? v.status,
+      assignedDriverId: v.assigned_driver_id ?? null,
+      assignedDriverName: v.assigned_driver_name ?? null,
       rows: [
         { label: 'Registration', value: v.registration_plate },
         {
@@ -36,6 +38,10 @@ export function useAccountVehicles() {
         {
           label: 'Plan',
           value: planLabelForVehicle(subs.subscriptions, v.id),
+        },
+        {
+          label: 'Driver',
+          value: v.assigned_driver_name || 'Any on account',
         },
         {
           label: 'Pack',

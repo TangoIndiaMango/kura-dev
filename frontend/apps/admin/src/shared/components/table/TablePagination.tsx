@@ -49,16 +49,25 @@ export function TablePagination({
   onPageSizeChange,
   onNext,
   onPrevious,
+  hasNext,
+  hasPrevious,
 }: TablePaginationProps) {
   if (totalPages <= 1 && variant === 'numbered') {
     return null
   }
 
+  const canPrev =
+    hasPrevious !== undefined ? hasPrevious : page > 1
+  const canNext =
+    hasNext !== undefined ? hasNext : page < totalPages
+
   const goPrev = () => {
+    if (!canPrev) return
     if (onPrevious) onPrevious()
     else onPageChange(Math.max(1, page - 1))
   }
   const goNext = () => {
+    if (!canNext) return
     if (onNext) onNext()
     else onPageChange(Math.min(totalPages, page + 1))
   }
@@ -107,7 +116,7 @@ export function TablePagination({
           <button
             type="button"
             onClick={goPrev}
-            disabled={page === 1}
+            disabled={!canPrev}
             className="flex items-center gap-2 border-r border-[var(--bd)] px-3.5 py-2 text-sm font-semibold text-[var(--tx)] transition-colors hover:bg-[var(--hv)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowLeft01Icon size={16} />
@@ -119,7 +128,7 @@ export function TablePagination({
           <button
             type="button"
             onClick={goNext}
-            disabled={page === totalPages}
+            disabled={!canNext}
             className="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-[var(--tx)] transition-colors hover:bg-[var(--hv)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next

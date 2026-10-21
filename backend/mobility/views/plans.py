@@ -18,9 +18,7 @@ from mobility.services.plans.catalogue import PlanCatalogueService
 class PlanWriteSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=50, required=False, allow_blank=False)
     name = serializers.CharField(max_length=100)
-    vehicle_type = serializers.ChoiceField(
-        choices=VehicleType.choices, required=False
-    )
+    vehicle_type = serializers.CharField(max_length=50, required=False)
     period = serializers.ChoiceField(choices=Plan.Period.choices, required=False)
     duration_days = serializers.IntegerField(
         required=False, allow_null=True, min_value=1

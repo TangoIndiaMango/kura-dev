@@ -136,6 +136,46 @@ class Alert(BaseModel):
         return f"[{self.severity}] {self.kind}: {self.message[:40]}"
 
 
+class AlertRule(BaseModel):
+    """Persisted alert rule — evaluator can match against Alert.kind later."""
+
+    class Severity(models.TextChoices):
+        INFO = "INFO", "Information"
+        WARNING = "WARNING", "Operational"
+        CRITICAL = "CRITICAL", "Critical"
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        PAUSED = "PAUSED", "Paused"
+
+    name = models.CharField(max_length=120)
+    kind = models.CharField(
+        max_length=50, choices=Alert.Kind.choices, db_index=True
+    )
+    severity = models.CharField(
+        max_length=20, choices=Severity.choices, default=Severity.WARNING
+    )
+    threshold = models.JSONField(default=dict, blank=True)
+    channels = models.JSONField(default=list, blank=True)
+    cooldown_minutes = models.PositiveIntegerField(default=30)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="alert_rules_created",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.kind})"
+
+
 class InventoryCount(BaseModel):
     """End-of-day physical count vs system expected (PRD InventoryCount)."""
 

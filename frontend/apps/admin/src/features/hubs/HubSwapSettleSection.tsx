@@ -13,7 +13,13 @@ type Props = {
   onCollectTopUp: () => void
   cashReceiptRef: string | null
   onCollectCash: () => void
+  /** Booking placed a wallet hold — its price is fixed (server refuses bay codes). */
+  walletHeld?: boolean
+  /** False when the agent may not see the rider's balance — show it as private. */
+  walletVisible?: boolean
   discount: DiscountRedeemOk | null
+  /** Code was redeemed at booking — show it, no re-entry at the bay. */
+  discountLocked?: boolean
   onDiscountChange: (next: DiscountRedeemOk | null) => void
   discountContext: {
     vehicleCount: number
@@ -31,7 +37,10 @@ export function HubSwapSettleSection({
   onCollectTopUp,
   cashReceiptRef,
   onCollectCash,
+  walletHeld = false,
+  walletVisible = true,
   discount,
+  discountLocked = false,
   onDiscountChange,
   discountContext,
   onUseCashInstead,
@@ -45,7 +54,7 @@ export function HubSwapSettleSection({
   const walletShort = mode === 'WALLET' && plan.shortfallNaira > 0 && !topUpRef
   const cashReady = mode === 'CASH_AT_HUB' && Boolean(cashReceiptRef)
   const topUpNeeded = mode === 'WALLET' && plan.shortfallNaira > 0 && !topUpRef
-  const showDiscount = mode !== 'PLAN'
+  const showDiscount = mode !== 'PLAN' && !(mode === 'WALLET' && walletHeld)
 
   const settleHint =
     mode === 'PLAN'
@@ -76,7 +85,7 @@ export function HubSwapSettleSection({
             Wallet
           </p>
           <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
-            {formatNaira(plan.walletBalance)}
+            {walletVisible ? formatNaira(plan.walletBalance) : 'Private'}
           </p>
         </div>
         <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5 sm:col-span-1 col-span-2">
@@ -84,14 +93,19 @@ export function HubSwapSettleSection({
             Shortfall
           </p>
           <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
-            {plan.shortfallNaira > 0 && mode !== 'PLAN'
+            {walletVisible && plan.shortfallNaira > 0 && mode !== 'PLAN'
               ? formatNaira(plan.shortfallNaira)
               : '-'}
           </p>
         </div>
       </div>
 
-      {showDiscount ? (
+      {showDiscount && discountLocked && discount ? (
+        <p className="mt-3 rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5 text-[12.5px] text-[var(--tx)]">
+          Booked with <span className="font-semibold">{discount.code}</span> · rider saves{' '}
+          {formatNaira(discount.discountNaira)}. Collect {formatNaira(due)}.
+        </p>
+      ) : showDiscount ? (
         <DiscountCodeField
           listNaira={listDueNaira}
           context={{
@@ -181,7 +195,7 @@ export function HubSwapSettleSection({
 
       {mode === 'WALLET' && !plan.riderPinRequired && !walletShort && !topUpNeeded ? (
         <p className="mt-3 text-[12.5px] text-[var(--mu)]">
-          Hold already captured at booking. Confirm to finish.
+          The wallet hold from booking is charged when you complete.
         </p>
       ) : null}
 

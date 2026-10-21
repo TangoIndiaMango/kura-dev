@@ -9,11 +9,15 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
 import { useConfigNamespace } from '@features/platform-config'
 import { formatNaira } from '@shared/utils/currency'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { downloadCsv } from '@shared/utils/downloadCsv'
 import { CreditSettingsForm } from './CreditSettingsForm'
 import { scoreBands, scoreTone, shortAccountId } from './creditScoreMap'
@@ -34,31 +38,11 @@ const STATUS_OPTIONS = [
   { value: 'OVERRIDE', label: 'Override' },
 ]
 
-function cursorPagination(
-  cursor: string | undefined,
-  nextCursor: string | undefined,
-  previousCursor: string | undefined,
-  setCursor: (c: string | undefined) => void,
-): TablePaginationConfig {
-  return {
-    page: cursor ? 2 : 1,
-    totalPages: nextCursor ? (cursor ? 3 : 2) : cursor ? 2 : 1,
-    onPageChange: () => undefined,
-    variant: 'controls',
-    pageSize: '25',
-    onNext: nextCursor ? () => setCursor(nextCursor) : undefined,
-    onPrevious: previousCursor
-      ? () => setCursor(previousCursor)
-      : cursor
-        ? () => setCursor(undefined)
-        : undefined,
-  }
-}
-
 export function CreditPanel() {
   const navigate = useNavigate()
   const [tab, setTab] = useUrlTab('scores', { valid: ['scores', 'settings'] })
   const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
   const { data: creditConfig } = useConfigNamespace('credit', tab === 'scores')
   const threshold = Number(creditConfig?.effective?.score_threshold ?? 60)
 
@@ -66,16 +50,31 @@ export function CreditPanel() {
     scope: 'credit',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter credit',
+    pageSize: ADMIN_LIST_PAGE_SIZE,
   })
 
+  const creditStatusFilter = controls.getFilter('status')
   useEffect(() => {
     setCursor(undefined)
-  }, [controls.search, controls.filterValues])
+    setPage(1)
+  }, [controls.search, creditStatusFilter])
 
-  const { scores, isPending, nextCursor, previousCursor } = useCreditScores(
-    { cursor, page_size: 25 },
-    { enabled: tab === 'scores', threshold },
-  )
+  const { scores, isPending, isPlaceholderData, nextCursor, previousCursor } =
+    useCreditScores(
+      { cursor, page_size: ADMIN_LIST_PAGE_SIZE },
+      { enabled: tab === 'scores', threshold },
+    )
+
+  const pagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const rows = useMemo(() => {
     const q = controls.search.toLowerCase()
@@ -154,23 +153,22 @@ export function CreditPanel() {
       >
         {tab === 'scores' ? (
           isPending ? (
-            <Skeleton height={280} radius="md" className="m-4" />
+            <LoadingState cols={6} rows={8} />
           ) : (
             <DynamicTableSection<CreditScoreRow>
               variant="embedded"
               headers={SCORE_HEADERS}
               data={rows}
-              pagination={cursorPagination(
-                cursor,
-                nextCursor,
-                previousCursor,
-                setCursor,
-              )}
+              pagination={pagination}
               getRowKey={(item) => item.id}
               toolbar={{
                 title: 'All scores',
                 searchQuery: controls.searchQuery,
-                onSearchChange: controls.setSearchQuery,
+                onSearchChange: (v) => {
+                  setCursor(undefined)
+                  setPage(1)
+                  controls.setSearchQuery(v)
+                },
                 searchPlaceholder: 'Search account or score…',
                 onFilter: controls.openFilter,
                 showFilter: true,

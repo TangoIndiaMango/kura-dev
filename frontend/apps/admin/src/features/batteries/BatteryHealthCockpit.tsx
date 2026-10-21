@@ -122,11 +122,16 @@ export function BatteryHealthCockpit({
                 Pack Health & Telemetry Cockpit
               </h2>
               <span className="rounded-full bg-[var(--tn)] px-2 py-0.5 text-[11px] font-semibold text-[var(--pr)]">
-                BMS IoT Telemetry
+                {analytics.cellsSource === 'telemetry'
+                  ? 'BMS telemetry'
+                  : 'Derived estimate'}
               </span>
             </div>
             <p className="mt-0.5 text-[12.5px] text-[var(--mu)]">
               State of health (SoH), operating thermal envelope, and 20S cell voltage balance
+              {analytics.cellsSource === 'derived'
+                ? ' — cell voltages, temperature, and trend are modelled from pack SoH/SOC until OEM BMS cell telemetry is connected.'
+                : '.'}
             </p>
           </div>
         </div>

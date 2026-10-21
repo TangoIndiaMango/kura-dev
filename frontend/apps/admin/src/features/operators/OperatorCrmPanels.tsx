@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import {
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   type TableHeader,
 } from '@shared/components'
 import { formatNaira } from '@shared/utils/currency'
 import { useAccountPayments, type PaymentApi } from '@features/finance'
+import { useOperatorDetailStats } from './hooks/use-operators'
+import { OperatorSpendBreakdown } from './OperatorSpendBreakdown'
 import { useAccountCases, type SupportCaseListApi } from '@features/support'
 import {
   FlagRiskModal,
@@ -59,8 +62,9 @@ function severityTone(s: string) {
 /** Operator money history = finance payments (?account=), not GL COA ledger. */
 export function OperatorLedgerTab({ operator }: { operator: OperatorRecord }) {
   const { payments, isPending, isError } = useAccountPayments(operator.id)
+  const { data: detailStats } = useOperatorDetailStats(operator.id)
 
-  if (isPending) return <Skeleton height={160} radius="md" />
+  if (isPending) return <LoadingState variant="inline" cols={5} rows={5} />
   if (isError) {
     return (
       <p className="text-[13px] text-[var(--mu)]">
@@ -70,34 +74,42 @@ export function OperatorLedgerTab({ operator }: { operator: OperatorRecord }) {
   }
 
   return (
-    <DynamicTableSection<PaymentApi>
-      variant="embedded"
-      headers={LEDGER_HEADERS}
-      data={payments}
-      getRowKey={(row) => row.id}
-      toolbar={{ title: 'Payments', showFilter: false }}
-      emptyTitle="No payments"
-      emptyMessage="Wallet funding and swap captures from GET /finance/payments/?account=."
-      renderItems={(row) => [
-        <span key="d" className="text-xs text-[var(--mu)]">
-          {formatWhen(row.created_at)}
-        </span>,
-        <span key="t" className="text-xs font-semibold text-[var(--tx)]">
-          {row.purpose}
-        </span>,
-        <span key="c" className="text-xs text-[var(--mu)]">
-          {row.channel}
-        </span>,
-        <span key="a" className="text-xs font-semibold tabular-nums text-[var(--tx)]">
-          {formatNaira(row.amount_kobo, { fromKobo: true, showDecimals: true })}
-        </span>,
-        <TableStatusBadge
-          key="s"
-          label={row.status}
-          tone={row.status === 'SUCCESS' ? 'success' : 'neutral'}
-        />,
-      ]}
-    />
+    <div className="flex flex-col gap-4">
+      <OperatorSpendBreakdown
+        amountKobo={detailStats?.spend_amount_kobo}
+        byVehicle={detailStats?.spend_by_vehicle}
+        byDriver={detailStats?.spend_by_driver}
+        money={detailStats?.money}
+      />
+      <DynamicTableSection<PaymentApi>
+        variant="embedded"
+        headers={LEDGER_HEADERS}
+        data={payments}
+        getRowKey={(row) => row.id}
+        toolbar={{ title: 'Payments', showFilter: false }}
+        emptyTitle="No payments"
+        emptyMessage="Wallet funding and swap captures from GET /finance/payments/?account=."
+        renderItems={(row) => [
+          <span key="d" className="text-xs text-[var(--mu)]">
+            {formatWhen(row.created_at)}
+          </span>,
+          <span key="t" className="text-xs font-semibold text-[var(--tx)]">
+            {row.purpose}
+          </span>,
+          <span key="c" className="text-xs text-[var(--mu)]">
+            {row.channel}
+          </span>,
+          <span key="a" className="text-xs font-semibold tabular-nums text-[var(--tx)]">
+            {formatNaira(row.amount_kobo, { fromKobo: true, showDecimals: true })}
+          </span>,
+          <TableStatusBadge
+            key="s"
+            label={row.status}
+            tone={row.status === 'SUCCESS' ? 'success' : 'neutral'}
+          />,
+        ]}
+      />
+    </div>
   )
 }
 
@@ -115,7 +127,7 @@ export function OperatorCasesTab({ operator }: { operator: OperatorRecord }) {
   const [createOpen, setCreateOpen] = useState(false)
   const { cases, isPending, isError, refetch } = useAccountCases(operator.id)
 
-  if (isPending) return <Skeleton height={160} radius="md" />
+  if (isPending) return <LoadingState variant="inline" cols={5} rows={5} />
   if (isError) {
     return (
       <p className="text-[13px] text-[var(--mu)]">
@@ -190,7 +202,7 @@ export function OperatorRiskTab({ operator }: { operator: OperatorRecord }) {
   const [flagOpen, setFlagOpen] = useState(false)
   const { events, isPending, isError, refetch } = useAccountRiskEvents(operator.id)
 
-  if (isPending) return <Skeleton height={160} radius="md" />
+  if (isPending) return <LoadingState variant="inline" cols={4} rows={5} />
   if (isError) {
     return (
       <p className="text-[13px] text-[var(--mu)]">

@@ -1,4 +1,8 @@
 import { useFetchData, usePatchData, usePostData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { RISK_ENDPOINTS } from '../constants'
 import type {
@@ -14,15 +18,6 @@ import type {
 } from '../types'
 
 const INVALIDATE = [RISK_ENDPOINTS.events, RISK_ENDPOINTS.stats]
-
-function cursorFromLink(link: string | null | undefined): string | undefined {
-  if (!link) return undefined
-  try {
-    return new URL(link).searchParams.get('cursor') ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 export function useRiskEvents(
   params?: {
@@ -43,7 +38,7 @@ export function useRiskEvents(
   const query = useFetchData<CursorPaginated<RiskEventListApi>>(
     RISK_ENDPOINTS.events,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.account ? { account: params.account } : {}),
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
@@ -94,7 +89,7 @@ export function useAccountRiskEvents(
 ) {
   const id = accountId ?? ''
   return useRiskEvents(
-    { account: id || undefined, page_size: 25 },
+    { account: id || undefined, page_size: ADMIN_LIST_PAGE_SIZE },
     { enabled: Boolean(id) && options?.enabled !== false },
   )
 }

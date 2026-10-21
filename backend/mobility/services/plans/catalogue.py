@@ -6,6 +6,7 @@ from django.db import transaction
 from core.exceptions import DomainError
 from core.services.events import emit_event
 from mobility.models import Plan, VehicleType
+from mobility.models.choices import normalize_vehicle_type
 
 
 class PlanCatalogueService:
@@ -26,8 +27,7 @@ class PlanCatalogueService:
         code = (code or "").strip().upper()
         if not code:
             raise DomainError("VALIDATION_ERROR", "Plan code is required.")
-        if vehicle_type not in {c.value for c in VehicleType}:
-            raise DomainError("VALIDATION_ERROR", f"Unknown vehicle type: {vehicle_type}.")
+        vehicle_type = normalize_vehicle_type(vehicle_type)
         if period not in {c.value for c in Plan.Period}:
             raise DomainError("VALIDATION_ERROR", f"Unknown period: {period}.")
         if price_kobo < 0:

@@ -14,6 +14,10 @@ export interface AdminBarChartProps {
   height?: number
   showLegend?: boolean
   showGrid?: boolean
+  /** Tick + tooltip formatter (e.g. naira). */
+  valueFormatter?: (value: number) => string
+  /** Y axis width in px — widen for long tick labels. */
+  yAxisWidth?: number
 }
 
 export function AdminBarChart({
@@ -21,6 +25,8 @@ export function AdminBarChart({
   series,
   height = 220,
   showLegend = false,
+  valueFormatter,
+  yAxisWidth = 40,
 }: AdminBarChartProps) {
   const stacked = series.some((s) => s.stackId)
   return (
@@ -40,7 +46,8 @@ export function AdminBarChart({
         gridAxis="y"
         tickLine="none"
         maxBarWidth={36}
-        yAxisProps={{ width: 40, tickMargin: 6 }}
+        valueFormatter={valueFormatter}
+        yAxisProps={{ width: yAxisWidth, tickMargin: 6 }}
         xAxisProps={{ padding: { left: 8, right: 8 }, tickMargin: 8 }}
         mb={showLegend ? 8 : 4}
       />

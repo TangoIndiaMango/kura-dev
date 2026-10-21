@@ -38,14 +38,16 @@ class ReservationService:
         hub,
         payment_mode: str = Reservation.PaymentMode.WALLET,
         source: str = Reservation.Source.APP,
+        discount_code: str = "",
     ) -> Reservation:
         mode = (payment_mode or Reservation.PaymentMode.WALLET).upper()
         vehicle_type = vehicle.vehicle_model.vehicle_type
         hold_policy = PricingService.get_hold_policy()
         hold_minutes = hold_policy.default_hold_minutes
         fee = 0
-        if mode == Reservation.PaymentMode.WALLET:
-            fee = PricingService.resolve_pps_kobo(vehicle_type=vehicle_type)
+        list_price_kobo = 0
+        if mode != Reservation.PaymentMode.PLAN:
+            fee = list_price_kobo = PricingService.resolve_pps_kobo(vehicle_type=vehicle_type)
 
         with transaction.atomic():
             existing = (
@@ -63,14 +65,35 @@ class ReservationService:
             if existing:
                 return existing
 
+            discount_quote = None
+            code = (discount_code or "").strip().upper()
+            if code and mode != Reservation.PaymentMode.PLAN:
+                from mobility.services.reservations.discount_apply import (
+                    quote_reservation_discount,
+                )
+
+                discount_quote = quote_reservation_discount(
+                    code=code,
+                    list_price_kobo=list_price_kobo,
+                    source=source,
+                    account=account,
+                )
+                fee = discount_quote.due_kobo
+
             if account.status != account.Status.ACTIVE:
                 raise DomainError(
                     "ACCOUNT_RESTRICTED",
                     "Account cannot reserve while not ACTIVE.",
                     http=409,
                 )
+            from mobility.services.reservations.fleet_guards import (
+                assert_driver_may_use_vehicle,
+                assert_driver_within_limits,
+            )
             from mobility.services.swap.recovery import clear_incomplete_swaps_for_vehicle
 
+            assert_driver_may_use_vehicle(driver=driver, vehicle=vehicle)
+            assert_driver_within_limits(driver=driver, fee_kobo=fee)
             clear_incomplete_swaps_for_vehicle(
                 vehicle=vehicle,
                 actor=getattr(driver, "user", None),
@@ -89,7 +112,7 @@ class ReservationService:
 
                 ConfigService.require_enabled("credit")
                 available = LoanService.active_swap_credit_kobo(account)
-                fee_needed = PricingService.resolve_pps_kobo(vehicle_type=vehicle_type)
+                fee_needed = fee
                 if available < fee_needed:
                     raise DomainError(
                         "CREDIT_INSUFFICIENT",
@@ -169,12 +192,24 @@ class ReservationService:
                     http=503,
                 )
             qr = issue_reservation_qr(reservation=reservation)
-            reservation.save(
-                update_fields=["token_hash", "token_ciphertext", "updated_at"]
-            )
+            reservation.save(update_fields=["token_hash", "token_ciphertext", "updated_at"])
             reservation._qr_token = qr
 
-            if mode == Reservation.PaymentMode.WALLET:
+            if discount_quote is not None:
+                from mobility.services.reservations.discount_apply import (
+                    consume_reservation_discount,
+                )
+
+                consume_reservation_discount(
+                    quote=discount_quote,
+                    reservation=reservation,
+                    list_price_kobo=list_price_kobo,
+                    source=source,
+                    account=account,
+                )
+
+            # A 100% booking code leaves nothing to hold.
+            if mode == Reservation.PaymentMode.WALLET and fee > 0:
                 WalletHoldService.hold(
                     account=account,
                     amount_kobo=fee,
@@ -183,9 +218,7 @@ class ReservationService:
                 reservation.hold_amount_kobo = fee
                 reservation.save(update_fields=["hold_amount_kobo", "updated_at"])
 
-            rider = getattr(account, "owner_user", None) or getattr(
-                driver, "user", None
-            )
+            rider = getattr(account, "owner_user", None) or getattr(driver, "user", None)
             plate = getattr(vehicle, "registration_plate", "") or ""
             notify_specs: list[NotifySpec] = []
             if rider is not None:
@@ -258,6 +291,9 @@ class ReservationService:
                     "payment_mode": mode,
                     "hold_amount_kobo": reservation.hold_amount_kobo,
                     "hold_minutes": hold_minutes,
+                    "list_price_kobo": reservation.list_price_kobo,
+                    "discount_code": reservation.discount_code,
+                    "discount_kobo": reservation.discount_kobo,
                 },
                 notify=notify_specs or None,
             )

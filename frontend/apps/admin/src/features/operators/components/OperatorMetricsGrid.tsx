@@ -64,7 +64,9 @@ export function OperatorMetricsGrid({ stats, isLoading }: OperatorMetricsGridPro
       title: 'Displaced Petrol',
       value: formatNaira(fuelSavedKobo, { fromKobo: true }),
       sub: 'PMS offset equivalent',
-      badge: '₦800/L benchmark',
+      badge: stats?.petrol_kobo_per_litre
+        ? `${formatNaira(stats.petrol_kobo_per_litre, { fromKobo: true })}/L estimate`
+        : 'Petrol estimate',
       badgeTone: 'bg-emerald-500/10 text-emerald-600',
       icon: <FuelStationIcon size={18} color="var(--pr)" />,
     },

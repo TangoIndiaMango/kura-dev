@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
@@ -8,9 +8,10 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { downloadCsv } from '@shared/utils/downloadCsv'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../auth/useCapabilities'
 import {
   discountPeriodsLabel,
@@ -40,20 +41,6 @@ const STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function DiscountsPanel() {
   const navigate = useNavigate()
@@ -64,22 +51,13 @@ export function DiscountsPanel() {
     filterTitle: 'Filter discounts',
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
-  const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : Object.entries(controls.filterValues).find(([k]) =>
-          k.endsWith('_status'),
-        )?.[1]
+  const statusFilter = controls.getFilter('status')
 
   const status =
     statusFilter && statusFilter !== 'all' ? String(statusFilter) : undefined
 
-  const { discounts, isPending, isError, count, totalPages, currentPage } =
+  const { discounts, isPending, isError, count, totalPages, isPlaceholderData } =
     useDiscounts(
       {
         page: controls.page,
@@ -140,7 +118,7 @@ export function DiscountsPanel() {
             Need tariffs:manage to view discounts.
           </p>
         ) : isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : isError ? (
           <p className="mb-4 text-[13px] text-[var(--mu)]">
             Could not load discounts.
@@ -150,12 +128,13 @@ export function DiscountsPanel() {
             variant="embedded"
             headers={HEADERS}
             data={discounts}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: 'All discounts',

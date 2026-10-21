@@ -79,6 +79,7 @@ export function buildProfile(
     kuraId: me.account?.kura_id || '—',
     verifiedLabel: verifiedLabel(me, kycStatus),
     kycStatus,
+    accountStatus: me.account?.status ?? 'ACTIVE',
     kycVia: null,
     idType: (me.kyc?.id_type as OperatorProfile['idType']) ?? null,
     idLast4: me.kyc?.id_last4 ?? null,

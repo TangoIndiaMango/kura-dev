@@ -12,7 +12,11 @@ export type PaymentReceiptApi = {
   account_id: string
   account_kura_id: string
   channel: string
+  channel_label?: string
   amount_kobo: number
+  list_price_kobo?: number
+  discount_code?: string
+  discount_kobo?: number
   net_kobo?: number
   vat_kobo?: number
   amount_label: string
@@ -21,6 +25,7 @@ export type PaymentReceiptApi = {
   operator_name?: string
   psp_reference?: string
   status: string
+  status_label?: string
   issued_at: string
   hub_code?: string | null
   hub_name?: string | null
@@ -61,13 +66,15 @@ export function mapPaymentReceipt(doc: PaymentReceiptApi): ReceiptData {
   const ok = !['FAILED', 'DECLINED', 'CANCELLED'].includes(
     (doc.status || '').toUpperCase(),
   )
-  const when = new Date(doc.issued_at).toLocaleString([], {
+  const when = new Intl.DateTimeFormat('en-GB', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+    timeZone: 'Africa/Lagos',
+  }).format(new Date(doc.issued_at))
+  const naira = (kobo: number) => formatNaira(kobo, { fromKobo: true, showDecimals: true })
   const funded = purposeKind(doc.purpose) === 'funded'
   const base = formatNaira(doc.amount_kobo, { fromKobo: true })
   const amountLabel = funded ? `+${base}` : `−${base}`
@@ -84,7 +91,22 @@ export function mapPaymentReceipt(doc: PaymentReceiptApi): ReceiptData {
     success: ok,
     rows: [
       { label: 'Type', value: doc.purpose_label },
-      { label: 'Channel', value: doc.channel || '—' },
+      { label: 'Paid by', value: doc.channel_label || doc.channel || '—' },
+      ...(doc.discount_code && doc.list_price_kobo
+        ? [
+            { label: 'List price', value: naira(doc.list_price_kobo) },
+            {
+              label: `Discount (${doc.discount_code})`,
+              value: `−${naira(doc.discount_kobo ?? 0)}`,
+            },
+          ]
+        : []),
+      ...(doc.vat_kobo
+        ? [
+            { label: 'Net', value: naira(doc.net_kobo ?? doc.amount_kobo - doc.vat_kobo) },
+            { label: 'VAT (7.5%)', value: naira(doc.vat_kobo) },
+          ]
+        : []),
       ...(hubLabel ? [{ label: 'Hub', value: hubLabel }] : []),
       ...(doc.vehicle_plate
         ? [{ label: 'Vehicle', value: doc.vehicle_plate }]
@@ -105,7 +127,7 @@ export function mapPaymentReceipt(doc: PaymentReceiptApi): ReceiptData {
         : []),
       {
         label: 'Status',
-        value: doc.status,
+        value: doc.status_label || doc.status,
         emphasize: true,
       },
     ],

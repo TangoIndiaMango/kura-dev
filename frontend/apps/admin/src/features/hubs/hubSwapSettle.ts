@@ -13,7 +13,7 @@ export type SettlePlan = {
   allowed: BaySettleMode[]
   recommended: BaySettleMode
   cashCollect: boolean
-  /** Walk-in / unheld wallet debit needs rider PIN at confirm (PRD F4). */
+  /** Unheld wallet debit needs rider PIN at confirm (matches BE assert_pin_grant). */
   riderPinRequired: boolean
   label: string
 }
@@ -35,6 +35,21 @@ export function listSwapDueNaira(vehicleHint?: string | null) {
   return tariffFor(vehicleHint).payPerSwap
 }
 
+function resolveHoldKobo(
+  reservation: ReservationRecord,
+  opts?: { holdAmountKobo?: number },
+): number {
+  const fromOpts = opts?.holdAmountKobo
+  if (typeof fromOpts === 'number' && Number.isFinite(fromOpts)) {
+    return Math.max(0, Math.trunc(fromOpts))
+  }
+  const fromRow = (reservation as { holdAmountKobo?: number }).holdAmountKobo
+  if (typeof fromRow === 'number' && Number.isFinite(fromRow)) {
+    return Math.max(0, Math.trunc(fromRow))
+  }
+  return 0
+}
+
 export function buildSettlePlan(
   reservation: ReservationRecord,
   actor: SettleActor | undefined,
@@ -54,17 +69,19 @@ export function buildSettlePlan(
   const planCovers = Boolean(actor?.planCovers)
   const creditOk = Boolean(actor?.creditOk)
   const bookedWithWallet = !isWalkIn && reservation.paymentMode === 'WALLET'
-  const holdNaira =
-    (opts?.holdAmountKobo ?? (reservation as any).holdAmountKobo ?? (bookedWithWallet ? due * 100 : 0)) / 100
-  const effectiveWallet = bookedWithWallet ? wallet + holdNaira : wallet
-  const shortfall = bookedWithWallet ? 0 : Math.max(0, due - effectiveWallet)
+  const holdKobo = resolveHoldKobo(reservation, opts)
+  const holdNaira = holdKobo / 100
+  const hasActiveHold = holdKobo > 0
+  // available_kobo excludes holds; add hold back when capturing a prior booking hold
+  const effectiveWallet = hasActiveHold ? wallet + holdNaira : wallet
+  const shortfall = hasActiveHold ? 0 : Math.max(0, due - effectiveWallet)
 
   const allowed: BaySettleMode[] = []
   if (planCovers && reservation.paymentMode === 'PLAN' && !opts?.overridden) {
     allowed.push('PLAN')
   }
   if (creditOk || reservation.paymentMode === 'CREDIT') allowed.push('CREDIT')
-  if (effectiveWallet >= due || reservation.paymentMode === 'WALLET') allowed.push('WALLET')
+  if (effectiveWallet >= due || bookedWithWallet) allowed.push('WALLET')
   allowed.push('CASH_AT_HUB')
 
   let recommended: BaySettleMode = reservation.paymentMode
@@ -90,6 +107,7 @@ export function buildSettlePlan(
     allowed,
     isWalkIn,
     reservation,
+    holdAmountKobo: holdKobo,
   })
 }
 
@@ -102,9 +120,11 @@ export function describeMode(
     allowed: BaySettleMode[]
     isWalkIn: boolean
     reservation: ReservationRecord
+    holdAmountKobo?: number
   },
 ): SettlePlan {
-  const { due, wallet, shortfall, allowed, isWalkIn, reservation } = ctx
+  const { due, wallet, shortfall, allowed, isWalkIn } = ctx
+  const holdKobo = Math.max(0, Math.trunc(ctx.holdAmountKobo ?? 0))
   if (mode === 'PLAN') {
     return {
       dueNaira: 0,
@@ -130,8 +150,9 @@ export function describeMode(
     }
   }
   if (mode === 'WALLET') {
-    const booked = !isWalkIn && reservation.paymentMode === 'WALLET'
-    const shortfallForMode = booked ? 0 : shortfall
+    // BE: pin_grant required when WALLET && fee > 0 && hold_amount_kobo <= 0
+    const held = holdKobo > 0
+    const shortfallForMode = held ? 0 : shortfall
     return {
       dueNaira: due,
       walletBalance: wallet,
@@ -139,8 +160,8 @@ export function describeMode(
       allowed,
       recommended: mode,
       cashCollect: false,
-      riderPinRequired: !booked,
-      label: booked
+      riderPinRequired: !held,
+      label: held
         ? 'Wallet held at booking'
         : wallet >= due
           ? 'Wallet debit on complete'

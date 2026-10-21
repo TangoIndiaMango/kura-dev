@@ -33,6 +33,9 @@ class Reservation(BaseModel):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.CONFIRMED)
     payment_mode = models.CharField(max_length=20, choices=PaymentMode.choices, default=PaymentMode.WALLET)
     hold_amount_kobo = models.BigIntegerField(default=0)
+    list_price_kobo = models.BigIntegerField(default=0)
+    discount_code = models.CharField(max_length=40, blank=True, default="")
+    discount_kobo = models.BigIntegerField(default=0)
     expires_at = models.DateTimeField()
 
     class Source(models.TextChoices):
@@ -48,6 +51,11 @@ class Reservation(BaseModel):
         default=Source.APP,
         db_index=True,
     )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["driver", "status", "expires_at"]),
+        ]
 
     def __str__(self):
         return f"Reservation {self.code} at {self.hub.name} ({self.status})"
@@ -145,6 +153,7 @@ class Swap(BaseModel):
             models.Index(fields=["account", "-created_at"]),
             models.Index(fields=["hub", "-created_at"]),
             models.Index(fields=["agent", "-created_at"]),
+            models.Index(fields=["driver", "status", "completed_at"]),
         ]
         constraints = [
             models.UniqueConstraint(

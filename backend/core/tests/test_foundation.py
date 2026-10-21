@@ -49,5 +49,5 @@ class FoundationHelpersTests(SimpleTestCase):
         self.assertEqual(created({"id": 1}).status_code, 201)
 
     def test_pagination_classes_exist(self):
-        self.assertEqual(KuraCursorPagination.page_size, 25)
-        self.assertEqual(KuraPageNumberPagination.page_size, 25)
+        self.assertEqual(KuraCursorPagination.page_size, 10)
+        self.assertEqual(KuraPageNumberPagination.page_size, 10)

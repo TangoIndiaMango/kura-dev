@@ -40,10 +40,17 @@ export { AuditTrailRail } from './admin/AuditTrailRail'
 export type { AuditTrailItem, AuditTrailTone } from './admin/AuditTrailRail'
 export { AdminConfirmModal } from './admin/AdminConfirmModal'
 export type { AdminConfirmModalProps } from './admin/AdminConfirmModal'
+export { DemoDataBanner } from './admin/DemoDataBanner'
+export {
+  VehicleTypeField,
+  normalizeVehicleTypeCode,
+  VEHICLE_TYPE_OPTIONS,
+} from './admin/VehicleTypeField'
 export { AdminFormSuccessModal } from './admin/AdminFormSuccessModal'
 export type { AdminFormSuccessModalProps } from './admin/AdminFormSuccessModal'
 export {
   useAdminModuleControls,
+  readAdminFilter,
   matchesStatusFilter,
   matchesSelectFilter,
   defaultModuleDateRange,

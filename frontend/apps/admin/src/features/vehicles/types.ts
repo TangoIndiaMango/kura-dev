@@ -22,6 +22,8 @@ export type VehicleListApi = {
   owner_kura_id: string
   current_battery_serial: string | null
   current_battery_charge: number | null
+  assigned_driver_id?: string | null
+  assigned_driver_name?: string | null
   hardware_id: string | null
   vin: string
   status: VehicleStatus

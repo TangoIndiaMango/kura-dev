@@ -23,7 +23,7 @@ class Plan(BaseModel):
 
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
-    vehicle_type = models.CharField(max_length=20, choices=VehicleType.choices, default=VehicleType.MOTORCYCLE)
+    vehicle_type = models.CharField(max_length=50, default=VehicleType.MOTORCYCLE)
     period = models.CharField(max_length=10, choices=Period.choices, default=Period.DAY)
     duration_days = models.PositiveIntegerField(
         null=True,
@@ -54,7 +54,7 @@ class PriceMatrix(BaseModel):
         APPROVED = "APPROVED", "Approved"
         SUPERSEDED = "SUPERSEDED", "Superseded"
 
-    vehicle_type = models.CharField(max_length=20, choices=VehicleType.choices, db_index=True)
+    vehicle_type = models.CharField(max_length=50, db_index=True)
     daily_kobo = models.BigIntegerField()
     weekly_kobo = models.BigIntegerField()
     monthly_kobo = models.BigIntegerField()

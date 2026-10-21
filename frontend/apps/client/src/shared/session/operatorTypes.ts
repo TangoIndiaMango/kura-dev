@@ -99,6 +99,8 @@ export interface OperatorProfile {
   kuraId: string
   verifiedLabel: string
   kycStatus: 'NONE' | 'PROVISIONAL' | 'PENDING' | 'VERIFIED' | 'REJECTED'
+  /** Account.status from /auth/me — anything but ACTIVE blocks reservations server-side. */
+  accountStatus?: string
   kycVia?: 'PSP' | 'PROVIDER' | 'MANUAL' | null
   idType?: 'NIN' | 'BVN' | 'VOTER' | 'DRIVERS_LICENCE' | null
   idLast4?: string | null

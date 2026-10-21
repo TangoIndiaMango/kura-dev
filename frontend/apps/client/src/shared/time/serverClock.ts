@@ -14,3 +14,17 @@ export function nowMs(): number {
 export function serverClockOffsetMs(): number {
   return offsetMs
 }
+
+/** "Good morning/afternoon/evening" by the hub clock (Lagos), not the device TZ. */
+export function greetingNow(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      hour: 'numeric',
+      hourCycle: 'h23',
+      timeZone: 'Africa/Lagos',
+    }).format(new Date(nowMs())),
+  )
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}

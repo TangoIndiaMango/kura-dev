@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { Button, Skeleton, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { AdminDetailPage } from '@shared/components'
@@ -40,7 +41,7 @@ export function SegmentsDetailPanel({ id }: { id: string }) {
   const navigate = useNavigate()
   const [membersPage, setMembersPage] = useState(1)
   const { segment, isPending, isError, refetch } = useSegment(id)
-  const membersQ = useSegmentMembers(id, { page: membersPage, page_size: 25 })
+  const membersQ = useSegmentMembers(id, { page: membersPage, page_size: 10 })
   const update = useUpdateSegment(id)
   const refresh = useRefreshSegment(id)
 
@@ -186,13 +187,13 @@ export function SegmentsDetailPanel({ id }: { id: string }) {
           <SegmentMembersTable
             members={membersQ.members}
             loading={membersQ.isPending}
-            pagination={{
-              page: membersQ.currentPage,
-              totalPages: Math.max(1, membersQ.totalPages),
-              onPageChange: setMembersPage,
-              variant: 'controls',
-              pageSize: '25',
-            }}
+            pagination={buildPagePagination({
+              page: membersPage,
+              setPage: setMembersPage,
+              totalPages: membersQ.totalPages,
+              isPlaceholderData: membersQ.isPlaceholderData,
+              pageSize: 10,
+            })}
           />
         </div>
       </div>

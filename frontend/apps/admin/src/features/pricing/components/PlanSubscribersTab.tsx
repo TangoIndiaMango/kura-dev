@@ -5,6 +5,7 @@ import {
   type TableHeader,
 } from '@shared/components'
 import type { PlanSubscriberRecord } from '@shared/mock/adminMockData'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { formatNaira } from '@shared/utils/currency'
 
 const SUB_HEADERS: TableHeader[] = [
@@ -71,14 +72,12 @@ export function PlanSubscribersTab({
           variant="embedded"
           headers={SUB_HEADERS}
           data={rows}
-          pagination={{
+          pagination={buildPagePagination({
             page,
-            totalPages: Math.max(1, totalPages),
-            pageSize: String(pageSize).padStart(2, '0'),
-            onPageChange,
-            onNext: () => onPageChange(Math.min(totalPages, page + 1)),
-            onPrevious: () => onPageChange(Math.max(1, page - 1)),
-          }}
+            setPage: onPageChange,
+            totalPages,
+            pageSize,
+          })}
           getRowKey={(row) => row.id}
           emptyTitle="No subscribers on this plan"
           emptyMessage="Operators appear here after a successful plan payment."

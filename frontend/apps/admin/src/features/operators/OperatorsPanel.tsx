@@ -1,17 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Badge } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
-  DynamicTableSection,
   LoadingState,
-  TableStatusBadge,
   useAdminModuleControls,
   type TableExportFormat,
   type TableHeader,
-  type TablePaginationConfig,
 } from '@shared/components'
 import {
   AdminLineChart,
@@ -19,17 +14,10 @@ import {
 } from '@shared/components/charts'
 import { apiErrorMessage } from '@lib/api/auth'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
-import { formatNaira } from '@shared/utils/currency'
-import {
-  accountStatusLabel,
-  accountStatusTone,
-  kycStatusLabel,
-  kycStatusTone,
-  type OperatorRecord,
-} from './types'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { ACCOUNTS_ENDPOINTS } from './constants/operators-api.constants'
 import { useOperatorStats, useOperators } from './hooks/use-operators'
-
+import { OperatorsTable } from './OperatorsTable'
 import { useCapabilities } from '../auth/useCapabilities'
 
 const STATUS_OPTIONS = [
@@ -39,20 +27,6 @@ const STATUS_OPTIONS = [
   { value: 'DEREGISTERED', label: 'Deregistered' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function OperatorsPanel() {
   const navigate = useNavigate()
@@ -61,16 +35,28 @@ export function OperatorsPanel() {
     scope: 'operators',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter operators',
+    extraFilterFields: [
+      {
+        type: 'select',
+        key: 'kind',
+        label: 'Account kind',
+        placeholder: 'Any',
+        options: [
+          { value: 'INDIVIDUAL', label: 'Individual' },
+          { value: 'FLEET', label: 'Fleet' },
+        ],
+      },
+    ],
   })
 
-  const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+  const statusFilter = controls.getFilter('status')
+  const kindFilter = controls.getFilter('kind')
+
 
   const listFilters = {
     ...(controls.search ? { q: controls.search, search: controls.search } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
+    ...(kindFilter ? { kind: kindFilter } : {}),
     ...(controls.dateRange.start_date
       ? { start_date: controls.dateRange.start_date }
       : {}),
@@ -96,10 +82,13 @@ export function OperatorsPanel() {
     [canSeeFinance],
   )
 
-  const { operators, isPending, isFetching, isError, totalPages, currentPage } =
+  const { operators, isPending, isFetching, isError, totalPages, isPlaceholderData } =
     useOperators({
       search: controls.search || undefined,
       status: statusFilter,
+      kind: kindFilter,
+      start_date: controls.dateRange.start_date || undefined,
+      end_date: controls.dateRange.end_date || undefined,
       page: controls.page,
       page_size: controls.pageSize,
     })
@@ -186,94 +175,24 @@ export function OperatorsPanel() {
           </p>
         ) : (
           <div className={isFetching ? 'opacity-70 transition-opacity' : undefined}>
-            <DynamicTableSection<OperatorRecord>
-              variant="embedded"
+            <OperatorsTable
               headers={headers}
-              data={operators}
-              pagination={serverPagination(
-                currentPage,
-                totalPages,
-                controls.pageSize,
-                controls.setPage,
-              )}
-              toolbar={{
-                title: 'All Operators',
-                searchQuery: controls.searchQuery,
-                onSearchChange: controls.setSearchQuery,
-                searchPlaceholder: 'Search by name, phone, plate, or KURA ID…',
-                onFilter: controls.openFilter,
-                showFilter: true,
-                showExport: true,
-                onExportFormat: handleExport,
-                isExporting: exporting,
-                actions: (
-                  <Button
-                    leftSection={<PlusSignIcon size={16} />}
-                    className="bg-[var(--pr)] hover:opacity-90"
-                    onClick={() => navigate('/operators/new')}
-                  >
-                    Register Operator
-                  </Button>
-                ),
-              }}
+              operators={operators}
+              pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
+              totalPages,
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
+              canSeeFinance={canSeeFinance}
+              searchQuery={controls.searchQuery}
+              onSearchChange={controls.setSearchQuery}
+              onFilter={controls.openFilter}
+              onExportFormat={handleExport}
+              isExporting={exporting}
+              onRegister={() => navigate('/operators/new')}
               onRowClick={(item) => navigate(`/operators/${item.id}`)}
-              renderItems={(item) => [
-                <span key="id" className="font-mono text-xs font-bold text-[var(--pr)]">
-                  {item.kuraId}
-                </span>,
-                <span key="name" className="text-xs font-bold text-[var(--tx)]">
-                  {item.name}
-                </span>,
-                <span key="phone" className="text-xs text-[var(--mu)]">
-                  {item.phone}
-                </span>,
-                <TableStatusBadge
-                  key="kyc"
-                  label={kycStatusLabel(item.kycStatus)}
-                  tone={kycStatusTone(item.kycStatus)}
-                />,
-                <span key="veh" className="inline-flex items-center gap-1.5 font-mono text-xs text-[var(--mu)]">
-                  {item.vehicleReg || '—'}
-                  {item.vehicleCount && item.vehicleCount > 1 ? (
-                    <Badge size="xs" variant="light" color="brand" radius="sm" className="font-sans font-semibold">
-                      +{item.vehicleCount - 1}
-                    </Badge>
-                  ) : null}
-                </span>,
-                <span key="plan" className="text-xs text-[var(--mu)]">
-                  {item.planName || '—'}
-                </span>,
-                canSeeFinance ? (
-                  <span key="wallet" className="text-xs text-[var(--mu)]">
-                    {typeof item.walletAvailableKobo === 'number'
-                      ? formatNaira(item.walletAvailableKobo, { fromKobo: true })
-                      : '—'}
-                  </span>
-                ) : (
-                  <TableStatusBadge
-                    key="wallet"
-                    label={
-                      item.status === 'ACTIVE' && item.kycStatus === 'VERIFIED'
-                        ? 'Eligible'
-                        : item.status === 'SUSPENDED'
-                          ? 'Blocked'
-                          : 'At Risk'
-                    }
-                    tone={
-                      item.status === 'ACTIVE' && item.kycStatus === 'VERIFIED'
-                        ? 'success'
-                        : item.status === 'SUSPENDED'
-                          ? 'danger'
-                          : 'warning'
-                    }
-                  />
-                ),
-                <TableStatusBadge
-                  key="st"
-                  label={accountStatusLabel(item.status)}
-                  tone={accountStatusTone(item.status)}
-                />,
-              ]}
             />
           </div>
         )}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Progress, Skeleton } from '@mantine/core'
+import { Progress } from '@mantine/core'
 import {
   AdminModuleLayout,
   AdminBarChart,
@@ -9,6 +9,7 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
+  LoadingState,
 } from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
 import {
@@ -16,7 +17,13 @@ import {
   batteryStatusLabel,
   type BatteryListApi,
 } from '@features/batteries'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { downloadCsv } from '@shared/utils/downloadCsv'
+import {
+  batteryTone,
+  byTypeRows,
+  degradationHistogram,
+} from './healthPanelMetrics'
 
 const FLEET_HEADERS: TableHeader[] = [
   { key: 'serial', label: 'SERIAL' },
@@ -42,59 +49,6 @@ const STATUS_OPTIONS = [
   { value: 'RETIRED', label: 'Retired' },
 ]
 
-function degradationHistogram(batteries: BatteryListApi[]) {
-  const buckets = [
-    { label: '95–100%', min: 95, max: 101, count: 0 },
-    { label: '90–94%', min: 90, max: 95, count: 0 },
-    { label: '80–89%', min: 80, max: 90, count: 0 },
-    { label: '70–79%', min: 70, max: 80, count: 0 },
-    { label: '<60%', min: 0, max: 60, count: 0 },
-  ]
-  for (const b of batteries) {
-    const bucket = buckets.find(
-      (x) => b.health_pct >= x.min && b.health_pct < x.max,
-    )
-    if (bucket) bucket.count += 1
-  }
-  return buckets.map(({ label, count }) => ({ label, count }))
-}
-
-function byTypeRows(batteries: BatteryListApi[]) {
-  const map = new Map<
-    string,
-    { model: string; count: number; sohSum: number; below60: number }
-  >()
-  for (const b of batteries) {
-    const model = b.battery_type_name || 'Unknown'
-    const row = map.get(model) ?? {
-      model,
-      count: 0,
-      sohSum: 0,
-      below60: 0,
-    }
-    row.count += 1
-    row.sohSum += b.health_pct
-    if (b.health_pct < 60) row.below60 += 1
-    map.set(model, row)
-  }
-  return [...map.values()].map((r, i) => ({
-    id: `t-${i}`,
-    model: r.model,
-    count: r.count,
-    avgSoh: `${Math.round(r.sohSum / r.count)}%`,
-    below60: r.below60,
-  }))
-}
-
-function batteryTone(status: string) {
-  if (status === 'AVAILABLE') return 'success' as const
-  if (status === 'CHARGING') return 'info' as const
-  if (status === 'ISSUED') return 'neutral' as const
-  if (status === 'FAULTED' || status === 'RETIRED' || status === 'LOST')
-    return 'danger' as const
-  return 'warning' as const
-}
-
 export function HealthPanel() {
   const navigate = useNavigate()
   const [tab, setTab] = useUrlTab('fleet', { valid: ['fleet', 'type'] })
@@ -117,21 +71,20 @@ export function HealthPanel() {
     ],
   })
 
-  const statusRaw = fleetControls.filterValues.status
-  const status =
-    statusRaw && statusRaw !== 'all' ? String(statusRaw) : undefined
+  const status = fleetControls.getFilter('status')
 
-  const { batteries, isPending, count, currentPage, totalPages } = useBatteries(
-    {
-      search: fleetControls.search || undefined,
-      status,
-      page: fleetControls.page,
-      page_size: 50,
-    },
-    { enabled: true },
-  )
+  const { batteries, isPending, count, totalPages, isPlaceholderData } =
+    useBatteries(
+      {
+        search: fleetControls.search || undefined,
+        status,
+        page: fleetControls.page,
+        page_size: fleetControls.pageSize,
+      },
+      { enabled: true },
+    )
 
-  const sohBand = fleetControls.filterValues.soh
+  const sohBand = fleetControls.getFilter('soh')
   const filtered = useMemo(() => {
     if (sohBand === 'watchlist') return batteries.filter((b) => b.health_pct < 60)
     if (sohBand === 'healthy') return batteries.filter((b) => b.health_pct >= 60)
@@ -153,14 +106,9 @@ export function HealthPanel() {
           filtered.reduce((s, b) => s + b.health_pct, 0) / filtered.length,
         )
   const below60 = filtered.filter((b) => b.health_pct < 60).length
-  const avgCycles =
-    filtered.length === 0
-      ? 0
-      : Math.round(
-          filtered.reduce((s, b) => s + b.cycle_count, 0) / filtered.length,
-        )
-
-  const { pageRows, pagination } = fleetControls.paginate(filtered)
+  const faulted = filtered.filter((b) => b.status === 'FAULTED').length
+  const { pageRows: typePageRows, pagination: typePagination } =
+    fleetControls.paginate(typeRows)
 
   return (
     <>
@@ -173,30 +121,31 @@ export function HealthPanel() {
         ]}
         activeTab={tab}
         onTabChange={setTab}
+        overviewTitle="Watchlist"
         kpis={[
+          {
+            title: 'Below 60% SOH',
+            value: below60,
+            sub: 'On this page · open filter for band',
+            tone: below60 > 0 ? 'danger' : 'success',
+          },
+          {
+            title: 'Faulted',
+            value: faulted,
+            sub: 'Needs depot action',
+            tone: faulted > 0 ? 'danger' : 'default',
+          },
           {
             title: 'Avg SOH',
             value: `${avgSoh}%`,
-            sub: 'Loaded page',
+            sub: `${count} matching inventory`,
             tone: avgSoh < 80 ? 'warning' : 'success',
-          },
-          {
-            title: 'Below 60%',
-            value: below60,
-            sub: 'Watchlist on page',
-            tone: below60 > 0 ? 'danger' : 'default',
-          },
-          { title: 'Avg cycles', value: avgCycles, sub: 'Loaded page' },
-          {
-            title: 'In view',
-            value: filtered.length,
-            sub: `${count} total matching`,
           },
         ]}
         chartsSlot={
           <div className="rounded-[14px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)]">
             <h3 className="mb-3 text-[13px] font-bold text-[var(--tx)]">
-              SOH distribution (loaded page)
+              SOH distribution (current page)
             </h3>
             <AdminBarChart
               data={histogram}
@@ -213,18 +162,19 @@ export function HealthPanel() {
         }
       >
         {isPending ? (
-          <Skeleton height={220} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : tab === 'fleet' ? (
           <DynamicTableSection<BatteryListApi>
             variant="embedded"
             headers={FLEET_HEADERS}
-            data={pageRows}
-            pagination={{
-              ...pagination,
-              page: currentPage,
+            data={filtered}
+            pagination={buildPagePagination({
+              page: fleetControls.page,
+              setPage: fleetControls.setPage,
               totalPages,
-              onPageChange: fleetControls.setPage,
-            }}
+              isPlaceholderData,
+              pageSize: fleetControls.pageSize,
+            })}
             getRowKey={(b) => b.id}
             toolbar={{
               title: 'Fleet health',
@@ -249,8 +199,12 @@ export function HealthPanel() {
             }}
             onRowClick={(b) => navigate(`/health/${b.id}`)}
             getRowHref={(b) => `/health/${b.id}`}
-            emptyTitle="No packs"
-            emptyMessage="Live inventory from GET /mobility/batteries/."
+            emptyTitle={sohBand ? 'No packs in this band' : 'No packs'}
+            emptyMessage={
+              sohBand
+                ? 'Clear the health band filter or change page.'
+                : 'Live inventory from GET /mobility/batteries/.'
+            }
             renderItems={(b) => [
               <span key="s" className="font-mono text-xs font-bold text-[var(--pr)]">
                 {b.serial}
@@ -284,7 +238,8 @@ export function HealthPanel() {
           <DynamicTableSection<(typeof typeRows)[number]>
             variant="embedded"
             headers={TYPE_HEADERS}
-            data={typeRows}
+            data={typePageRows}
+            pagination={typePagination}
             getRowKey={(r) => r.id}
             toolbar={{ title: 'By battery type', showFilter: false }}
             emptyTitle="No types"

@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
@@ -10,9 +10,10 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { downloadCsv } from '@shared/utils/downloadCsv'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../auth/useCapabilities'
 import { ImpactPdfButton } from './components/ImpactPdfButton'
 import {
@@ -39,20 +40,6 @@ const STATUS_OPTIONS = [
   { value: 'ARCHIVED', label: 'Archived' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function ImpactPanel() {
   const navigate = useNavigate()
@@ -64,15 +51,9 @@ export function ImpactPanel() {
     includeDateRangeInFilter: false,
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
   const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+    controls.getFilter('status')
 
   const period = useMemo(() => {
     const end = controls.dateRange.end_date
@@ -84,7 +65,7 @@ export function ImpactPanel() {
     { period },
     { enabled: can('analytics:impact') },
   )
-  const { stories, isPending, isError, count, totalPages, currentPage } =
+  const { stories, isPending, isError, count, totalPages, isPlaceholderData } =
     useImpactStories(
       {
         page: controls.page,
@@ -186,7 +167,7 @@ export function ImpactPanel() {
                 showLegend
               />
             ) : (
-              <Skeleton height={220} radius="md" />
+              <LoadingState cols={6} rows={8} />
             )}
           </div>
         }
@@ -196,18 +177,19 @@ export function ImpactPanel() {
             Could not load stories.
           </p>
         ) : isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<ImpactStoryListApi>
             variant="embedded"
             headers={STORY_HEADERS}
             data={stories}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: `Impact Stories · ${count}`,

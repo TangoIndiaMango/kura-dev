@@ -14,6 +14,7 @@ import { useForm, zodResolver } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { z } from 'zod'
 import {
+  VehicleTypeField,
   AdminFormSuccessModal,
   FormFooterActions,
   SidebarFormLayout,
@@ -22,12 +23,6 @@ import { usePlan } from '@features/mobility'
 import { apiErrorMessage } from '@lib/api/auth'
 import { useCreatePlan, useUpdatePlan } from './hooks/use-pricing'
 import { nairaToKobo, vehicleTypeApi } from './matrixLiveMap'
-
-const VEHICLE_TYPES = [
-  { value: 'MOTORCYCLE', label: 'Motorcycle' },
-  { value: 'TRICYCLE', label: 'Tricycle' },
-  { value: 'BOAT', label: 'Boat' },
-]
 
 const PERIODS = [
   { value: 'day', label: 'Daily' },
@@ -174,12 +169,11 @@ export function PlanFormPanel({ planId }: { planId?: string }) {
             {...form.getInputProps('code')}
           />
           <TextInput label="Name" required {...form.getInputProps('name')} />
-          <Select
-            label="Vehicle type"
-            required
-            data={VEHICLE_TYPES}
+          <VehicleTypeField
+            value={form.values.vehicle_type}
+            onChange={(v) => form.setFieldValue('vehicle_type', v)}
+            error={form.errors.vehicle_type as string | undefined}
             disabled={isEdit}
-            {...form.getInputProps('vehicle_type')}
           />
           <Select
             label="Period"

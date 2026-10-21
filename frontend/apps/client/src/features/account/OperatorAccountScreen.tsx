@@ -6,11 +6,14 @@ import {
   DEFAULT_OPERATOR_SETTINGS,
   useOperatorSession,
 } from '../../shared/session'
-import { ConfirmDialog } from '../../shared/components/ConfirmDialog'
 import { AccountHubTabs, type AccountHubTab } from './components/AccountHubTabs'
 import { AccountSettingsScreen } from './components/AccountSettingsScreen'
 import { MyVehiclesScreen } from './components/MyVehiclesScreen'
+import { FleetDriversScreen } from './components/FleetDriversScreen'
+import { FleetSpendScreen } from './components/FleetSpendScreen'
+import { AccountHubModals } from './components/AccountHubModals'
 import { AddVehicleStep } from '../swap/components/AddVehicleStep'
+import { useAuth } from '../auth/AuthProvider'
 import { StoredEngineScreen } from './components/StoredEngineScreen'
 import { PaymentMethodsScreen } from './components/PaymentMethodsScreen'
 import { ChangePinScreen } from './components/ChangePinScreen'
@@ -23,7 +26,6 @@ import {
 import { AccountProfileTab } from './components/AccountProfileTab'
 import { useAccountVehicles } from './hooks/use-account-vehicles'
 import { useMyEngines } from './hooks/use-account-engines'
-import { useAuth } from '../auth/AuthProvider'
 
 type AccountView =
   | 'hub'
@@ -68,19 +70,34 @@ export const OperatorAccountScreen: React.FC<OperatorAccountScreenProps> = ({
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [needPinOpen, setNeedPinOpen] = useState(false)
   const { session, logout, updateSettings, setEmail } = useOperatorSession()
-  const { refreshProfile } = useAuth()
+  const { refreshProfile, me } = useAuth()
   const { displayVehicles, loading: vehiclesLoading, page, setPage, totalPages, count, refetch } =
     useAccountVehicles()
   const { engines: myEngines, isPending: enginesPending } = useMyEngines({
     enabled: Boolean(session),
   })
   const showEngineTab = enginesPending || myEngines.length > 0
+  const accountId = me?.account?.id
+  const showDriversTab =
+    me?.account?.kind === 'FLEET' || (count ?? 0) >= 2 || displayVehicles.length >= 2
+  const [assignVehicle, setAssignVehicle] = useState<{
+    id: string
+    name: string
+    assignedDriverId?: string | null
+  } | null>(null)
 
   useEffect(() => {
     if (!enginesPending && myEngines.length === 0 && hubTab === 'engine') {
       setHubTab('profile')
     }
   }, [enginesPending, myEngines.length, hubTab])
+
+  const showSpendTab = Boolean(me?.account && me.account.owner_user === me.user.id)
+
+  useEffect(() => {
+    if (!showDriversTab && hubTab === 'drivers') setHubTab('profile')
+    if (!showSpendTab && hubTab === 'spend') setHubTab('profile')
+  }, [showDriversTab, showSpendTab, hubTab])
 
   if (!session) return null
 
@@ -196,6 +213,8 @@ export const OperatorAccountScreen: React.FC<OperatorAccountScreenProps> = ({
         active={hubTab}
         onChange={setHubTab}
         showEngineTab={showEngineTab}
+        showDriversTab={showDriversTab}
+        showSpendTab={showSpendTab}
       />
 
       {hubTab === 'profile' ? (
@@ -218,8 +237,29 @@ export const OperatorAccountScreen: React.FC<OperatorAccountScreenProps> = ({
           count={count}
           onPageChange={setPage}
           embedded
+          onAssignDriver={
+            showDriversTab && accountId
+              ? (v) =>
+                  setAssignVehicle({
+                    id: v.id,
+                    name: v.name,
+                    assignedDriverId: v.assignedDriverId,
+                  })
+              : undefined
+          }
         />
       ) : null}
+
+      {hubTab === 'drivers' && accountId ? (
+        <FleetDriversScreen
+          accountId={accountId}
+          embedded
+          active={hubTab === 'drivers'}
+          canManage={showSpendTab}
+        />
+      ) : null}
+
+      {hubTab === 'spend' ? <FleetSpendScreen active={hubTab === 'spend'} /> : null}
 
       {hubTab === 'payments' ? (
         <PaymentMethodsScreen
@@ -247,25 +287,19 @@ export const OperatorAccountScreen: React.FC<OperatorAccountScreenProps> = ({
         />
       ) : null}
 
-      <ConfirmDialog
-        opened={logoutOpen}
-        title="Log out?"
-        description="You will sign back in with your phone number and your PIN. We only send a code when it is a new sign-in."
-        confirmLabel="Log out"
-        cancelLabel="Stay signed in"
-        danger
-        onCancel={() => setLogoutOpen(false)}
-        onConfirm={doLogout}
-      />
-
-      <ConfirmDialog
-        opened={needPinOpen}
-        title="Set a PIN first"
-        description="You need a 4-digit PIN before logging out so you can unlock this device when you return."
-        confirmLabel="Set PIN"
-        cancelLabel="Cancel"
-        onCancel={() => setNeedPinOpen(false)}
-        onConfirm={() => {
+      <AccountHubModals
+        accountId={accountId}
+        assignVehicle={assignVehicle}
+        onCloseAssign={() => setAssignVehicle(null)}
+        onAssigned={() => {
+          refetch()
+        }}
+        logoutOpen={logoutOpen}
+        onCancelLogout={() => setLogoutOpen(false)}
+        onConfirmLogout={doLogout}
+        needPinOpen={needPinOpen}
+        onCancelNeedPin={() => setNeedPinOpen(false)}
+        onConfirmNeedPin={() => {
           setNeedPinOpen(false)
           setView('pin')
         }}

@@ -14,6 +14,7 @@ import { useForm, zodResolver } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { z } from 'zod'
 import {
+  VehicleTypeField,
   AdminFormSuccessModal,
   FormFooterActions,
   SidebarFormLayout,
@@ -34,12 +35,6 @@ const CREATE_TIPS = [
 const EDIT_TIPS = [
   'Propose change creates a new PENDING matrix for this vehicle type.',
   'Live rates stay until the new row is activated.',
-]
-
-const VEHICLE_OPTIONS = [
-  { value: 'MOTORCYCLE', label: 'Motorcycle' },
-  { value: 'TRICYCLE', label: 'Tricycle' },
-  { value: 'BOAT', label: 'Boat' },
 ]
 
 const schema = z.object({
@@ -164,14 +159,14 @@ export function PriceFormPanel({ priceId }: { priceId?: string }) {
         </div>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <Select
-            className="sm:col-span-2"
-            label="Vehicle type"
-            required
-            data={VEHICLE_OPTIONS}
-            disabled={isEdit}
-            {...form.getInputProps('vehicle_type')}
-          />
+          <div className="sm:col-span-2">
+            <VehicleTypeField
+              value={form.values.vehicle_type}
+              onChange={(v) => form.setFieldValue('vehicle_type', v)}
+              error={form.errors.vehicle_type as string | undefined}
+              disabled={isEdit}
+            />
+          </div>
           <NumberInput
             label="Daily"
             required

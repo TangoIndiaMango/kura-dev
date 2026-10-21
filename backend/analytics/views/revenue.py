@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
 from accounts.permissions import HasCapability
-from analytics.selectors import revenue_overview
+from analytics.selectors import revenue_overview, revenue_streams
 from core.exceptions import DomainError
 from core.responses import ok
 
@@ -38,6 +38,28 @@ class RevenueAnalyticsViewSet(viewsets.GenericViewSet):
     def overview(self, request):
         return ok(
             revenue_overview(
+                start_date=_date_param(
+                    request.query_params.get("start_date"),
+                    "start_date",
+                ),
+                end_date=_date_param(
+                    request.query_params.get("end_date"),
+                    "end_date",
+                ),
+            )
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE),
+            OpenApiParameter("end_date", OpenApiTypes.DATE),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get"], url_path="streams")
+    def streams(self, request):
+        return ok(
+            revenue_streams(
                 start_date=_date_param(
                     request.query_params.get("start_date"),
                     "start_date",

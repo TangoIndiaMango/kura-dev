@@ -27,6 +27,9 @@ export type MePayload = {
     kura_id?: string
     kyc_status?: string
     status?: string
+    kind?: string
+    /** User id of the account owner — fleet money views are owner-only. */
+    owner_user?: string
   } | null
   capabilities: string[]
   onboarding_step: string

@@ -163,6 +163,7 @@ export function useStaffUsers(params?: {
   search?: string
   status?: string
   role?: string
+  hub?: string
   page?: number
   page_size?: number
   enabled?: boolean
@@ -175,6 +176,7 @@ export function useStaffUsers(params?: {
       ...(params?.search ? { q: params.search, search: params.search } : {}),
       ...(params?.status && params.status !== 'all' ? { status: params.status } : {}),
       ...(params?.role ? { role: params.role } : {}),
+      ...(params?.hub ? { hub: params.hub } : {}),
     },
     { keepPreviousData: true, enabled: params?.enabled ?? true },
   )

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Modal } from '@mantine/core'
-import type { AgentRecord } from '@shared/mock/adminMockData'
 import type { HubStationExtras } from './hubDetailHelpers'
+import type { HubStationAgent } from './HubStationAgents'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -58,7 +58,7 @@ export function HubStationOverview({
   address: string
   lastSync: string
   extras: HubStationExtras
-  agents: AgentRecord[]
+  agents: HubStationAgent[]
   leadPhone: string
   onLeadClick?: () => void
 }) {
@@ -66,8 +66,8 @@ export function HubStationOverview({
   const onDuty = agents.filter((a) => a.onDuty)
   const lead = onDuty[0] ?? agents[0]
   const extraCount = Math.max(0, agents.length - 1)
-  const agentsOnDuty = onDuty.length || (lead ? 1 : 0)
-  const agentsTotal = Math.max(agents.length, 1)
+  const agentsOnDuty = onDuty.length
+  const agentsTotal = agents.length
 
   return (
     <>

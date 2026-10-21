@@ -5,8 +5,10 @@ from core.management.commands.seed_data import (
     seed_engines_impact,
     seed_hubs,
     seed_ops_demo,
+    seed_personas,
     seed_users,
     seed_vehicle_plans_alerts,
+    seed_volume_history,
 )
 
 
@@ -47,6 +49,17 @@ class Command(BaseCommand):
         path_b = seed_engines_impact(
             users=users, hubs=hubs, battery_type=battery_type
         )
+        personas = seed_personas(
+            battery_type=battery_type, hubs=hubs, admin=users["admin"]
+        )
+        volume = seed_volume_history(
+            personas=personas,
+            solo_account=account,
+            solo_driver=driver,
+            hubs=hubs,
+            agent=users["agent"],
+            admin=users["admin"],
+        )
 
         self.stdout.write(self.style.SUCCESS("KURA Mobility database seeded successfully!"))
         self.stdout.write("")
@@ -59,6 +72,24 @@ class Command(BaseCommand):
         self.stdout.write(
             "  Driver: phone +2348012345678 / email kura.driver@yopmail.com → PIN 1234"
         )
+        self.stdout.write(
+            "  Fleet+VCU: phone +2348011110001 / fleet.vcu@yopmail.com → fleetpass123 / PIN 1234"
+        )
+        self.stdout.write(
+            "  Fleet no-VCU: phone +2348022220001 / fleet.novcu@yopmail.com → fleetpass123 / PIN 1234"
+        )
+        self.stdout.write(
+            "  Peer driver A: +2348011110002 / fleet.driver.a@yopmail.com → driverpass123"
+        )
+        self.stdout.write("  Riders: rider01@yopmail.com … rider08@yopmail.com → driverpass123")
+        self.stdout.write("")
+        self.stdout.write(self.style.SUCCESS("Volume seed (idempotent)"))
+        self.stdout.write(
+            f"  payments+{volume['payments']}  swaps+{volume['swaps']}  "
+            f"vcu_cmds+{volume['vcu_commands']}  rules+{volume['alert_rules']}  "
+            f"psp_events+{volume['psp_events']}"
+        )
+        self.stdout.write("  VCU vehicles: FLEET-VCU-01..03 (IoT key set). No-VCU: FLEET-NV-01..02")
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("Hubs (Admin → Hubs → open bay)"))
         for hub in hubs:
@@ -67,13 +98,7 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("Path B / Impact seed"))
         self.stdout.write(f"  Account {path_b.kura_id} — {path_b.display_name}")
-        self.stdout.write("  Engines: PE-YMH-15-8821 (STORED+activated), PE-SUZ-40-1102 (RELEASE_REQUESTED), PE-YMH-40-4401 (RELEASED)")
-        self.stdout.write("  Boat: MK-HULL-07 · GET /api/v1/mobility/engines/ · /retrofits/")
-        self.stdout.write("")
         self.stdout.write(
-            "Cash recon: Payments → Cash (agent open shift). "
-            "Live float: POST /api/v1/operations/cash-deposits/"
-        )
-        self.stdout.write(
-            "Bay UI: hub shell is live by UUID; batteries/holds still mock until bay goes live."
+            "Cash recon: Payments → Cash. Alert rules: Alerts → Rules. "
+            "PSP events: PSP → Webhooks. Revenue: Revenue → Streams."
         )

@@ -15,6 +15,9 @@ export interface TablePaginationConfig {
   onPageSizeChange?: (size: string | null) => void
   onNext?: () => void
   onPrevious?: () => void
+  /** Cursor feeds: prefer over page===totalPages when set. */
+  hasNext?: boolean
+  hasPrevious?: boolean
 }
 
 export type TableExportFormat = 'csv' | 'pdf'

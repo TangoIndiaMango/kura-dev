@@ -1,6 +1,6 @@
-import { Skeleton } from '@mantine/core'
 import {
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   type TableHeader,
 } from '@shared/components'
@@ -46,12 +46,7 @@ export function OperatorWalletTab({ operator }: { operator: OperatorRecord }) {
   })
 
   if (isPending || (!operator.walletId && byAccount.isPending)) {
-    return (
-      <div className="flex flex-col gap-3">
-        <Skeleton height={72} radius="md" />
-        <Skeleton height={160} radius="md" />
-      </div>
-    )
+    return <LoadingState variant="inline" cols={4} rows={6} />
   }
 
   if (isError || !wallet) {

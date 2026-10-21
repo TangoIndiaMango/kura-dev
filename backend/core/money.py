@@ -34,4 +34,5 @@ def naira_to_kobo(naira: int | float) -> int:
 
 def format_naira(kobo: int) -> str:
     naira = kobo / 100.0
-    return f"₦{naira:,.2f}"
+    sign = "-" if naira < 0 else ""  # ASCII: PDF core fonts and SMS have no U+2212
+    return f"{sign}₦{abs(naira):,.2f}"

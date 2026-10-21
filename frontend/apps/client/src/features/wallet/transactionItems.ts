@@ -1,4 +1,4 @@
-import { formatNaira } from '@shared/utils/currency'
+import { isCredit, paymentAmount, paymentMeta, paymentTitle } from '@shared/utils/paymentDisplay'
 import type { PaymentApi } from './hooks/use-operator-wallet'
 
 export interface WalletTxItem {
@@ -13,14 +13,10 @@ export interface WalletTxItem {
 export function toWalletTxItems(payments: PaymentApi[]): WalletTxItem[] {
   return payments.map((payment) => ({
     id: payment.id,
-    title: payment.purpose || payment.channel,
-    meta: `${payment.status} · ${new Date(payment.created_at).toLocaleString()}`,
-    amountLabel: formatNaira(payment.amount_kobo, { fromKobo: true }),
-    tone:
-      payment.purpose?.toLowerCase().includes('fund') ||
-      payment.channel === 'NUBAN_TRANSFER'
-        ? 'credit'
-        : 'debit',
+    title: paymentTitle(payment),
+    meta: paymentMeta(payment),
+    amountLabel: paymentAmount(payment),
+    tone: isCredit(payment) ? 'credit' : 'debit',
     receiptId: payment.id,
   }))
 }

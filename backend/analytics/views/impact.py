@@ -118,3 +118,39 @@ class ImpactStoryViewSet(viewsets.ModelViewSet):
             story=self.get_object(), actor=request.user
         )
         return ok(ImpactStoryDetailSerializer(story).data)
+
+
+class MeFleetSpendView(APIView):
+    """GET /accounts/me/fleet-spend/?start_date&end_date — owner's spend per day.
+
+    Owner only: peer drivers on a fleet account must not see fleet totals.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("start_date", str, required=False),
+            OpenApiParameter("end_date", str, required=False),
+        ],
+        responses={200: dict},
+    )
+    def get(self, request):
+        from accounts.models import Account
+        from accounts.selectors.spend import fleet_money_breakdown
+        from core.exceptions import DomainError
+
+        account = (
+            Account.objects.filter(owner_user=request.user).order_by("created_at").first()
+        )
+        if account is None:
+            raise DomainError(
+                "FORBIDDEN", "Only the account owner can view fleet spend.", http=403
+            )
+        return ok(
+            fleet_money_breakdown(
+                account,
+                start_date=request.query_params.get("start_date"),
+                end_date=request.query_params.get("end_date"),
+            )
+        )

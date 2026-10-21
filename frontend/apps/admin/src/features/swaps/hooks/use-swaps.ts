@@ -1,4 +1,8 @@
 import { useFetchData, usePostData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { SWAPS_ENDPOINTS } from '../constants'
 import type {
@@ -13,15 +17,6 @@ import type {
 const INVALIDATE = [SWAPS_ENDPOINTS.list, SWAPS_ENDPOINTS.reservations]
 const EMPTY_SWAPS: SwapListApi[] = []
 const EMPTY_RESERVATIONS: ReservationListApi[] = []
-
-function cursorFromLink(link: string | null | undefined): string | undefined {
-  if (!link) return undefined
-  try {
-    return new URL(link).searchParams.get('cursor') ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 export function useSwaps(
   params?: {
@@ -41,7 +36,7 @@ export function useSwaps(
   const query = useFetchData<CursorPaginated<SwapListApi>>(
     SWAPS_ENDPOINTS.list,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),
@@ -136,7 +131,7 @@ export function useReservations(
   const query = useFetchData<CursorPaginated<ReservationListApi>>(
     SWAPS_ENDPOINTS.reservations,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),

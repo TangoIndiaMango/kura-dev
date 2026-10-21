@@ -32,6 +32,29 @@ export function OperatorFormExtraSteps({
 }: Props) {
   const { discounts } = useSelectableDiscounts({ enabled: showPlan })
 
+  if (!editing) {
+    return (
+      <>
+        {showVehicle ? (
+          <p className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5 text-[12.5px] leading-relaxed text-[var(--mu)]">
+            Vehicles come after registration: assign an existing vehicle from
+            the operator’s Fleet tab, or the operator adds their own in the
+            app. Nothing is created from this step.
+          </p>
+        ) : null}
+        {showPlan ? (
+          <p className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5 text-[12.5px] leading-relaxed text-[var(--mu)]">
+            Plans come after registration too: the operator buys or renews in
+            the app (discount codes are entered by the operator at checkout —
+            never auto-applied). Register creates a KURA ID + virtual account
+            and emails an invite so the operator can set their password.
+            Swaps unlock after identity review.
+          </p>
+        ) : null}
+      </>
+    )
+  }
+
   return (
     <>
       {showVehicle ? (

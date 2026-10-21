@@ -21,7 +21,7 @@ export interface BatteryRecord {
   healthPct: number
   cycles: number
   voltage: string
-  status: 'AVAILABLE' | 'CHARGING' | 'IN_FIELD' | 'MAINTENANCE' | 'RETIRED'
+  status: 'AVAILABLE' | 'RESERVED' | 'CHARGING' | 'IN_FIELD' | 'MAINTENANCE' | 'RETIRED'
   lastFullCharge: string
 }
 

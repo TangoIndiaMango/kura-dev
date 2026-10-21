@@ -11,9 +11,7 @@ from mobility.models.choices import VehicleType
 class VehicleModel(BaseModel):
     make = models.CharField(max_length=100)
     model = models.CharField(max_length=100)
-    vehicle_type = models.CharField(
-        max_length=20, choices=VehicleType.choices, default=VehicleType.MOTORCYCLE
-    )
+    vehicle_type = models.CharField(max_length=50, default=VehicleType.MOTORCYCLE)
     battery_type = models.ForeignKey(
         BatteryType, on_delete=models.PROTECT, related_name="compatible_models"
     )
@@ -48,6 +46,14 @@ class Vehicle(BaseModel):
         VehicleModel, on_delete=models.PROTECT, related_name="vehicles"
     )
     registration_plate = models.CharField(max_length=30, unique=True, db_index=True)
+    assigned_driver = models.ForeignKey(
+        "accounts.Driver",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_vehicles",
+        help_text="Optional soft assignment. Null = any account driver may book.",
+    )
     hardware_id = models.CharField(
         max_length=64, unique=True, null=True, blank=True, db_index=True
     )

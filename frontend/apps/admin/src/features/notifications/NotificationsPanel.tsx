@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Group, Text } from '@mantine/core'
 import {
@@ -11,7 +11,12 @@ import {
   DetailsDrawer,
   KuraIllustrationModal,
   LoadingState,
+  TablePagination,
 } from '@shared/components'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { CategoryTabs } from './components/CategoryTabs'
 import { NotificationRow } from './components/NotificationRow'
 import {
@@ -37,11 +42,38 @@ export function NotificationsPanel() {
     end_date?: string
   }>({})
   const [readModalOpen, setReadModalOpen] = useState(false)
+  const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
   const [peek, setPeek] = useState<NotificationApi | null>(null)
 
-  const { notifications, isPending, isError } = useNotifications({
+  useEffect(() => {
+    setCursor(undefined)
+    setPage(1)
+  }, [dateRange.start_date, dateRange.end_date])
+
+  const {
+    notifications,
+    isPending,
+    isError,
+    isPlaceholderData,
+    nextCursor,
+    previousCursor,
+  } = useNotifications({
     start_date: dateRange.start_date,
     end_date: dateRange.end_date,
+    cursor,
+    page_size: ADMIN_LIST_PAGE_SIZE,
+  })
+
+  const pagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
   })
   const { data: stats } = useNotificationStats()
   const markRead = useMarkNotificationRead()
@@ -201,6 +233,11 @@ export function NotificationsPanel() {
                   ))}
                 </div>
               )}
+              {!isPending && !isError ? (
+                <div className="mt-4 overflow-hidden rounded-[12px] border border-[var(--bd)]">
+                  <TablePagination {...pagination} />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

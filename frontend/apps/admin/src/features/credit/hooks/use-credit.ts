@@ -1,4 +1,8 @@
 import { useFetchData, usePostData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { CREDIT_ENDPOINTS } from '../constants'
 import { mapCreditScore } from '../creditScoreMap'
@@ -10,15 +14,6 @@ import type {
   LoanApi,
   OverrideScorePayload,
 } from '../types'
-
-function cursorFromLink(link: string | null | undefined): string | undefined {
-  if (!link) return undefined
-  try {
-    return new URL(link).searchParams.get('cursor') ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 export function useCreditScores(
   params?: {
@@ -33,7 +28,7 @@ export function useCreditScores(
   const query = useFetchData<CursorPaginated<CreditScoreApi>>(
     CREDIT_ENDPOINTS.scores,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.account ? { account: params.account } : {}),
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
@@ -79,7 +74,7 @@ export function useCreditApplications(
   const query = useFetchData<CursorPaginated<CreditApplicationApi>>(
     CREDIT_ENDPOINTS.applications,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
     { enabled, keepPreviousData: true, staleTime: 30_000 },
@@ -101,7 +96,7 @@ export function useCreditLoans(
   const query = useFetchData<CursorPaginated<LoanApi>>(
     CREDIT_ENDPOINTS.loans,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.account ? { account: params.account } : {}),
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },

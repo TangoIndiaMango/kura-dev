@@ -167,7 +167,16 @@ def account_detail_stats(
     avg_soc = aggregates["avg_soc"]
     avg_returned_soc = round(float(avg_soc), 1) if avg_soc is not None else 0.0
 
-    fuel_saved_kobo = total_swaps * 200000
+    # Same petrol factors as the owner's "Saved vs petrol" and cooperative estimates.
+    from django.conf import settings
+
+    litres_per_swap = float(getattr(settings, "COOP_PETROL_LITRES_PER_SWAP", 1.2) or 1.2)
+    petrol_kobo_per_litre = int(
+        getattr(settings, "COOP_PETROL_PRICE_KOBO_PER_LITRE", 85_000) or 85_000
+    )
+    fuel_saved_kobo = int(
+        total_swaps * int(round(litres_per_swap * 1000)) * petrol_kobo_per_litre // 1000
+    )
 
     energy_expr = ExpressionWrapper(
         (F("issued_charge_pct") - F("returned_charge_pct")) * 3.24 / 100.0,
@@ -213,6 +222,14 @@ def account_detail_stats(
         {"name": "Critical (<12%)", "value": soc_aggregates["critical"] or 0, "color": "#E74C3C"},
     ]
 
+    from accounts.selectors.spend import (
+        fleet_money_breakdown,
+        spend_breakdown_from_swaps,
+    )
+
+    spend = spend_breakdown_from_swaps(
+        scoped_swaps, start_d=start_d, end_d=end_d
+    )
     return {
         "status": account.status,
         "kyc_status": account.kyc_status,
@@ -223,10 +240,18 @@ def account_detail_stats(
         "swaps_per_day": swaps_per_day,
         "energy_kwh_total": total_energy_kwh,
         "fuel_saved_kobo": fuel_saved_kobo,
+        "petrol_kobo_per_litre": petrol_kobo_per_litre,
         "avg_returned_soc": avg_returned_soc,
         "soc_distribution": soc_distribution,
         "daily_metrics": daily_metrics,
         "start_date": start_d.isoformat(),
         "end_date": end_d.isoformat(),
+        "spend_amount_kobo": spend["amount_kobo"],
+        "spend_by_vehicle": spend["by_vehicle"],
+        "spend_by_driver": spend["by_driver"],
+        # Swap + plan fees per hub-local day, same numbers the owner sees in the app.
+        "money": fleet_money_breakdown(
+            account, start_date=start_d.isoformat(), end_date=end_d.isoformat()
+        ),
     }
 

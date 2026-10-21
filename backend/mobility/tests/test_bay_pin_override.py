@@ -1,5 +1,6 @@
 """Rider PIN grant for bay wallet debit + agent override PIN gate."""
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import Account, Driver, User
@@ -90,6 +91,37 @@ class RiderPinGrantTests(TestCase):
     def test_wallet_walkin_without_grant_rejected(self):
         with self.assertRaises(DomainError) as ctx:
             SwapService.complete_swap(
+                hub_id=self.hub.id,
+                vehicle_id=self.vehicle.id,
+                driver_id=self.driver.id,
+                account_id=self.account.id,
+                returned_battery_serial="",
+                issued_battery_serial="BAT-PIN-READY",
+                payment_mode="WALLET",
+                amount_kobo=self.pps,
+                rider_pin_grant="",
+                agent=self.agent,
+            )
+        self.assertEqual(ctx.exception.code, "PIN_GRANT_REQUIRED")
+
+    def test_wallet_reservation_without_hold_requires_pin(self):
+        """Booked WALLET with hold_amount_kobo=0 is an unheld debit — PIN required."""
+        from mobility.models import Reservation
+
+        reservation = Reservation.objects.create(
+            account=self.account,
+            vehicle=self.vehicle,
+            driver=self.driver,
+            hub=self.hub,
+            code="KB-NOHOLD",
+            payment_mode=Reservation.PaymentMode.WALLET,
+            status=Reservation.Status.CONFIRMED,
+            hold_amount_kobo=0,
+            expires_at=timezone.now() + timezone.timedelta(minutes=15),
+        )
+        with self.assertRaises(DomainError) as ctx:
+            SwapService.complete_swap(
+                reservation_id=reservation.id,
                 hub_id=self.hub.id,
                 vehicle_id=self.vehicle.id,
                 driver_id=self.driver.id,

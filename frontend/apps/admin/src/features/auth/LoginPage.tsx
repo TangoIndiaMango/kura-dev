@@ -79,6 +79,12 @@ export function LoginPage() {
       writeRememberedAdmin({ email: trimmed, name, role })
       navigate(staffHomePath(profile, nextPath), { replace: true })
     } catch (err) {
+      // Only a server-rejected sign-in counts; a dropped connection is not a wrong password.
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status == null || status >= 500) {
+        setError(apiErrorMessage(err, 'Could not reach the server. Check your connection.'))
+        return
+      }
       const next = attempts + 1
       setAttempts(next)
       setPassword('')

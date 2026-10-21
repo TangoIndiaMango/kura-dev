@@ -30,9 +30,7 @@ class BatteryType(BaseModel):
         default=50,
         help_text="Average Wh per km for this pack/vehicle class.",
     )
-    vehicle_type = models.CharField(
-        max_length=20, choices=VehicleType.choices, default=VehicleType.MOTORCYCLE
-    )
+    vehicle_type = models.CharField(max_length=50, default=VehicleType.MOTORCYCLE)
     qr_scheme = models.CharField(
         max_length=20, choices=QrScheme.choices, default=QrScheme.SIGNED
     )

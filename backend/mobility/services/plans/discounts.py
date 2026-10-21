@@ -190,6 +190,70 @@ class DiscountService:
             )
 
     @classmethod
+    def release_reservation(cls, *, reservation) -> None:
+        """Undo a booking-time consume when the hold is cancelled/expired unused."""
+        row = (
+            DiscountRedemption.objects.filter(
+                idempotency_key=f"reservation:{reservation.id}"
+            )
+            .select_related("discount")
+            .first()
+        )
+        if row is None:
+            return
+        DiscountCampaign.objects.filter(
+            pk=row.discount_id, redemptions_count__gt=0
+        ).update(
+            redemptions_count=F("redemptions_count") - 1,
+            updated_at=timezone.now(),
+        )
+        row.delete()
+
+    @classmethod
+    def consume_for_swap(
+        cls,
+        *,
+        code: str,
+        reservation,
+        held_kobo: int,
+        mode: str,
+        fee_kobo: int,
+        list_price_kobo: int,
+        account,
+        idempotency_key: str,
+    ) -> tuple[int, DiscountQuote | None]:
+        """Bay-applied code at swap completion — server is the price authority."""
+        code = (code or "").strip().upper()
+        if not code or mode == "PLAN" or fee_kobo <= 0:
+            return fee_kobo, None
+        if reservation is not None and reservation.discount_code:
+            return fee_kobo, None
+        if held_kobo > 0 and mode == "WALLET":
+            raise DomainError(
+                "DISCOUNT_NOT_APPLICABLE",
+                "This wallet hold is already fixed — discount codes must be "
+                "applied when booking.",
+                http=409,
+            )
+        quote = cls.consume(
+            code=code,
+            list_price_kobo=list_price_kobo,
+            period="swap",
+            channel="Hub",
+            account=account,
+            idempotency_key=idempotency_key,
+        )
+        return quote.due_kobo, quote
+
+    @classmethod
+    def link_redemption_payment(cls, *, idempotency_key: str, payment) -> None:
+        if payment is None:
+            return
+        DiscountRedemption.objects.filter(idempotency_key=idempotency_key).update(
+            payment=payment
+        )
+
+    @classmethod
     def activate(cls, *, discount: DiscountCampaign, actor=None) -> DiscountCampaign:
         if discount.status not in {
             DiscountCampaign.Status.PENDING,

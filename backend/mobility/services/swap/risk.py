@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from core.exceptions import DomainError
 from mobility.models import Hub, Swap, VehicleType
-from risk.models import RiskRule
+from risk.models import RiskEvent, RiskRule
 from risk.services import RiskService
 from risk.services.velocity_grants import try_consume_velocity_grant
 
@@ -60,39 +60,11 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * r * math.asin(min(1.0, math.sqrt(a)))
 
 
-def _block_or_grant(
-    *,
-    vehicle_id,
-    account,
-    reason: str,
-    message: str,
-    context: dict,
-    retry_after_seconds: int,
-) -> None:
-    if try_consume_velocity_grant(vehicle_id=vehicle_id) is not None:
-        return
-    RiskService.emit(
-        rule_code="SWAP_VELOCITY",
-        subject_type="vehicle",
-        subject_id=str(vehicle_id),
-        account=account,
-        severity="HIGH",
-        context={"reason": reason, **context},
-        action_taken="BLOCK",
-    )
-    raise DomainError(
-        "THROTTLED",
-        message,
-        details={"retry_after_seconds": retry_after_seconds},
-        http=429,
-    )
-
-
-def assert_swap_velocity(*, vehicle_id, account=None) -> None:
-    """E4.9 — block when daily count or min gap is exceeded (ops grant may allow)."""
+def inspect_swap_velocity(*, vehicle_id) -> dict | None:
+    """Return throttle payload if blocked; None if clear. Does not emit risk."""
     params = _enabled_params("SWAP_VELOCITY", _VELOCITY_DEFAULTS)
     if params is None:
-        return
+        return None
 
     max_day = int(params["MAX_SWAPS_PER_VEHICLE_DAY"])
     min_gap = int(params["MIN_MINUTES_BETWEEN_SWAPS"])
@@ -113,15 +85,12 @@ def assert_swap_velocity(*, vehicle_id, account=None) -> None:
     ).count()
     day_count = completed_today + open_today
     if day_count >= max_day:
-        _block_or_grant(
-            vehicle_id=vehicle_id,
-            account=account,
-            reason="MAX_SWAPS_PER_VEHICLE_DAY",
-            message=f"Vehicle swap limit reached ({max_day}/day).",
-            context={"count": day_count, "limit": max_day},
-            retry_after_seconds=_seconds_until(day_end),
-        )
-        return
+        return {
+            "reason": "MAX_SWAPS_PER_VEHICLE_DAY",
+            "message": f"Vehicle swap limit reached ({max_day}/day).",
+            "retry_after_seconds": _seconds_until(day_end),
+            "context": {"count": day_count, "limit": max_day},
+        }
 
     last = (
         Swap.objects.filter(
@@ -134,23 +103,110 @@ def assert_swap_velocity(*, vehicle_id, account=None) -> None:
         .first()
     )
     if last is None or last.completed_at is None:
-        return
+        return None
 
     elapsed = timezone.now() - last.completed_at
     need = timedelta(minutes=min_gap)
     if elapsed < need:
         wait = int((need - elapsed).total_seconds())
-        _block_or_grant(
-            vehicle_id=vehicle_id,
-            account=account,
-            reason="MIN_MINUTES_BETWEEN_SWAPS",
-            message=f"Wait {min_gap} minutes between swaps for this vehicle.",
-            context={
+        return {
+            "reason": "MIN_MINUTES_BETWEEN_SWAPS",
+            "message": f"Wait {min_gap} minutes between swaps for this vehicle.",
+            "retry_after_seconds": max(wait, 1),
+            "context": {
                 "elapsed_seconds": int(elapsed.total_seconds()),
                 "min_minutes": min_gap,
             },
-            retry_after_seconds=max(wait, 1),
+        }
+    return None
+
+
+def _open_or_emit_velocity_event(
+    *,
+    vehicle_id,
+    account,
+    reason: str,
+    context: dict,
+    retry_after_seconds: int,
+) -> RiskEvent:
+    existing = (
+        RiskEvent.objects.select_related("rule")
+        .filter(
+            rule__code="SWAP_VELOCITY",
+            subject_type="vehicle",
+            subject_id=str(vehicle_id),
+            status=RiskEvent.Status.OPEN,
         )
+        .order_by("-created_at")
+        .first()
+    )
+    payload = {
+        "reason": reason,
+        "retry_after_seconds": retry_after_seconds,
+        **context,
+    }
+    if existing is not None:
+        ctx = dict(existing.context or {})
+        ctx.update(payload)
+        existing.context = ctx
+        existing.save(update_fields=["context", "updated_at"])
+        return existing
+    return RiskService.emit(
+        rule_code="SWAP_VELOCITY",
+        subject_type="vehicle",
+        subject_id=str(vehicle_id),
+        account=account,
+        severity="HIGH",
+        context=payload,
+        action_taken="BLOCK",
+    )
+
+
+def _block_or_grant(
+    *,
+    vehicle_id,
+    account,
+    reason: str,
+    message: str,
+    context: dict,
+    retry_after_seconds: int,
+) -> None:
+    if try_consume_velocity_grant(vehicle_id=vehicle_id) is not None:
+        return
+    event = _open_or_emit_velocity_event(
+        vehicle_id=vehicle_id,
+        account=account,
+        reason=reason,
+        context=context,
+        retry_after_seconds=retry_after_seconds,
+    )
+    raise DomainError(
+        "THROTTLED",
+        message,
+        details={
+            "retry_after_seconds": retry_after_seconds,
+            "reason": reason,
+            "risk_event_id": str(event.id),
+            "vehicle_id": str(vehicle_id),
+            **context,
+        },
+        http=429,
+    )
+
+
+def assert_swap_velocity(*, vehicle_id, account=None) -> None:
+    """E4.9 — block when daily count or min gap is exceeded (ops grant may allow)."""
+    hit = inspect_swap_velocity(vehicle_id=vehicle_id)
+    if hit is None:
+        return
+    _block_or_grant(
+        vehicle_id=vehicle_id,
+        account=account,
+        reason=hit["reason"],
+        message=hit["message"],
+        context=hit.get("context") or {},
+        retry_after_seconds=int(hit["retry_after_seconds"]),
+    )
 
 
 def flag_geo_impossible_if_needed(

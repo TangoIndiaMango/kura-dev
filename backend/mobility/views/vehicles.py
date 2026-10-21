@@ -1,4 +1,4 @@
-"""Admin + operator vehicle ViewSet (list/detail/stats/export/QR/status)."""
+"""Admin + operator vehicle ViewSet (list/detail/stats/export/status)."""
 from __future__ import annotations
 
 from drf_spectacular.utils import extend_schema
@@ -16,7 +16,6 @@ from mobility.filters import VehicleFilter
 from mobility.helpers.export import vehicle_export_rows
 from mobility.models import Vehicle, VehicleModel
 from mobility.selectors import _own_account_ids, vehicle_stats, vehicles_for
-from mobility.serializers.catalogue import VehicleSerializer
 from mobility.serializers.vehicles import (
     VehicleDetailSerializer,
     VehicleListSerializer,
@@ -25,18 +24,8 @@ from mobility.serializers.vehicles import (
     VehicleStatusSerializer,
     VehicleWriteSerializer,
 )
-from mobility.services.vehicles.qr import (
-    resolve_vehicle_qr,
-    rotate_vehicle_qr,
-    vehicle_qr_payload,
-)
 from mobility.services.vehicles.service import VehicleService
-from rest_framework import serializers
-
-
-class VehicleQrResolveSerializer(serializers.Serializer):
-    token = serializers.CharField()
-
+from mobility.views.vehicle_actions import VehicleActionMixin
 
 VEHICLE_EXPORT_HEADERS = [
     "id",
@@ -50,7 +39,7 @@ VEHICLE_EXPORT_HEADERS = [
 ]
 
 
-class VehicleViewSet(viewsets.ModelViewSet):
+class VehicleViewSet(VehicleActionMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "head", "options"]
     permission_classes = [IsAuthenticated, HasCapabilityOrReadOwn]
     pagination_class = KuraPageNumberPagination
@@ -75,6 +64,10 @@ class VehicleViewSet(viewsets.ModelViewSet):
         "partial_update": "vehicles:manage",
         "status": "vehicles:manage",
         "retire": "vehicles:manage",
+        "assign_driver": "vehicles:manage",
+        "assignments": "vehicles:read",
+        "commands": "vehicles:read",
+        "command": "vehicles:manage",
         "qr": "swaps:read",
         "rotate_qr": "swaps:override",
         "resolve": "swaps:complete",
@@ -91,6 +84,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
             "current_battery",
             "current_battery__battery_type",
             "petrol_engine",
+            "assigned_driver",
+            "assigned_driver__user",
         )
 
     def get_serializer_class(self):
@@ -194,41 +189,3 @@ class VehicleViewSet(viewsets.ModelViewSet):
         )
         row = self.get_queryset().get(pk=vehicle.pk)
         return ok(VehicleDetailSerializer(row).data)
-
-    @extend_schema(responses={200: dict})
-    @action(detail=True, methods=["get"])
-    def qr(self, request, pk=None):
-        return Response(vehicle_qr_payload(vehicle=self.get_object()))
-
-    @extend_schema(responses={200: dict})
-    @action(detail=True, methods=["post"], url_path="rotate-qr")
-    def rotate_qr(self, request, pk=None):
-        return Response(
-            rotate_vehicle_qr(vehicle=self.get_object(), actor=request.user)
-        )
-
-    @extend_schema(responses={200: dict})
-    @action(detail=True, methods=["post"], url_path="rotate-iot-key")
-    def rotate_iot_key(self, request, pk=None):
-        from mobility.services.telemetry_iot import TelemetryIotService
-
-        vehicle = self.get_object()
-        plain = TelemetryIotService.rotate_api_key(
-            vehicle=vehicle, actor=request.user
-        )
-        return ok(
-            {
-                "vehicle_id": str(vehicle.id),
-                "hardware_id": vehicle.hardware_id or "",
-                "api_key": plain,
-                "hint": "Store once — plaintext is not recoverable.",
-            }
-        )
-
-    @extend_schema(request=VehicleQrResolveSerializer, responses={200: VehicleSerializer})
-    @action(detail=False, methods=["post"])
-    def resolve(self, request):
-        ser = VehicleQrResolveSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        vehicle = resolve_vehicle_qr(token=ser.validated_data["token"])
-        return Response(VehicleSerializer(vehicle).data)

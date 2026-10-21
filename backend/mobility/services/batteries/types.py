@@ -9,7 +9,8 @@ from accounts.helpers.maker_checker import (
 )
 from core.exceptions import DomainError
 from core.services.events import emit_event
-from mobility.models import BatteryType, VehicleType
+from mobility.models import BatteryType
+from mobility.models.choices import normalize_vehicle_type
 
 
 class BatteryTypeService:
@@ -24,7 +25,7 @@ class BatteryTypeService:
             manufacturer=data.get("manufacturer") or "KURA Energy",
             capacity_kwh=data.get("capacity_kwh") or "3.24",
             nominal_voltage=int(data.get("nominal_voltage") or 72),
-            vehicle_type=data.get("vehicle_type") or VehicleType.MOTORCYCLE,
+            vehicle_type=normalize_vehicle_type(data.get("vehicle_type")),
             qr_scheme=data.get("qr_scheme") or BatteryType.QrScheme.SIGNED,
             status=BatteryType.Status.PENDING,
             created_by=actor,

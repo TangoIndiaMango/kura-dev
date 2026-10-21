@@ -5,6 +5,8 @@ interface VehicleCard {
   id: string
   name: string
   status: string
+  assignedDriverId?: string | null
+  assignedDriverName?: string | null
   rows: Array<{ label: string; value: string }>
 }
 
@@ -19,6 +21,8 @@ interface MyVehiclesScreenProps {
   totalPages?: number
   count?: number
   onPageChange?: (page: number) => void
+  /** Soft fleet — assign a locked driver to this vehicle. */
+  onAssignDriver?: (vehicle: VehicleCard) => void
 }
 
 function statusClass(status: string) {
@@ -40,6 +44,7 @@ export const MyVehiclesScreen: React.FC<MyVehiclesScreenProps> = ({
   totalPages = 1,
   count = 0,
   onPageChange,
+  onAssignDriver,
 }) => {
   const showPager = Boolean(onPageChange) && totalPages > 1
 
@@ -98,6 +103,15 @@ export const MyVehiclesScreen: React.FC<MyVehiclesScreenProps> = ({
                   </div>
                 ))}
               </dl>
+              {onAssignDriver ? (
+                <button
+                  type="button"
+                  className="mt-3 w-full rounded-xl border border-[var(--kura-border)] py-2 text-[12px] font-bold text-[var(--kura-teal-bright)]"
+                  onClick={() => onAssignDriver(vehicle)}
+                >
+                  Assign driver
+                </button>
+              ) : null}
             </article>
           ))}
         </div>

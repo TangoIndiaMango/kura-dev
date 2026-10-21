@@ -3,6 +3,8 @@ import React from 'react'
 export type AccountHubTab =
   | 'profile'
   | 'vehicles'
+  | 'drivers'
+  | 'spend'
   | 'payments'
   | 'engine'
   | 'settings'
@@ -10,6 +12,8 @@ export type AccountHubTab =
 const ALL_TABS: Array<{ id: AccountHubTab; label: string }> = [
   { id: 'profile', label: 'Profile' },
   { id: 'vehicles', label: 'Vehicles' },
+  { id: 'drivers', label: 'Drivers' },
+  { id: 'spend', label: 'Spend' },
   { id: 'payments', label: 'Payments' },
   { id: 'engine', label: 'Stored engine' },
   { id: 'settings', label: 'Settings' },
@@ -20,16 +24,23 @@ interface AccountHubTabsProps {
   onChange: (tab: AccountHubTab) => void
   /** When false, hide Stored engine (no custody records for this account). */
   showEngineTab?: boolean
+  /** Soft fleet — drivers tab when account is FLEET or has 2+ vehicles. */
+  showDriversTab?: boolean
+  /** Account owner only — fleet money is not shown to peer drivers. */
+  showSpendTab?: boolean
 }
 
 export const AccountHubTabs: React.FC<AccountHubTabsProps> = ({
   active,
   onChange,
   showEngineTab = true,
+  showDriversTab = false,
+  showSpendTab = false,
 }) => {
-  const tabs = showEngineTab
-    ? ALL_TABS
-    : ALL_TABS.filter((t) => t.id !== 'engine')
+  let tabs = ALL_TABS
+  if (!showEngineTab) tabs = tabs.filter((t) => t.id !== 'engine')
+  if (!showDriversTab) tabs = tabs.filter((t) => t.id !== 'drivers')
+  if (!showSpendTab) tabs = tabs.filter((t) => t.id !== 'spend')
 
   return (
     <div className="-mx-1 overflow-x-auto pb-1">

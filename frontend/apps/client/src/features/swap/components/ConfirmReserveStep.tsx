@@ -35,7 +35,7 @@ const MODES: Array<{
   needsCredit?: boolean
   needsWallet?: boolean
 }> = [
-  { id: 'WALLET', label: 'Wallet', hint: 'Debit on confirm', needsWallet: true },
+  { id: 'WALLET', label: 'Wallet', hint: 'Held now, paid at swap', needsWallet: true },
   { id: 'CREDIT', label: 'Credit', hint: 'Draw on confirm', needsCredit: true },
   { id: 'CASH_AT_HUB', label: 'Cash at hub', hint: 'Pay at the bay' },
 ]
@@ -70,7 +70,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
         ? 'Charges your open credit line — wallet balance stays the same. Daily repay continues as scheduled.'
         : coveredByPlan
           ? 'Covered by your plan — no extra charge.'
-          : 'Charged from your wallet when you confirm — not at the hub.'
+          : 'We hold this amount in your wallet now and take it when the hub completes your swap. Cancel and it is released.'
 
   const paymentRows = coveredByPlan
     ? rows

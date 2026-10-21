@@ -44,13 +44,29 @@ export const CHANNEL_OPTIONS = [
   { value: 'CREDIT', label: 'Credit' },
 ]
 
+/** Stable reference — inline arrays thrash filter memo and reset cursor pagination. */
+export const PAYMENTS_EXTRA_FILTER_FIELDS = [
+  {
+    type: 'select' as const,
+    key: 'channel',
+    label: 'Channel',
+    placeholder: 'Any',
+    options: CHANNEL_OPTIONS,
+  },
+]
+
 export type CashTableRow = ReturnType<typeof mapShiftToCashRow>
 
 export function readFilter(
   values: Record<string, unknown>,
   key: string,
 ): string | undefined {
-  const raw = values[key]
+  const raw =
+    key in values
+      ? values[key]
+      : Object.entries(values).find(
+          ([k]) => k === key || k.endsWith(`_${key}`),
+        )?.[1]
   if (raw == null || raw === '' || raw === 'all') return undefined
   if (Array.isArray(raw)) return raw.length ? String(raw[0]) : undefined
   return String(raw)

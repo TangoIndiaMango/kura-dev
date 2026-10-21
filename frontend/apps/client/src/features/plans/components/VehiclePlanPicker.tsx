@@ -94,7 +94,7 @@ export const VehiclePlanPicker: React.FC<VehiclePlanPickerProps> = ({
     <>
       <div className="min-w-0 flex-1 text-left">
         <p className="truncate text-[14px] font-bold text-[var(--kura-text)]">
-          {active.name}
+          {active.reg ? `${active.reg} · ${active.name}` : active.name}
         </p>
         <p className="truncate text-[12px] text-[var(--kura-muted)]">{detail}</p>
       </div>
@@ -120,7 +120,7 @@ export const VehiclePlanPicker: React.FC<VehiclePlanPickerProps> = ({
       onClick={onOpenSwitcher}
       className="flex w-full items-center gap-3 rounded-2xl border border-[var(--kura-border)] bg-[var(--kura-bg-elevated)] px-3.5 py-3 text-left transition active:scale-[0.99]"
       aria-haspopup="dialog"
-      aria-label={`Current vehicle ${active.name}. Switch vehicle.`}
+      aria-label={`Current vehicle ${active.reg || active.name}. Switch vehicle.`}
     >
       {body}
     </button>

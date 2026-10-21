@@ -5,9 +5,12 @@ import {
   AdminBarChart,
   ADMIN_CHART_COLORS,
   useAdminModuleControls,
-  type TablePaginationConfig,
 } from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { usePayments } from '@features/finance'
 import { useCapabilities } from '@features/auth'
 import { mapShiftToCashRow, useShifts } from './hooks/use-cash-ops'
@@ -22,31 +25,10 @@ import {
 } from './paymentsPanelMetrics'
 import {
   CASH_STATUS_OPTIONS,
-  CHANNEL_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
+  PAYMENTS_EXTRA_FILTER_FIELDS,
   readFilter,
 } from './paymentsPanelShared'
-
-function cursorPagination(
-  cursor: string | undefined,
-  nextCursor: string | undefined,
-  previousCursor: string | undefined,
-  setCursor: (c: string | undefined) => void,
-): TablePaginationConfig {
-  return {
-    page: cursor ? 2 : 1,
-    totalPages: nextCursor ? (cursor ? 3 : 2) : cursor ? 2 : 1,
-    onPageChange: () => undefined,
-    variant: 'controls',
-    pageSize: '25',
-    onNext: nextCursor ? () => setCursor(nextCursor) : undefined,
-    onPrevious: previousCursor
-      ? () => setCursor(previousCursor)
-      : cursor
-        ? () => setCursor(undefined)
-        : undefined,
-  }
-}
 
 export function PaymentsPanel() {
   const navigate = useNavigate()
@@ -54,6 +36,7 @@ export function PaymentsPanel() {
   const { can } = useCapabilities()
   const [tab, setTab] = useUrlTab('payments', { valid: ['payments', 'cash'] })
   const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
   const hubScope = searchParams.get('hub')?.trim() || undefined
   const hubLabelParam = searchParams.get('hub_label')?.trim() || undefined
 
@@ -63,31 +46,35 @@ export function PaymentsPanel() {
     filterTitle: 'Filter payments',
     includeNameSort: false,
     includeValueSort: false,
-    extraFilterFields: [
-      {
-        type: 'select',
-        key: 'channel',
-        label: 'Channel',
-        placeholder: 'Any',
-        options: CHANNEL_OPTIONS,
-      },
-    ],
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+    extraFilterFields: PAYMENTS_EXTRA_FILTER_FIELDS,
   })
   const cashControls = useAdminModuleControls({
     scope: 'payments_cash',
     statusOptions: CASH_STATUS_OPTIONS,
     filterTitle: 'Filter cash reconciliation',
+    pageSize: ADMIN_LIST_PAGE_SIZE,
   })
   const controls = tab === 'payments' ? paymentsControls : cashControls
   const dateRange = controls.dateRange
 
-  useEffect(() => {
+  const statusFilter = readFilter(paymentsControls.filterValues, 'status')
+  const channelFilter = readFilter(paymentsControls.filterValues, 'channel')
+
+  const resetCursor = () => {
     setCursor(undefined)
+    setPage(1)
+  }
+
+  useEffect(() => {
+    resetCursor()
   }, [
     dateRange.start_date,
     dateRange.end_date,
-    paymentsControls.filterValues,
+    statusFilter,
+    channelFilter,
     paymentsControls.search,
+    hubScope,
   ])
 
   const shiftsQuery = useShifts({
@@ -115,12 +102,10 @@ export function PaymentsPanel() {
     )
   }
 
-  const statusFilter = readFilter(paymentsControls.filterValues, 'status')
-  const channelFilter = readFilter(paymentsControls.filterValues, 'channel')
-
   const {
     payments,
     isPending: paymentsPending,
+    isPlaceholderData,
     nextCursor,
     previousCursor,
   } = usePayments(
@@ -132,10 +117,21 @@ export function PaymentsPanel() {
       start_date: dateRange.start_date,
       end_date: dateRange.end_date,
       cursor,
-      page_size: 25,
+      page_size: ADMIN_LIST_PAGE_SIZE,
     },
     { enabled: tab === 'payments' },
   )
+
+  const paymentsPagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const cashMapped = useMemo(
     () => liveShifts.map(mapShiftToCashRow),
@@ -174,7 +170,7 @@ export function PaymentsPanel() {
         ]}
         activeTab={tab}
         onTabChange={(next) => {
-          setCursor(undefined)
+          resetCursor()
           setTab(next)
         }}
         kpis={
@@ -216,15 +212,10 @@ export function PaymentsPanel() {
           <PaymentsLedgerTable
             payments={payments}
             pending={paymentsPending}
-            pagination={cursorPagination(
-              cursor,
-              nextCursor,
-              previousCursor,
-              setCursor,
-            )}
+            pagination={paymentsPagination}
             searchQuery={paymentsControls.searchQuery}
             onSearchChange={(v) => {
-              setCursor(undefined)
+              resetCursor()
               paymentsControls.setSearchQuery(v)
             }}
             onFilter={paymentsControls.openFilter}

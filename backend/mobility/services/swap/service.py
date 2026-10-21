@@ -44,6 +44,7 @@ class SwapService:
         issued_charge_pct=100,
         amount_kobo: int | None = None,
         payment_mode: str | None = None,
+        discount_code: str = "",
         rider_pin_grant: str = "",
         override: dict | None = None,
         agent=None,
@@ -157,10 +158,29 @@ class SwapService:
                 fee = held
             elif mode == Reservation.PaymentMode.PLAN:
                 fee = 0
+            elif reservation is not None and reservation.discount_code:
+                fee = max(0, reservation.list_price_kobo - reservation.discount_kobo)
             elif mode == Reservation.PaymentMode.CASH and amount_kobo is not None:
                 fee = int(amount_kobo)
             else:
                 fee = fee_default if amount_kobo is None else int(amount_kobo)
+
+            discount_quote = None
+            discount_account = None
+            if (discount_code or "").strip():
+                from mobility.services.plans.discounts import DiscountService
+
+                discount_account = Account.objects.filter(pk=account_id).first()
+                fee, discount_quote = DiscountService.consume_for_swap(
+                    code=discount_code,
+                    reservation=reservation,
+                    held_kobo=held,
+                    mode=mode,
+                    fee_kobo=fee,
+                    list_price_kobo=fee_default,
+                    account=discount_account,
+                    idempotency_key=f"swap-legacy:{reservation.id if reservation else vehicle.id}:{hub.id}",
+                )
             _net_kobo, vat_kobo = (0, 0) if fee <= 0 else split_vat_inclusive(fee)
 
             account = Account.objects.filter(pk=account_id).first()
@@ -201,6 +221,13 @@ class SwapService:
                 reservation.save(
                     update_fields=["status", "hold_amount_kobo", "updated_at"]
                 )
+                from mobility.services.reservations.lifecycle import (
+                    release_reservation_battery,
+                )
+
+                release_reservation_battery(
+                    reservation=reservation, keep_battery_id=issued_battery.id
+                )
 
             now = timezone.now()
             swap_source = (
@@ -230,6 +257,14 @@ class SwapService:
                 started_at=now,
                 completed_at=now,
             )
+
+            if discount_quote is not None:
+                from mobility.services.plans.discounts import DiscountService
+
+                DiscountService.link_redemption_payment(
+                    idempotency_key=f"swap-legacy:{reservation.id if reservation else vehicle.id}:{hub.id}",
+                    payment=settled.payment,
+                )
 
             apply_swap_battery_custody(
                 hub=hub,

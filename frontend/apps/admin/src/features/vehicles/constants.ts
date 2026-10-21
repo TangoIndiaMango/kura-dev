@@ -13,4 +13,8 @@ export const VEHICLES_ENDPOINTS = {
   qr: (id: string) => `/mobility/vehicles/${id}/qr/`,
   rotateQr: (id: string) => `/mobility/vehicles/${id}/rotate-qr/`,
   retire: (id: string) => `/mobility/vehicles/${id}/retire/`,
+  assignDriver: (id: string) => `/mobility/vehicles/${id}/assign-driver/`,
+  commands: (id: string) => `/mobility/vehicles/${id}/commands/`,
+  command: (id: string) => `/mobility/vehicles/${id}/command/`,
+  rotateIotKey: (id: string) => `/mobility/vehicles/${id}/rotate-iot-key/`,
 } as const

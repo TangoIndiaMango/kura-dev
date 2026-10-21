@@ -8,7 +8,10 @@ export interface SwapVehicle {
   short: string
   reg: string
   battery: string
+  /** Pack type the hub must stock (e.g. "Titan 72V"), not the mounted serial. */
+  batteryType?: string | null
   plan: string
+  payPerSwapNaira?: number | null
 }
 
 interface SelectVehicleStepProps {

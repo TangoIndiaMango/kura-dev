@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Alert02Icon } from 'hugeicons-react'
-import { Skeleton } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   AdminModuleLayout,
@@ -13,13 +12,18 @@ import {
   useAdminModuleControls,
   type TableExportFormat,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
 import { apiErrorMessage } from '@lib/api/auth'
 import { AlertRulesTab, rulesKpis } from './AlertRulesTab'
 import { ALERTS_ENDPOINTS } from './constants'
+import { useAlertRules } from './hooks/use-alert-rules'
 import { useAlerts, useAlertStats } from './hooks/use-alerts'
 import type { AlertListApi } from './types'
 import {
@@ -62,6 +66,7 @@ export function AlertsPanel() {
   const [tab, setTab] = useUrlTab('alerts', { valid: ['alerts', 'rules'] })
   const [exporting, setExporting] = useState(false)
   const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
 
   const alertsControls = useAdminModuleControls({
     scope: 'alerts',
@@ -69,6 +74,7 @@ export function AlertsPanel() {
     filterTitle: 'Filter alerts',
     includeNameSort: false,
     includeValueSort: false,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
     extraFilterFields: [
       {
         type: 'select',
@@ -81,17 +87,19 @@ export function AlertsPanel() {
     ],
   })
 
+  const statusFilter = readFilterValue(alertsControls.filterValues, 'status')
+  const severityFilter = readFilterValue(alertsControls.filterValues, 'severity')
+
   useEffect(() => {
     setCursor(undefined)
+    setPage(1)
   }, [
     alertsControls.search,
-    alertsControls.filterValues,
+    statusFilter,
+    severityFilter,
     alertsControls.dateRange.start_date,
     alertsControls.dateRange.end_date,
   ])
-
-  const statusFilter = readFilterValue(alertsControls.filterValues, 'status')
-  const severityFilter = readFilterValue(alertsControls.filterValues, 'severity')
 
   const listFilters = {
     ...(alertsControls.search ? { search: alertsControls.search } : {}),
@@ -105,11 +113,18 @@ export function AlertsPanel() {
       : {}),
   }
 
-  const { alerts, isPending, isError, nextCursor, previousCursor } = useAlerts(
+  const {
+    alerts,
+    isPending,
+    isError,
+    isPlaceholderData,
+    nextCursor,
+    previousCursor,
+  } = useAlerts(
     {
       ...listFilters,
       cursor,
-      page_size: alertsControls.pageSize,
+      page_size: ADMIN_LIST_PAGE_SIZE,
     },
     { enabled: tab === 'alerts', poll: tab === 'alerts' },
   )
@@ -121,24 +136,22 @@ export function AlertsPanel() {
     poll: tab === 'alerts',
   })
 
-  const pagination: TablePaginationConfig = {
-    page: cursor ? 2 : 1,
-    totalPages: nextCursor ? (cursor ? 3 : 2) : cursor ? 2 : 1,
-    onPageChange: () => undefined,
-    variant: 'controls',
-    pageSize: String(alertsControls.pageSize).padStart(2, '0'),
-    onNext: nextCursor ? () => setCursor(nextCursor) : undefined,
-    onPrevious: previousCursor
-      ? () => setCursor(previousCursor)
-      : cursor
-        ? () => setCursor(undefined)
-        : undefined,
-  }
+  const pagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
 
+  const { rules } = useAlertRules({ enabled: tab === 'rules' })
   const donut = useMemo(() => alertsDonutFromStats(stats), [stats])
   const kpis =
     tab === 'rules'
-      ? rulesKpis(stats?.queue.open ?? '—')
+      ? rulesKpis(stats?.queue.open ?? '—', rules)
       : alertsKpisFromStats(stats)
   const perDay = stats?.period.by_day?.length
     ? stats.period.by_day
@@ -222,7 +235,7 @@ export function AlertsPanel() {
       >
         {tab === 'alerts' ? (
           isPending ? (
-            <Skeleton height={280} radius="md" />
+            <LoadingState cols={6} rows={8} />
           ) : isError ? (
             <p className="mb-4 text-[13px] text-[var(--mu)]">
               Could not load alerts (need alerts:read).

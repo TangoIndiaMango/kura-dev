@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from mobility.helpers.swap_display import STALE_OPEN_AFTER, swap_ui_status
-from mobility.models import Reservation, Swap
+from mobility.models import Battery, Reservation, Swap
 from mobility.services.reservations.service import ReservationService
 from mobility.services.swap.abort import abort_swap
 
@@ -45,7 +45,24 @@ def expire_stale_reservations(*, limit: int = 200) -> dict:
         row.refresh_from_db()
         if row.status == Reservation.Status.EXPIRED and before != row.status:
             expired += 1
-    return {"scanned": len(ids), "expired": expired}
+    return {
+        "scanned": len(ids),
+        "expired": expired,
+        "released_packs": release_orphaned_reserved_batteries(),
+    }
+
+
+def release_orphaned_reserved_batteries() -> int:
+    """RESERVED packs no PENDING/CONFIRMED hold points at go back to stock."""
+    held = Reservation.objects.filter(
+        status__in=[Reservation.Status.PENDING, Reservation.Status.CONFIRMED],
+        battery_id__isnull=False,
+    ).values("battery_id")
+    return (
+        Battery.objects.filter(status=Battery.Status.RESERVED)
+        .exclude(id__in=held)
+        .update(status=Battery.Status.AVAILABLE)
+    )
 
 
 def abandon_incomplete_swaps(*, limit: int = 100) -> dict:

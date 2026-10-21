@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Skeleton } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   AdminModuleLayout,
@@ -9,10 +8,14 @@ import {
   useAdminModuleControls,
   type TableExportFormat,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { AdminDonutChart, ADMIN_CHART_COLORS } from '@shared/components/charts'
 import { apiErrorMessage } from '@lib/api/auth'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
 import {
   RISK_ENDPOINTS,
@@ -59,6 +62,7 @@ export function RiskPanel() {
   const [tab, setTab] = useState<'queue' | 'rules'>('queue')
   const [exporting, setExporting] = useState(false)
   const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
 
   const controls = useAdminModuleControls({
     scope: 'risk',
@@ -66,6 +70,7 @@ export function RiskPanel() {
     filterTitle: 'Filter risk events',
     includeNameSort: false,
     includeValueSort: false,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
     extraFilterFields: [
       {
         type: 'select',
@@ -78,17 +83,19 @@ export function RiskPanel() {
     ],
   })
 
+  const statusFilter = readFilterValue(controls.filterValues, 'status')
+  const severityFilter = readFilterValue(controls.filterValues, 'severity')
+
   useEffect(() => {
     setCursor(undefined)
+    setPage(1)
   }, [
     controls.search,
-    controls.filterValues,
+    statusFilter,
+    severityFilter,
     controls.dateRange.start_date,
     controls.dateRange.end_date,
   ])
-
-  const statusFilter = readFilterValue(controls.filterValues, 'status')
-  const severityFilter = readFilterValue(controls.filterValues, 'severity')
 
   const listFilters = {
     ...(controls.search ? { search: controls.search } : {}),
@@ -102,12 +109,18 @@ export function RiskPanel() {
       : {}),
   }
 
-  const { events, isPending, isError, nextCursor, previousCursor } =
-    useRiskEvents({
-      ...listFilters,
-      cursor,
-      page_size: controls.pageSize,
-    })
+  const {
+    events,
+    isPending,
+    isError,
+    isPlaceholderData,
+    nextCursor,
+    previousCursor,
+  } = useRiskEvents({
+    ...listFilters,
+    cursor,
+    page_size: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const { data: stats } = useRiskEventStats({
     start_date: controls.dateRange.start_date || undefined,
@@ -119,19 +132,16 @@ export function RiskPanel() {
   const kpis = useMemo(() => riskKpisFromStats(stats), [stats])
   const rulesKpisList = useMemo(() => riskRulesKpis(rules), [rules])
 
-  const pagination: TablePaginationConfig = {
-    page: cursor ? 2 : 1,
-    totalPages: nextCursor ? (cursor ? 3 : 2) : cursor ? 2 : 1,
-    onPageChange: () => undefined,
-    variant: 'controls',
-    pageSize: String(controls.pageSize).padStart(2, '0'),
-    onNext: nextCursor ? () => setCursor(nextCursor) : undefined,
-    onPrevious: previousCursor
-      ? () => setCursor(previousCursor)
-      : cursor
-        ? () => setCursor(undefined)
-        : undefined,
-  }
+  const pagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const handleExport = async (format: TableExportFormat) => {
     setExporting(true)
@@ -190,7 +200,7 @@ export function RiskPanel() {
       >
         {tab === 'queue' ? (
           <>
-            {isPending ? <Skeleton height={280} radius="md" /> : null}
+            {isPending ? <LoadingState cols={6} rows={8} /> : null}
             {isError ? (
               <p className="mb-4 text-[13px] text-[var(--mu)]">
                 Could not load risk events (need risk:read).

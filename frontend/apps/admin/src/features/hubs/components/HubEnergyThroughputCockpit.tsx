@@ -124,11 +124,11 @@ export function HubEnergyThroughputCockpit({
                 Station Telemetry & Energy Throughput
               </h2>
               <span className="rounded-full bg-[var(--tn)] px-2 py-0.5 text-[11px] font-semibold text-[var(--pr)]">
-                Live IoT Telemetry
+                Modelled energy
               </span>
             </div>
             <p className="mt-0.5 text-[12.5px] text-[var(--mu)]">
-              Real-time solar generation, grid balancing, and bay swap throughput
+              Swap throughput is live; solar output is estimated from rated capacity until meter telemetry is connected.
             </p>
           </div>
         </div>

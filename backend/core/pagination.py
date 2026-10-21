@@ -13,7 +13,7 @@ from rest_framework.response import Response
 class KuraCursorPagination(CursorPagination):
     """Keyset pagination for high-churn feeds."""
 
-    page_size = 25
+    page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
     ordering = ("-created_at", "-id")
@@ -43,7 +43,7 @@ class KuraCursorPagination(CursorPagination):
 class KuraPageNumberPagination(PageNumberPagination):
     """Offset pagination only for small admin tables (< ~10k rows)."""
 
-    page_size = 25
+    page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
 

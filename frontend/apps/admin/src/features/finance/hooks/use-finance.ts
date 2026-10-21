@@ -1,4 +1,8 @@
 import { useFetchData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 import { FINANCE_ENDPOINTS, financeQueryKeys } from '../constants'
 import type {
   CursorPaginated,
@@ -53,22 +57,13 @@ export function useAccountPayments(
   const enabled = Boolean(id) && options?.enabled !== false
   const query = useFetchData<CursorPaginated<PaymentApi>>(
     FINANCE_ENDPOINTS.payments,
-    { account: id, page_size: options?.page_size ?? 25 },
+    { account: id, page_size: options?.page_size ?? ADMIN_LIST_PAGE_SIZE },
     { enabled, keepPreviousData: true, staleTime: 30_000 },
   )
   return {
     ...query,
     payments: query.data?.results ?? [],
     queryKey: financeQueryKeys.paymentsByAccount(id),
-  }
-}
-
-function cursorFromLink(link: string | null | undefined): string | undefined {
-  if (!link) return undefined
-  try {
-    return new URL(link).searchParams.get('cursor') ?? undefined
-  } catch {
-    return undefined
   }
 }
 
@@ -90,7 +85,7 @@ export function usePayments(
   const query = useFetchData<CursorPaginated<PaymentApi>>(
     FINANCE_ENDPOINTS.payments,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),

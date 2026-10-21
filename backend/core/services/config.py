@@ -36,11 +36,41 @@ DEFAULTS: dict[str, dict[str, Any]] = {
     "offers": {
         "enabled": False,
     },
+    "ussd": {
+        "enabled": False,
+        "shortcode": "*347*88#",
+        "session_timeout_seconds": 90,
+        "primary_language": "en",
+        "menu": {
+            "1": {"label": "Find hub", "flow": "hubs"},
+            "2": {"label": "Wallet balance", "flow": "wallet"},
+            "3": {"label": "Reserve swap", "flow": "reserve"},
+        },
+    },
+    "sms_templates": {
+        "enabled": False,
+        "templates": [
+            {
+                "code": "SWAP_CODE",
+                "name": "Swap reservation code",
+                "body": "KURA: your bay code is {code}. Valid {mins} min.",
+                "status": "ACTIVE",
+            },
+            {
+                "code": "WALLET_CREDIT",
+                "name": "Wallet funded",
+                "body": "KURA: {amount} credited. Bal {balance}.",
+                "status": "ACTIVE",
+            },
+        ],
+    },
 }
 
 NAMESPACE_CAPS: dict[str, str] = {
     "credit": "credit:approve",
     "offers": "offers:manage",
+    "ussd": "accounts:manage",
+    "sms_templates": "accounts:manage",
 }
 
 

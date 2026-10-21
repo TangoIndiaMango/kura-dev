@@ -23,6 +23,8 @@ export type VehicleListApi = {
   vehicle_type: string
   current_battery_serial?: string | null
   current_battery_charge?: number | null
+  assigned_driver_id?: string | null
+  assigned_driver_name?: string | null
   status: string
 }
 

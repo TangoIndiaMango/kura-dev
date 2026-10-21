@@ -1,4 +1,5 @@
 import { useFetchData, usePostData } from '@shared/hooks/api'
+import { ADMIN_LIST_PAGE_SIZE } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { ENGINES_ENDPOINTS, RETROFITS_ENDPOINTS } from '../constants'
 import type {
@@ -35,7 +36,7 @@ export function useEngines(
     ENGINES_ENDPOINTS.list,
     {
       page: params?.page ?? 1,
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),

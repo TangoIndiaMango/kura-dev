@@ -1,6 +1,8 @@
 /**
- * Locked demo tariff matrix — mirrors admin MOCK_PRICES (PRD 4.4: identical numbers).
- * Vehicle-aware; motorcycle is the default when type is unknown.
+ * Offline fallback tariff matrix. The server PriceMatrix is the source of
+ * truth — swap prices come from each vehicle's `pay_per_swap_kobo`, and plan
+ * prices from /mobility/plans/. These numbers only render while the live
+ * price is unavailable. Motorcycle is the default when type is unknown.
  */
 export type TariffVehicleKind = 'motorcycle' | 'tricycle' | 'boat'
 

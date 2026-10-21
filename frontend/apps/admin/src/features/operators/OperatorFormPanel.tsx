@@ -1,33 +1,29 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { notifications } from '@mantine/notifications'
-import { Select, TextInput, Title } from '@mantine/core'
+import { Title } from '@mantine/core'
 import {
   AdminFormSuccessModal,
-  DocumentSidesUpload,
   FormFooterActions,
-  MediaDropzone,
   SidebarFormLayout,
 } from '@shared/components'
 import { apiErrorMessage } from '@lib/api/auth'
 import { OperatorFormExtraSteps } from './components/OperatorFormExtraSteps'
 import {
+  OperatorProfileFields,
+  type OperatorIdType,
+} from './components/OperatorProfileFields'
+import {
   useCooperatives,
   useSetAccountCooperative,
 } from './hooks/use-cooperatives'
 import { useOperator } from './hooks/use-operators'
+import { useOperatorRegistration } from './hooks/use-operator-registration'
 
 const STEPS = [
   { label: 'Profile' },
   { label: 'Vehicle' },
   { label: 'Plan' },
-] as const
-
-const ID_TYPES = [
-  { value: 'NIN', label: 'NIN' },
-  { value: 'BVN', label: 'BVN' },
-  { value: 'VOTER', label: 'Voter card' },
-  { value: 'DRIVERS_LICENCE', label: "Driver's licence" },
 ] as const
 
 const REGISTER_TIPS = [
@@ -40,21 +36,26 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
   const { operator, account } = useOperator(operatorId)
   const { options: coopOptions } = useCooperatives()
   const setCoop = useSetAccountCooperative(operatorId || '')
+  const registration = useOperatorRegistration()
   const [saved, setSaved] = useState(false)
   const [step, setStep] = useState(0)
   const [autoRenew, setAutoRenew] = useState(true)
   const [fullName, setFullName] = useState('')
-  const [idType, setIdType] = useState<(typeof ID_TYPES)[number]['value']>('NIN')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [idNumber, setIdNumber] = useState('')
+  const [registeredKuraId, setRegisteredKuraId] = useState('')
   const [idFrontPhoto, setIdFrontPhoto] = useState<File | null>(null)
   const [idBackPhoto, setIdBackPhoto] = useState<File | null>(null)
   const [facePhoto, setFacePhoto] = useState<File | null>(null)
+  const [kycSubmitted, setKycSubmitted] = useState(false)
+  const [idType, setIdType] = useState<OperatorIdType>('NIN')
   const [cooperativeId, setCooperativeId] = useState<string | null>(null)
   const editing = Boolean(operatorId)
   const backTo = editing && operatorId ? `/operators/${operatorId}` : '/operators'
   const lastStep = STEPS.length - 1
   const stepLabel = STEPS[Math.min(step, lastStep)]?.label ?? 'Profile'
-  const idTypeLabel = ID_TYPES.find((t) => t.value === idType)?.label ?? 'ID'
-  const busy = setCoop.isPending
+  const busy = setCoop.isPending || registration.busy
   const displayName = operator?.name || account?.display_name || '—'
 
   useEffect(() => {
@@ -72,6 +73,13 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
 
   const handleContinue = async () => {
     if (!editing && step === 0) {
+      if (!fullName.trim() || !phone.trim() || !email.trim() || !idNumber.trim()) {
+        notifications.show({
+          color: 'red',
+          message: 'Full name, phone, email, and ID number are required.',
+        })
+        return
+      }
       if (!idFrontPhoto || !idBackPhoto || !facePhoto) {
         notifications.show({
           color: 'red',
@@ -93,6 +101,37 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
         notifications.show({
           color: 'red',
           message: apiErrorMessage(err, 'Could not update operator'),
+        })
+        return
+      }
+    }
+    if (!editing) {
+      if (!idFrontPhoto || !idBackPhoto || !facePhoto) return
+      try {
+        const result = await registration.registerWithIdentity(
+          {
+            full_name: fullName.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+            id_type: idType,
+            id_number: idNumber.trim(),
+            cooperative_id: cooperativeId || null,
+          },
+          { face: facePhoto, front: idFrontPhoto, back: idBackPhoto },
+        )
+        setRegisteredKuraId(result.kuraId)
+        setKycSubmitted(result.kycSubmitted)
+        if (!result.kycSubmitted) {
+          notifications.show({
+            color: 'yellow',
+            message:
+              'Operator registered — ID photos failed. Retry from the operator KYC tab.',
+          })
+        }
+      } catch (err) {
+        notifications.show({
+          color: 'red',
+          message: apiErrorMessage(err, 'Could not register operator'),
         })
         return
       }
@@ -146,112 +185,30 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
         </div>
 
         {(editing || step === 0) && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TextInput
-              label="Full Name"
-              value={editing ? displayName : fullName}
-              onChange={
-                editing ? undefined : (e) => setFullName(e.currentTarget.value)
-              }
-              readOnly={editing}
-              disabled={editing}
-              placeholder={editing ? undefined : 'Enter full name'}
-              description={
-                editing
-                  ? 'Rider updates this on Identity in the app.'
-                  : undefined
-              }
-              required={!editing}
-            />
-            <TextInput
-              label="Phone Number"
-              placeholder="+234"
-              value={operator?.phone || ''}
-              readOnly={editing}
-              disabled={editing}
-              required={!editing}
-            />
-            <TextInput
-              className="sm:col-span-2"
-              label="Email"
-              placeholder="name@email.com"
-              description={
-                editing
-                  ? 'Owned by the rider login — not editable here.'
-                  : 'Invite link to set app password is sent here after register.'
-              }
-              value={operator?.email || ''}
-              readOnly={editing}
-              disabled={editing}
-              required={!editing}
-            />
-            {!editing ? (
-              <>
-                <Select
-                  label="ID type"
-                  data={[...ID_TYPES]}
-                  value={idType}
-                  onChange={(v) => {
-                    if (v) setIdType(v as (typeof ID_TYPES)[number]['value'])
-                  }}
-                  allowDeselect={false}
-                  required
-                />
-                <TextInput
-                  label={`${idTypeLabel} number`}
-                  placeholder={`Enter ${idTypeLabel.toLowerCase()} number`}
-                  required
-                />
-              </>
-            ) : (
-              <TextInput
-                className="sm:col-span-2"
-                label="KYC"
-                value={`${operator?.idType || '—'} · ${operator?.kycStatus || '—'}${
-                  operator?.idLast4 ? ` · ••••${operator.idLast4}` : ''
-                }`}
-                readOnly
-                disabled
-                description="Verify or reject from Take Action on the detail page."
-              />
-            )}
-            <Select
-              className="sm:col-span-2"
-              label="Cooperative"
-              placeholder="None / Independent"
-              description="Optional. Links this operator to a cooperative for unreturned alerts."
-              data={coopOptions}
-              value={cooperativeId || null}
-              onChange={(v) => setCooperativeId(v)}
-              searchable
-              clearable
-            />
-            {!editing ? (
-              <>
-                <div className="sm:col-span-2">
-                  <DocumentSidesUpload
-                    front={idFrontPhoto}
-                    back={idBackPhoto}
-                    onFrontChange={setIdFrontPhoto}
-                    onBackChange={setIdBackPhoto}
-                    label="ID document *"
-                    description="Front and back of the card are required · PNG or JPG · max 1 MB each"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <MediaDropzone
-                    value={facePhoto}
-                    onChange={setFacePhoto}
-                    label="Face photo for hub verification *"
-                    description="Required · clear front-facing photo · PNG or JPG · max 5 MB."
-                    accept={['image/png', 'image/jpeg']}
-                    maxSizeMB={5}
-                    minHeight={180}
-                  />
-                </div>
-              </>
-            ) : null}
-          </div>
+          <OperatorProfileFields
+            editing={editing}
+            operator={operator}
+            displayName={displayName}
+            fullName={fullName}
+            onFullName={setFullName}
+            phone={phone}
+            onPhone={setPhone}
+            email={email}
+            onEmail={setEmail}
+            idType={idType}
+            onIdType={setIdType}
+            idNumber={idNumber}
+            onIdNumber={setIdNumber}
+            coopOptions={coopOptions}
+            cooperativeId={cooperativeId}
+            onCooperativeChange={setCooperativeId}
+            idFrontPhoto={idFrontPhoto}
+            idBackPhoto={idBackPhoto}
+            facePhoto={facePhoto}
+            onFrontChange={setIdFrontPhoto}
+            onBackChange={setIdBackPhoto}
+            onFaceChange={setFacePhoto}
+          />
         )}
 
         <OperatorFormExtraSteps
@@ -274,7 +231,7 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
         description={
           editing
             ? 'Cooperative assignment saved.'
-            : 'KURA ID and virtual account created. An invite email was sent so they can set their password (expires in 72 hours).'
+            : `${registeredKuraId ? `KURA ID ${registeredKuraId} · ` : ''}Wallet and virtual account created. An invite email was sent so they can set their password (expires in 72 hours). ${kycSubmitted ? 'ID photos submitted — identity is pending review. ' : ''}Add a vehicle and plan from the operator page.`
         }
         actionLabel={editing ? 'View operator' : 'View operators'}
       />

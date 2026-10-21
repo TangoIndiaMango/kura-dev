@@ -16,6 +16,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { useMyReservations } from '../swap/hooks/use-swap-live'
 import { uiPaymentMode } from '../swap/swapLiveMap'
 import { useNotificationStats } from '../notifications/hooks/use-notifications'
+import { greetingNow } from '../../shared/time/serverClock'
 
 type Overlay =
   | null
@@ -101,7 +102,7 @@ export const OperatorShell: React.FC = () => {
         {activeTab === 'home' && !overlay ? (
           <OperatorHeader
             title={name}
-            subtitle="Good morning"
+            subtitle={greetingNow()}
             onOpenNotifications={openNotifications}
             showUnreadDot={unreadCount > 0}
           />

@@ -5,7 +5,7 @@ from django.db import transaction
 
 from core.exceptions import DomainError
 from core.services.events import emit_event
-from mobility.models import Battery, Swap
+from mobility.models import Battery, Reservation, Swap
 from mobility.services.swap.custody import apply_issue_custody
 
 
@@ -80,6 +80,21 @@ def issue_battery(
                 },
                 http=409,
             )
+        if battery.status == Battery.Status.RESERVED:
+            own_pack_id = (
+                Reservation.objects.filter(pk=locked.reservation_id)
+                .values_list("battery_id", flat=True)
+                .first()
+                if locked.reservation_id
+                else None
+            )
+            if battery.id != own_pack_id:
+                raise DomainError(
+                    "BATTERY_NOT_AVAILABLE",
+                    f"Battery {serial} is held for another reservation.",
+                    details={"status": battery.status},
+                    http=409,
+                )
         if battery.current_hub_id and battery.current_hub_id != locked.hub_id:
             raise DomainError(
                 "BATTERY_NOT_AVAILABLE",

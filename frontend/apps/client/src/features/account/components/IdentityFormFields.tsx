@@ -43,7 +43,7 @@ export function IdentityPhotoPair({
       />
       <IdPhotoField
         label="ID back *"
-        hint="Required if your card has a back — always required for KURA"
+        hint="Clear, full card — the side with the barcode or signature"
         value={back}
         onChange={onBackFile}
         existingUrl={backUrl}

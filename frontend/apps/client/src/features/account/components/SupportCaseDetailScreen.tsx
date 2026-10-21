@@ -1,3 +1,5 @@
+import { caseStatusLabel as statusLabel } from './caseStatusLabel'
+import { formatNaira } from '../../../shared/utils/currency'
 import React, { useState } from 'react'
 import { Modal, Textarea, Stack, Text, Title, ActionIcon } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
@@ -67,6 +69,8 @@ export const SupportCaseDetailScreen: React.FC<SupportCaseDetailScreenProps> = (
         priority: live.supportCase.priority,
         type: kindLabel(live.supportCase.kind),
         status: live.supportCase.status,
+        receiptCode: live.supportCase.payment_receipt_code ?? null,
+        receiptAmountKobo: live.supportCase.payment_amount_kobo ?? null,
         openedAt: formatCaseWhen(live.supportCase.created_at),
         events: live.supportCase.events.map((e) => ({
           id: e.id,
@@ -143,9 +147,16 @@ export const SupportCaseDetailScreen: React.FC<SupportCaseDetailScreenProps> = (
       <div className="rounded-2xl border border-[var(--kura-border)] bg-[var(--kura-bg-elevated)] px-4 py-4">
         <p className="text-[15px] font-bold text-[var(--kura-text)]">{record.subject}</p>
         <p className="mt-1 text-[12px] text-[var(--kura-muted)]">
-          {record.priority} · {record.type} · {record.status.replace(/_/g, ' ')} ·{' '}
-          {record.openedAt}
+          {record.type} · {statusLabel(record.status)} · {record.openedAt}
         </p>
+        {record.receiptCode ? (
+          <p className="mt-2 text-[12px] text-[var(--kura-text)]">
+            About receipt <span className="font-mono font-semibold">{record.receiptCode}</span>
+            {record.receiptAmountKobo != null
+              ? ` · ${formatNaira(record.receiptAmountKobo, { fromKobo: true })}`
+              : ''}
+          </p>
+        ) : null}
       </div>
 
       <section>

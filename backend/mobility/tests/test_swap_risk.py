@@ -127,15 +127,37 @@ class SwapRiskTests(TestCase):
             )
         self.assertEqual(ctx.exception.code, "THROTTLED")
         self.assertEqual(ctx.exception.http_status, 429)
+        self.assertIn("risk_event_id", ctx.exception.details or {})
+        self.assertEqual(
+            (ctx.exception.details or {}).get("reason"),
+            "MIN_MINUTES_BETWEEN_SWAPS",
+        )
         self.assertTrue(
             RiskEvent.objects.filter(rule__code="SWAP_VELOCITY").exists()
         )
         self.assertTrue(
             AuditEvent.objects.filter(action="risk_event.opened").exists()
         )
+        # Retry must reuse the open event (no spam).
+        with self.assertRaises(DomainError):
+            SwapService.start(
+                hub_id=self.hub_a.id,
+                client_event_id="01VELGAP000000000002",
+                vehicle_id=self.vehicle.id,
+                driver_id=self.driver.id,
+                account_id=self.account.id,
+                agent=self.agent,
+            )
+        self.assertEqual(
+            RiskEvent.objects.filter(rule__code="SWAP_VELOCITY").count(), 1
+        )
 
     def test_velocity_daily_cap_blocks_start(self):
-        base = timezone.now() - timedelta(hours=2)
+        # Stay inside today's Lagos day — "2h ago" is yesterday between 00:00 and 02:00 WAT.
+        from mobility.services.swap.risk import _wat_day_bounds
+
+        day_start, _ = _wat_day_bounds()
+        base = max(timezone.now() - timedelta(hours=2), day_start + timedelta(minutes=1))
         self._seed_completed(hub=self.hub_a, completed_at=base, n=4)
         with self.assertRaises(DomainError) as ctx:
             SwapService.start(
@@ -264,3 +286,53 @@ class SwapRiskTests(TestCase):
         self.assertEqual(geo.severity, "HIGH")
         self.assertEqual(geo.context.get("from_hub"), "HUB-VEL-A")
         self.assertEqual(geo.context.get("to_hub"), "HUB-VEL-B")
+
+    def test_bay_requests_velocity_exception(self):
+        self._seed_completed(hub=self.hub_a, completed_at=timezone.now())
+        with self.assertRaises(DomainError):
+            SwapService.start(
+                hub_id=self.hub_a.id,
+                client_event_id="01VELREQ000000000001",
+                vehicle_id=self.vehicle.id,
+                driver_id=self.driver.id,
+                account_id=self.account.id,
+                agent=self.agent,
+            )
+        client = APIClient()
+        tokens = issue_tokens(self.agent)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+        status_res = client.get(
+            "/api/v1/mobility/swaps/velocity-status/",
+            {"vehicle_id": str(self.vehicle.id)},
+        )
+        self.assertEqual(status_res.status_code, 200, status_res.content)
+        body = status_res.json()
+        self.assertTrue(body.get("blocked"))
+        self.assertIsNotNone(body.get("risk_event_id"))
+
+        req = client.post(
+            "/api/v1/mobility/swaps/request-velocity-exception/",
+            {
+                "vehicle_id": str(self.vehicle.id),
+                "hub_id": str(self.hub_a.id),
+                "account_id": str(self.account.id),
+                "note": "Prior swap aborted — pack never issued",
+            },
+            format="json",
+        )
+        self.assertEqual(req.status_code, 200, req.content)
+        event = RiskEvent.objects.get(pk=body["risk_event_id"])
+        self.assertEqual(
+            event.context.get("bay_request_note"),
+            "Prior swap aborted — pack never issued",
+        )
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action="risk.velocity_exception.requested"
+            ).exists()
+        )
+        status_res2 = client.get(
+            "/api/v1/mobility/swaps/velocity-status/",
+            {"vehicle_id": str(self.vehicle.id)},
+        )
+        self.assertTrue(status_res2.json().get("exception_requested"))

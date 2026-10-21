@@ -116,6 +116,15 @@ export type SocSlice = {
   color: string
 }
 
+export type AccountSpendRow = {
+  vehicle_id?: string | null
+  driver_id?: string | null
+  plate?: string
+  name?: string
+  swaps: number
+  amount_kobo: number
+}
+
 export type AccountDetailStats = {
   status: string
   kyc_status: string
@@ -126,10 +135,37 @@ export type AccountDetailStats = {
   swaps_per_day: number
   energy_kwh_total: number
   fuel_saved_kobo: number
+  /** Petrol price used for the estimate (configured, not hard-coded). */
+  petrol_kobo_per_litre?: number
   avg_returned_soc: number
   soc_distribution?: SocSlice[]
   daily_metrics: DailyMetricPoint[]
   start_date?: string
   end_date?: string
+  spend_amount_kobo?: number
+  spend_by_vehicle?: AccountSpendRow[]
+  spend_by_driver?: AccountSpendRow[]
+  /** Swap + plan fees per hub-local day (same as the owner's Spend tab). */
+  money?: AccountMoney
+}
+
+export type AccountMoney = {
+  start_date: string
+  end_date: string
+  totals: {
+    swaps: number
+    swap_fees_kobo: number
+    plan_fees_kobo: number
+    total_kobo: number
+    avg_per_day_kobo: number
+  }
+  daily: Array<{
+    date: string
+    swaps: number
+    swap_fees_kobo: number
+    plan_fees_kobo: number
+    total_kobo: number
+  }>
+  by_payment_mode: Array<{ mode: string; swaps: number; amount_kobo: number }>
 }
 

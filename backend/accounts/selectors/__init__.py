@@ -54,6 +54,17 @@ def drivers_for(user: User) -> QuerySet[Driver]:
         if not scope:
             return qs.none()
         return qs.filter(account_id__in=account_ids_touching_hubs(scope))
+    # Soft fleet: owner / fleet managers see every driver on their account(s).
+    if user_has_capability(user, "accounts:write_own") or user_has_capability(
+        user, "vehicles:manage"
+    ):
+        own_ids: list = list(user.accounts.values_list("id", flat=True))
+        profile = getattr(user, "driver_profile", None)
+        if profile is not None:
+            own_ids.append(profile.account_id)
+        own_ids = list({i for i in own_ids if i})
+        if own_ids:
+            return qs.filter(account_id__in=own_ids)
     return qs.filter(user=user)
 
 

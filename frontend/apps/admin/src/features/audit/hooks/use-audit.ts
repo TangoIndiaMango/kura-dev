@@ -1,4 +1,8 @@
 import { useFetchData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 
 export const AUDIT_ENDPOINTS = {
@@ -55,7 +59,7 @@ export function useAuditEvents(params?: AuditListParams) {
       ...(params?.action ? { action: params.action } : {}),
       ...(params?.start_date ? { start_date: params.start_date } : {}),
       ...(params?.end_date ? { end_date: params.end_date } : {}),
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
     { keepPreviousData: true, enabled },
@@ -65,6 +69,8 @@ export function useAuditEvents(params?: AuditListParams) {
     events: query.data?.results ?? [],
     next: query.data?.next ?? null,
     previous: query.data?.previous ?? null,
+    nextCursor: cursorFromLink(query.data?.next),
+    previousCursor: cursorFromLink(query.data?.previous),
     isPending: query.isPending,
     isFetching: query.isFetching,
   }

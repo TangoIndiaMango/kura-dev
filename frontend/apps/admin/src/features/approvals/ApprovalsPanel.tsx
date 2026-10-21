@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Skeleton } from '@mantine/core'
 import {
   AdminModuleLayout,
   DynamicTableSection,
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
+  LoadingState,
 } from '@shared/components'
 import { useConfigVersions } from '@features/platform-config'
 import {
@@ -37,15 +37,13 @@ export function ApprovalsPanel() {
     scope: 'approvals',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter approvals',
-    pageSize: 25,
+    pageSize: 10,
     showDateRange: false,
     includeDateRangeInFilter: false,
   })
 
   const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+    controls.getFilter('status')
 
   const pendingQuery = useConfigVersions({
     status: 'PENDING',
@@ -141,7 +139,7 @@ export function ApprovalsPanel() {
         ]}
       >
         {isPending ? (
-          <Skeleton height={280} radius="md" className="m-4" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<ApprovalTableRow>
             variant="embedded"

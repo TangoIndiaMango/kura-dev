@@ -15,6 +15,8 @@ from mobility.services.reservations.qr_token import reveal_reservation_qr
 
 
 class BatteryTypeSerializer(serializers.ModelSerializer):
+    vehicle_type = serializers.CharField(max_length=50)
+
     class Meta:
         model = BatteryType
         fields = [
@@ -206,6 +208,9 @@ class ReservationSerializer(serializers.ModelSerializer):
             "status",
             "payment_mode",
             "hold_amount_kobo",
+            "list_price_kobo",
+            "discount_code",
+            "discount_kobo",
             "expires_at",
             "created_at",
         ]
@@ -332,6 +337,9 @@ class SwapCompleteRequestSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    discount_code = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=40
+    )
     rider_pin_grant = serializers.CharField(
         required=False, allow_blank=True, default=""
     )
@@ -398,6 +406,9 @@ class SwapSessionCompleteSerializer(serializers.Serializer):
         allow_null=True,
     )
     amount_kobo = serializers.IntegerField(required=False, allow_null=True)
+    discount_code = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=40
+    )
     rider_pin_grant = serializers.CharField(
         required=False, allow_blank=True, default=""
     )

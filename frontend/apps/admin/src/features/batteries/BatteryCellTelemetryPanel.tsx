@@ -3,7 +3,7 @@ import { BatteryCellAnalyticsCard } from './BatteryCellAnalyticsCard'
 import { mapBatteryHealthAnalytics } from './batteryHealthMap'
 import type { BatteryDetailApi, BatteryListApi } from './types'
 
-/** Cell / SOH telemetry cockpit — live pack BMS metrics and 20S cell balance. */
+/** Cell / SOH cockpit — BMS metrics when telemetry provides cells, modelled estimates otherwise. */
 export function BatteryCellTelemetryPanel({
   battery,
   telemetryRaw,

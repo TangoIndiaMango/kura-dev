@@ -1,6 +1,6 @@
-import { Skeleton } from '@mantine/core'
 import {
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   type TableHeader,
 } from '@shared/components'
@@ -20,6 +20,7 @@ const VEHICLE_HEADERS: TableHeader[] = [
   { key: 'model', label: 'MODEL' },
   { key: 'type', label: 'TYPE' },
   { key: 'battery', label: 'BATTERY' },
+  { key: 'driver', label: 'DRIVER' },
   { key: 'status', label: 'STATUS' },
 ]
 
@@ -67,7 +68,7 @@ function batteryLabel(row: VehicleListApi): string {
 export function OperatorVehiclesTab({ operator }: { operator: OperatorRecord }) {
   const { vehicles, isPending, isError } = useAccountVehicles(operator.id)
 
-  if (isPending) return <Skeleton height={160} radius="md" />
+  if (isPending) return <LoadingState variant="inline" cols={6} rows={5} />
   if (isError) {
     return (
       <p className="text-[13px] text-[var(--mu)]">
@@ -98,6 +99,9 @@ export function OperatorVehiclesTab({ operator }: { operator: OperatorRecord }) 
         <span key="b" className="text-xs text-[var(--mu)]">
           {batteryLabel(row)}
         </span>,
+        <span key="dr" className="text-xs text-[var(--mu)]">
+          {row.assigned_driver_name || 'Any'}
+        </span>,
         <TableStatusBadge
           key="s"
           label={row.status}
@@ -111,7 +115,7 @@ export function OperatorVehiclesTab({ operator }: { operator: OperatorRecord }) 
 export function OperatorPlansTab({ operator }: { operator: OperatorRecord }) {
   const { subscriptions, isPending, isError } = useAccountSubscriptions(operator.id)
 
-  if (isPending) return <Skeleton height={160} radius="md" />
+  if (isPending) return <LoadingState variant="inline" cols={6} rows={5} />
   if (isError) {
     return (
       <p className="text-[13px] text-[var(--mu)]">
@@ -164,7 +168,7 @@ export function OperatorPlansTab({ operator }: { operator: OperatorRecord }) {
 export function OperatorSwapsTab({ operator }: { operator: OperatorRecord }) {
   const { swaps, isPending, isError } = useAccountSwaps(operator.id)
 
-  if (isPending) return <Skeleton height={160} radius="md" />
+  if (isPending) return <LoadingState variant="inline" cols={6} rows={5} />
   if (isError) {
     return (
       <p className="text-[13px] text-[var(--mu)]">

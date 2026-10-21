@@ -1,4 +1,5 @@
 import { useFetchData, usePatchData, usePostData } from '@shared/hooks/api'
+import { ADMIN_LIST_PAGE_SIZE } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { OFFERS_ENDPOINTS } from '../constants'
 import type {
@@ -27,7 +28,7 @@ export function useOffers(
     OFFERS_ENDPOINTS.list,
     {
       page: params?.page ?? 1,
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),

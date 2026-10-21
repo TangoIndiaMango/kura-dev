@@ -49,7 +49,8 @@ export const AddVehicleStep: React.FC<AddVehicleStepProps> = ({
   const models = modelsQuery.models
   const modelsLoading = isAuthenticated && modelsQuery.isLoading
   const plateOk = plate.trim().length >= 5
-  const hardwareIdOk = hardwareId.trim().length >= 4
+  // Optional: bikes without telematics have no controller serial (backend allows blank).
+  const hardwareIdOk = hardwareId.trim().length === 0 || hardwareId.trim().length >= 4
   const canSubmit =
     Boolean(selectedId) && plateOk && hardwareIdOk && isAuthenticated
 
@@ -154,8 +155,8 @@ export const AddVehicleStep: React.FC<AddVehicleStepProps> = ({
             styles={fieldStyles}
           />
           <TextInput
-            label="Vehicle hardware ID"
-            description="Enter the OEM controller or telematics serial printed on the vehicle."
+            label="Vehicle hardware ID (optional)"
+            description="Controller or telematics serial, if your vehicle has one."
             value={hardwareId}
             onChange={(e) => setHardwareId(e.currentTarget.value.toUpperCase())}
             placeholder="e.g. MCU-KR-20481"

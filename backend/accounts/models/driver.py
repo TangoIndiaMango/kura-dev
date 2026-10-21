@@ -10,6 +10,16 @@ class Driver(BaseModel):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="drivers")
     license_number = models.CharField(max_length=50, blank=True, default="")
     status = models.CharField(max_length=20, default="ACTIVE")
+    daily_swap_limit = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Null = unlimited. Soft fleet cap on completed swaps per calendar day.",
+    )
+    daily_spend_kobo_limit = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="Null = unlimited. Soft fleet cap on swap spend (kobo) per calendar day.",
+    )
     photo = models.ForeignKey(
         "core.MediaAsset",
         on_delete=models.SET_NULL,

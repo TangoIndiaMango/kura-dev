@@ -89,7 +89,12 @@ export function HubBatteryPicker({
     () =>
       options.map((b) => ({
         value: b.id,
-        label: `${b.serial} · ${b.chargePct}% · ${b.status}`,
+        // `expected:` rows are the vehicle's mounted pack, not visible to this agent — no charge to show.
+        label: b.id.startsWith('expected:')
+          ? `${b.serial} · on ${b.location}`
+          : `${b.serial} · ${b.chargePct}% · ${
+              b.status === 'RESERVED' ? 'Held for this booking' : b.status.replace('_', ' ')
+            }`,
       })),
     [options],
   )

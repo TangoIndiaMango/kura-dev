@@ -39,6 +39,30 @@ class AccountIdentityActionsMixin:
             IdentityService.adjust_photos(user=request.user, **ser.validated_data)
         )
 
+    @extend_schema(request=IdentitySubmitSerializer, responses={201: dict})
+    @action(detail=True, methods=["post"], url_path="kyc/submit")
+    def submit_kyc(self, request, pk=None):
+        account = self.get_object()
+        if account.owner_user is None:
+            from core.exceptions import DomainError
+
+            raise DomainError(
+                "VALIDATION_ERROR",
+                "This account has no owner to attach identity documents to.",
+                http=400,
+            )
+        ser = IdentitySubmitSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        return created(
+            IdentityService.submit(
+                user=account.owner_user,
+                account=account,
+                asset_owner=request.user,
+                actor=request.user,
+                **ser.validated_data,
+            )
+        )
+
     @extend_schema(responses={200: dict})
     @action(detail=True, methods=["get"], url_path="kyc")
     def kyc(self, request, pk=None):

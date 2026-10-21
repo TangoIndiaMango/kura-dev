@@ -27,6 +27,8 @@ export type SupportCaseListApi = {
   created_at: string
   sla_due_at?: string | null
   payment_id?: string | null
+  payment_receipt_code?: string | null
+  payment_amount_kobo?: number | null
 }
 
 export type SupportCaseEventApi = {

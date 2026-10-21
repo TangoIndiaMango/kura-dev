@@ -58,10 +58,15 @@ class IdentityService:
         face_asset_id=None,
         id_front_asset_id=None,
         id_back_asset_id=None,
+        account: Account | None = None,
+        asset_owner: User | None = None,
+        actor: User | None = None,
     ) -> dict:
         doc_type = (id_type or "").strip().upper()
         number = "".join(ch for ch in (id_number or "") if ch.isalnum())
         name = (display_name or "").strip()
+        if not name and account is not None:
+            name = account.display_name
         if len(name) < 2:
             raise DomainError(
                 "VALIDATION_ERROR",
@@ -75,11 +80,11 @@ class IdentityService:
                 details={"id_type": ["invalid"]},
             )
 
-        from accounts.services.accounts import AccountService
+        if account is None:
+            from accounts.services.accounts import AccountService
 
-        AccountService.complete_profile(user=user, display_name=name)
-
-        account = IdentityService._own_account(user)
+            AccountService.complete_profile(user=user, display_name=name)
+            account = IdentityService._own_account(user)
         existing = (
             IdentityDocument.objects.select_for_update()
             .filter(account=account, doc_type=doc_type)
@@ -96,15 +101,16 @@ class IdentityService:
                 details={"id_number": ["invalid"]},
             )
 
-        face = resolve_owned_asset(user=user, asset_id=face_asset_id)
+        owner = asset_owner or user
+        face = resolve_owned_asset(user=owner, asset_id=face_asset_id)
         if face is None:
             raise DomainError(
                 "VALIDATION_ERROR",
                 "Face photo is required. Upload via /media/upload/ first.",
                 details={"face_asset_id": ["required"]},
             )
-        front = resolve_owned_asset(user=user, asset_id=id_front_asset_id)
-        back = resolve_owned_asset(user=user, asset_id=id_back_asset_id)
+        front = resolve_owned_asset(user=owner, asset_id=id_front_asset_id)
+        back = resolve_owned_asset(user=owner, asset_id=id_back_asset_id)
         if front is None or back is None:
             raise DomainError(
                 "VALIDATION_ERROR",
@@ -160,6 +166,20 @@ class IdentityService:
             schedule_va_provision(
                 account.id,
                 bvn_or_nin=number if number else None,
+            )
+
+        if actor is not None and actor.pk != user.pk:
+            emit_event(
+                action="kyc.submitted_by_admin",
+                subject_type="account",
+                subject_id=str(account.id),
+                subject_label=account.kura_id or account.display_name,
+                actor=actor,
+                after={
+                    "doc_type": doc_type,
+                    "id_last4": last4,
+                    "kyc_status": account.kyc_status,
+                },
             )
 
         return IdentityService.kyc_payload(account, driver=driver, doc=doc)

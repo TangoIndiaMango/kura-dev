@@ -25,6 +25,7 @@ def settle_swap_payment(
     vehicle: Vehicle,
     hub: Hub | None = None,
     agent=None,
+    swap_key: str = "",
 ) -> SettleResult:
     if mode == Reservation.PaymentMode.PLAN:
         sub = _consume_plan_allowance(vehicle=vehicle)
@@ -76,11 +77,14 @@ def settle_swap_payment(
         from operations.services.cash.deposits import CashDepositService
 
         account = Account.objects.get(pk=account_id)
-        idem = (
-            f"swap-cash:{reservation.id}:{fee}"
-            if reservation is not None
-            else f"walkin-cash:{account_id}:{hub.id}:{fee}:{agent.id}"
-        )
+        # One deposit per swap: a fleet account can pay cash for several
+        # vehicles at the same bay, agent and price.
+        if swap_key:
+            idem = f"swap-cash:{swap_key}"
+        elif reservation is not None:
+            idem = f"swap-cash:{reservation.id}:{fee}"
+        else:
+            idem = f"walkin-cash:{uuid.uuid4().hex}"
         deposit = CashDepositService.record(
             agent=agent,
             hub=hub,

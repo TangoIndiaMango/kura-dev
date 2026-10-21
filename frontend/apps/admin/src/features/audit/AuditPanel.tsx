@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AdminConfirmModal,
   AdminModuleLayout,
@@ -9,6 +9,10 @@ import {
   useAdminModuleControls,
   type TableHeader,
 } from '@shared/components'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { downloadCsv } from '@shared/utils/downloadCsv'
 import { useAuditEvents, useAuditStats, type AuditEventApi } from './hooks/use-audit'
 
@@ -24,19 +28,51 @@ export function AuditPanel() {
   const [peek, setPeek] = useState<AuditEventApi | null>(null)
   const [confirmExport, setConfirmExport] = useState(false)
   const [exported, setExported] = useState(false)
+  const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
+
   const controls = useAdminModuleControls({
     scope: 'audit',
     statusOptions: [],
     filterTitle: 'Filter audit log',
+    pageSize: ADMIN_LIST_PAGE_SIZE,
   })
 
-  const { events, isPending, isError } = useAuditEvents({
+  useEffect(() => {
+    setCursor(undefined)
+    setPage(1)
+  }, [
+    controls.search,
+    controls.dateRange.start_date,
+    controls.dateRange.end_date,
+  ])
+
+  const {
+    events,
+    isPending,
+    isError,
+    isPlaceholderData,
+    nextCursor,
+    previousCursor,
+  } = useAuditEvents({
     search: controls.search || undefined,
     start_date: controls.dateRange?.start_date,
     end_date: controls.dateRange?.end_date,
+    cursor,
+    page_size: ADMIN_LIST_PAGE_SIZE,
   })
   const { data: stats } = useAuditStats()
-  const { pageRows, pagination } = controls.paginate(events)
+
+  const pagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const formatAt = (iso: string) =>
     new Date(iso).toLocaleString('en-GB', {
@@ -65,9 +101,9 @@ export function AuditPanel() {
             sub: 'Recent',
           },
           {
-            title: 'Loaded',
+            title: 'This page',
             value: String(events.length),
-            sub: 'Current feed',
+            sub: 'Current feed window',
           },
           {
             title: 'Module',
@@ -87,13 +123,17 @@ export function AuditPanel() {
           <DynamicTableSection<AuditEventApi>
             variant="embedded"
             headers={HEADERS}
-            data={pageRows}
+            data={events}
             pagination={pagination}
             getRowKey={(item) => item.id}
             toolbar={{
               title: 'Audit log',
               searchQuery: controls.searchQuery,
-              onSearchChange: controls.setSearchQuery,
+              onSearchChange: (v) => {
+                setCursor(undefined)
+                setPage(1)
+                controls.setSearchQuery(v)
+              },
               searchPlaceholder: 'Search action, actor, or target…',
               onFilter: controls.openFilter,
               showFilter: true,
@@ -107,7 +147,10 @@ export function AuditPanel() {
               <span key="at" className="text-xs text-[var(--mu)]">
                 {formatAt(item.at)}
               </span>,
-              <span key="action" className="font-mono text-xs font-bold text-[var(--pr)]">
+              <span
+                key="action"
+                className="font-mono text-xs font-bold text-[var(--pr)]"
+              >
                 {item.action}
               </span>,
               <span key="actor" className="text-xs font-bold text-[var(--tx)]">
@@ -137,7 +180,9 @@ export function AuditPanel() {
                 { label: 'Role', value: peek.actor_role || '—' },
                 {
                   label: 'Target',
-                  value: peek.subject_label || `${peek.subject_type}:${peek.subject_id}`,
+                  value:
+                    peek.subject_label ||
+                    `${peek.subject_type}:${peek.subject_id}`,
                 },
                 { label: 'IP', value: peek.ip_address || '—' },
                 {

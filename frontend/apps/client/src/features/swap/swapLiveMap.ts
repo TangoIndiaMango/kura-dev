@@ -17,6 +17,7 @@ export type BookableHub = SwapHub & {
   eta: string
   chargingSlots: string
   agent: string
+  code?: string
   acceptsCash: boolean
   batteries: HubDetailData['batteries']
 }
@@ -43,7 +44,10 @@ export function mapLiveVehicles(rows: LiveVehicleApi[]): SwapVehicle[] {
     short: v.model_name,
     reg: v.registration_plate,
     battery: v.current_battery_serial || 'No pack mounted',
+    batteryType: v.battery_type_name || null,
     plan: 'None',
+    payPerSwapNaira:
+      typeof v.pay_per_swap_kobo === 'number' ? v.pay_per_swap_kobo / 100 : null,
   }))
 }
 
@@ -124,7 +128,8 @@ export function mapDiscoverHubs(
       address: h.address,
       eta: etaMins != null ? `~${etaMins} min` : 'Enable location',
       chargingSlots: `${h.ready_count} ready packs`,
-      agent: h.code,
+      agent: '',
+      code: h.code,
       acceptsCash: true,
       lat: h.lat,
       lng: h.lng,

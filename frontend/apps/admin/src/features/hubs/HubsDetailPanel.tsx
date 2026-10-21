@@ -7,11 +7,8 @@ import {
 } from '@shared/components'
 import { useCapabilities } from '../auth/useCapabilities'
 import { buildBayBoardCardsFromSlots } from './hubBayBoardModel'
-import {
-  agentsForHub,
-  stationExtrasForDetail,
-  type HubAction,
-} from './hubDetailHelpers'
+import { stationExtrasForDetail, type HubAction } from './hubDetailHelpers'
+import { useHubStationAgents } from './HubStationAgents'
 import { HubBayStatusGrid } from './HubBayStatusGrid'
 import { HubStationOverview, HubStatusBanner } from './HubStationOverview'
 import {
@@ -54,10 +51,7 @@ export function HubsDetailPanel({ id }: { id: string }) {
     [slots],
   )
   const extras = useMemo(() => (hub ? stationExtrasForDetail(hub) : null), [hub])
-  const hubAgents = useMemo(
-    () => (hub ? agentsForHub(hub.name, 'Amina Bello') : []),
-    [hub?.name],
-  )
+  const { agents: hubAgents } = useHubStationAgents(hub?.id, Boolean(hub))
 
   if (isPending) {
     return (
@@ -236,7 +230,7 @@ export function HubsDetailPanel({ id }: { id: string }) {
             lastSync={lastSync}
             extras={extras}
             agents={hubAgents}
-            leadPhone={hubAgents[0]?.phone || '+234 802 334 9912'}
+            leadPhone={hubAgents[0]?.phone || '—'}
           />
         ) : null}
       </AdminDetailPage>

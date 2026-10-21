@@ -1,254 +1,161 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  MultiSelect,
-  NumberInput,
-  Select,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core'
+import { MultiSelect, NumberInput, Select, TextInput } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import {
   AdminFormSuccessModal,
   FormFooterActions,
+  LoadingState,
   SidebarFormLayout,
 } from '@shared/components'
-import type {
-  AlertRuleChannel,
-  AlertRuleOp,
-  AlertRuleRecord,
-  AlertRuleSignal,
-} from '@shared/mock/adminMockData'
+import { apiErrorMessage } from '@lib/api/auth'
+import { ALERT_RULE_CHANNELS, ALERT_RULE_KINDS } from './constants'
 import {
-  ALERT_CHANNEL_OPTIONS,
-  ALERT_OP_OPTIONS,
-  ALERT_SCOPE_OPTIONS,
-  ALERT_SEVERITY_OPTIONS,
-  ALERT_SIGNAL_CATALOG,
-  defaultRuleName,
-  getAlertSignalMeta,
-} from './alertRuleCatalog'
-import {
-  findAlertRule,
-  nextAlertRuleId,
-  upsertAlertRule,
-} from './alertRulesStore'
+  useAlertRule,
+  useCreateAlertRule,
+  useUpdateAlertRule,
+} from './hooks/use-alert-rules'
 
-const CREATE_TIPS = [
-  'Signals are a fixed catalog — the backend evaluator only understands these IDs.',
-  'Cooldown stops the same rule + scope from re-firing until it expires.',
-  'Dashboard is always available; SMS / WhatsApp need ops numbers configured.',
-]
-
-const EDIT_TIPS = [
-  'Changing the signal resets default op, threshold, severity, and cooldown.',
-  'Paused rules stay in the catalog but are skipped by the evaluator.',
-  'Channel changes apply on the next fire after save.',
+const TIPS = [
+  'Kind maps to Alert.kind — evaluator matches open alerts of the same kind.',
+  'Cooldown stops the same rule from re-firing until it expires.',
+  'Channels are delivery hints; IN_APP is always available.',
 ]
 
 export function AlertRuleFormPanel({ ruleId }: { ruleId?: string }) {
   const navigate = useNavigate()
-  const existing = useMemo(
-    () => (ruleId ? findAlertRule(ruleId) : null),
-    [ruleId],
-  )
-  const isEdit = Boolean(existing)
+  const isEdit = Boolean(ruleId)
+  const existing = useAlertRule(ruleId, { enabled: isEdit })
+  const create = useCreateAlertRule()
+  const update = useUpdateAlertRule(ruleId ?? '')
 
-  const seed = existing ?? null
-  const initialSignal = seed?.signal ?? ALERT_SIGNAL_CATALOG[0]!.id
-  const initialMeta = getAlertSignalMeta(initialSignal)
-
-  const [name, setName] = useState(seed?.name ?? '')
-  const [signal, setSignal] = useState<AlertRuleSignal>(initialSignal)
-  const [op, setOp] = useState<AlertRuleOp>(seed?.op ?? initialMeta.defaultOp)
-  const [thresholdValue, setThresholdValue] = useState(
-    seed?.thresholdValue ?? initialMeta.defaultValue,
-  )
-  const [severity, setSeverity] = useState<AlertRuleRecord['severity']>(
-    seed?.severity ?? initialMeta.defaultSeverity,
-  )
-  const [scope, setScope] = useState<AlertRuleRecord['scope']>(
-    seed?.scope ?? 'all',
-  )
-  const [channels, setChannels] = useState<AlertRuleChannel[]>(
-    seed?.channels ?? ['dashboard'],
-  )
-  const [cooldownMinutes, setCooldownMinutes] = useState(
-    seed?.cooldownMinutes ?? initialMeta.defaultCooldownMinutes,
-  )
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState<string>(ALERT_RULE_KINDS[0]!.value)
+  const [severity, setSeverity] = useState('WARNING')
+  const [thresholdValue, setThresholdValue] = useState<number | string>(1)
+  const [channels, setChannels] = useState<string[]>(['IN_APP'])
+  const [cooldown, setCooldown] = useState(30)
   const [savedId, setSavedId] = useState<string | null>(null)
 
-  const meta = getAlertSignalMeta(signal)
-  const valid =
-    thresholdValue > 0 && channels.length > 0 && cooldownMinutes >= 1
+  useEffect(() => {
+    const row = existing.data
+    if (!row) return
+    setName(row.name)
+    setKind(row.kind)
+    setSeverity(row.severity)
+    const tv = row.threshold?.value
+    setThresholdValue(typeof tv === 'number' ? tv : Number(tv) || 1)
+    setChannels(row.channels?.length ? row.channels : ['IN_APP'])
+    setCooldown(row.cooldown_minutes || 30)
+  }, [existing.data])
 
   const leave = () => navigate('/alerts?tab=rules')
+  const valid =
+    name.trim().length > 0 &&
+    kind &&
+    channels.length > 0 &&
+    Number(cooldown) >= 1 &&
+    Number(thresholdValue) > 0
 
-  const applySignal = (next: AlertRuleSignal) => {
-    const m = getAlertSignalMeta(next)
-    setSignal(next)
-    setOp(m.defaultOp)
-    setThresholdValue(m.defaultValue)
-    setSeverity(m.defaultSeverity)
-    setCooldownMinutes(m.defaultCooldownMinutes)
-    setName((prev) => {
-      const auto = defaultRuleName(signal, op, thresholdValue)
-      if (!prev.trim() || prev === auto) {
-        return defaultRuleName(next, m.defaultOp, m.defaultValue)
+  const onSave = async () => {
+    if (!valid) return
+    const payload = {
+      name: name.trim(),
+      kind,
+      severity,
+      threshold: { value: Number(thresholdValue) },
+      channels,
+      cooldown_minutes: Number(cooldown),
+    }
+    try {
+      if (isEdit && ruleId) {
+        const row = await update.mutateAsync(payload)
+        setSavedId(row.id)
+      } else {
+        const row = await create.mutateAsync(payload)
+        setSavedId(row.id)
       }
-      return prev
-    })
+    } catch (err) {
+      notifications.show({
+        color: 'red',
+        message: apiErrorMessage(err, 'Could not save rule'),
+      })
+    }
   }
 
-  const onSave = () => {
-    if (!valid) return
-    const resolvedName =
-      name.trim() || defaultRuleName(signal, op, thresholdValue)
-    const id = existing?.id ?? nextAlertRuleId()
-    upsertAlertRule({
-      id,
-      name: resolvedName,
-      signal,
-      op,
-      thresholdValue,
-      severity,
-      scope,
-      channels,
-      cooldownMinutes,
-      status: existing?.status ?? 'ACTIVE',
-    })
-    setSavedId(id)
+  if (isEdit && existing.isPending) {
+    return <LoadingState variant="inline" cols={2} rows={8} />
   }
 
   return (
     <>
       <SidebarFormLayout
         sidebarTitle={isEdit ? 'Edit alert rule' : 'New alert rule'}
-        sidebarSubtitle="Ops · Alerts"
-        sidebarTips={isEdit ? EDIT_TIPS : CREATE_TIPS}
-        steps={[{ label: 'Signal & threshold' }]}
+        sidebarTips={TIPS}
+        steps={[{ label: 'Rule' }]}
         activeStep={0}
         onClose={leave}
-        headerActionLabel="Close ×"
         footer={
           <FormFooterActions
             onBack={leave}
-            submitLabel={isEdit ? 'Save rule' : 'Create rule'}
-            submitType="button"
-            disabled={!valid}
             onSubmitClick={onSave}
+            submitType="button"
+            submitLabel={isEdit ? 'Save rule' : 'Create rule'}
+            disabled={!valid}
+            loading={create.isPending || update.isPending}
           />
         }
       >
-        <div>
-          <Title order={2} className="text-[var(--tx)]">
-            {isEdit ? 'Rule configuration' : 'Create rule'}
-          </Title>
-          <Text size="sm" c="dimmed" mt={6}>
-            Pick a built-in signal, set the threshold and channels. The evaluator
-            owns firing — this screen is config only.
-          </Text>
-        </div>
-
-        <Select
-          label="Signal"
-          description={meta.description}
-          data={ALERT_SIGNAL_CATALOG.map((s) => ({
-            value: s.id,
-            label: s.label,
-          }))}
-          value={signal}
-          onChange={(v) => {
-            if (v) applySignal(v as AlertRuleSignal)
-          }}
-          allowDeselect={false}
-        />
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[120px_1fr]">
+        <div className="flex flex-col gap-3">
+          <TextInput
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            required
+          />
           <Select
-            label="Operator"
-            data={ALERT_OP_OPTIONS}
-            value={op}
-            onChange={(v) => {
-              if (v) setOp(v as AlertRuleOp)
-            }}
-            allowDeselect={false}
+            label="Kind"
+            data={[...ALERT_RULE_KINDS]}
+            value={kind}
+            onChange={(v) => v && setKind(v)}
+            required
           />
-          <NumberInput
-            label={`Threshold (${meta.unit})`}
-            value={thresholdValue}
-            min={1}
-            onChange={(v) => {
-              if (typeof v === 'number') setThresholdValue(v)
-            }}
-          />
-        </div>
-
-        <TextInput
-          label="Display name"
-          description="Optional — defaults from signal + threshold"
-          value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder={defaultRuleName(signal, op, thresholdValue)}
-        />
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select
             label="Severity"
-            data={ALERT_SEVERITY_OPTIONS}
+            data={[
+              { value: 'INFO', label: 'Info' },
+              { value: 'WARNING', label: 'Warning' },
+              { value: 'CRITICAL', label: 'Critical' },
+            ]}
             value={severity}
-            onChange={(v) => {
-              if (v) setSeverity(v as AlertRuleRecord['severity'])
-            }}
-            allowDeselect={false}
+            onChange={(v) => v && setSeverity(v)}
           />
-          <Select
-            label="Scope"
-            data={ALERT_SCOPE_OPTIONS}
-            value={scope}
-            onChange={(v) => {
-              if (v) setScope(v as AlertRuleRecord['scope'])
-            }}
-            allowDeselect={false}
+          <NumberInput
+            label="Threshold value"
+            value={thresholdValue}
+            onChange={setThresholdValue}
+            min={1}
+          />
+          <MultiSelect
+            label="Channels"
+            data={[...ALERT_RULE_CHANNELS]}
+            value={channels}
+            onChange={setChannels}
+          />
+          <NumberInput
+            label="Cooldown (minutes)"
+            value={cooldown}
+            onChange={(v) => setCooldown(typeof v === 'number' ? v : 30)}
+            min={1}
           />
         </div>
-
-        <MultiSelect
-          label="Channels"
-          data={ALERT_CHANNEL_OPTIONS}
-          value={channels}
-          onChange={(v) => setChannels(v as AlertRuleChannel[])}
-        />
-
-        <NumberInput
-          label="Cooldown (minutes)"
-          description="Suppress re-fire for the same rule + scope"
-          value={cooldownMinutes}
-          min={1}
-          onChange={(v) => {
-            if (typeof v === 'number') setCooldownMinutes(v)
-          }}
-        />
-
-        <Text size="xs" c="dimmed">
-          Eval: {meta.evalMode === 'poll' ? 'periodic poll' : 'on domain event'} ·
-          unit {meta.unit}
-        </Text>
       </SidebarFormLayout>
-
       <AdminFormSuccessModal
-        opened={!!savedId}
-        onClose={() => {
-          setSavedId(null)
-          leave()
-        }}
+        opened={Boolean(savedId)}
+        mode={isEdit ? 'saved' : 'created'}
         title={isEdit ? 'Rule updated' : 'Rule created'}
-        description={
-          isEdit
-            ? 'Config saved. The evaluator will use this on the next poll or matching event.'
-            : 'Rule is active in the catalog. Pause it anytime from Alert Rules.'
-        }
-        actionLabel="Back to rules"
+        description="Persisted to operations alert-rules. Evaluator can match open alerts by kind."
+        onClose={leave}
       />
     </>
   )

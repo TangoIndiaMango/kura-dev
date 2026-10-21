@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
@@ -8,9 +8,10 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { downloadCsv } from '@shared/utils/downloadCsv'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../auth/useCapabilities'
 import { retrofitStageTone } from './engineHelpers'
 import {
@@ -37,20 +38,6 @@ const STATUS_OPTIONS = [
   { value: 'DISPOSED', label: 'Disposed' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function EnginesPanel() {
   const navigate = useNavigate()
@@ -61,17 +48,11 @@ export function EnginesPanel() {
     filterTitle: 'Filter engines',
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
   const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+    controls.getFilter('status')
 
-  const { engines, isPending, isError, count, totalPages, currentPage } =
+  const { engines, isPending, isError, count, totalPages, isPlaceholderData } =
     useEngines(
       {
         page: controls.page,
@@ -176,18 +157,19 @@ export function EnginesPanel() {
             Could not load engines. Retry or check API.
           </p>
         ) : listPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<EnginesTableRow>
             variant="embedded"
             headers={HEADERS}
             data={rows}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.key}
             toolbar={{
               title: `Retrofits · ${titleCount}`,

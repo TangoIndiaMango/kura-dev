@@ -25,7 +25,7 @@ export function AccountProfileTab({
   const { impact, isPending } = useAccountImpact()
 
   const savedSince = impact?.saved_since
-    ? `Since ${new Date(impact.saved_since).toLocaleDateString()}`
+    ? `Since ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${impact.saved_since}T00:00:00Z`))}`
     : 'Estimate vs petrol'
   const swapsPerWeek = impact
     ? `${impact.swaps_per_week}/week`
@@ -56,6 +56,11 @@ export function AccountProfileTab({
 
       <AccountMenuList
         items={[
+          {
+            id: 'name',
+            title: 'Name',
+            subtitle: session.name,
+          },
           {
             id: 'identity',
             title:

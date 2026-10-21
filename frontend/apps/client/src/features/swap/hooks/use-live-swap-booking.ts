@@ -126,11 +126,13 @@ export function useLiveSwapBooking() {
     hub: BookableHub
     vehicle: { id: string; short: string }
     mode: BookingPaymentMode
+    discountCode?: string
   }): Promise<{
     id: string
     code: string
     expiresAt: number
     qr: string
+    dueNaira: number | null
   } | null> {
     if (bookingBusy) return null
     if (!isAuthenticated) {
@@ -146,6 +148,7 @@ export function useLiveSwapBooking() {
         vehicle: input.vehicle.id,
         hub: input.hub.id,
         payment_mode: apiPaymentMode(input.mode),
+        ...(input.discountCode ? { discount_code: input.discountCode } : {}),
       })
       const qr = (res.qr ?? '').trim()
       if (!qr) {
@@ -159,6 +162,10 @@ export function useLiveSwapBooking() {
         code: res.code,
         expiresAt: new Date(res.expires_at).getTime(),
         qr,
+        dueNaira:
+          typeof res.hold_amount_kobo === 'number'
+            ? res.hold_amount_kobo / 100
+            : null,
       }
       if (qr) {
         await cacheHoldForOffline({

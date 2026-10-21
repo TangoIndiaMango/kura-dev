@@ -42,3 +42,12 @@ class AccountProfileSerializer(serializers.Serializer):
 
 class AccountSuspendSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=255)
+
+
+class OperatorRegisterSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=200)
+    phone = serializers.CharField(max_length=30)
+    email = serializers.EmailField(max_length=254)
+    id_type = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    id_number = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    cooperative_id = serializers.UUIDField(required=False, allow_null=True)

@@ -195,6 +195,13 @@ export function RiskDetailPanel() {
                 value={`${event.active_velocity_grant.uses_remaining}/${event.active_velocity_grant.max_uses} left · until ${formatWhen(event.active_velocity_grant.expires_at)}`}
               />
             ) : null}
+            {typeof event.context?.bay_request_note === 'string' &&
+            event.context.bay_request_note.trim() ? (
+              <Fact
+                label="Bay request"
+                value={String(event.context.bay_request_note)}
+              />
+            ) : null}
           </div>
         </section>
 

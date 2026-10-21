@@ -26,13 +26,22 @@ import {
   OperatorSwapsTab,
   OperatorVehiclesTab,
 } from './OperatorCrmPanels'
+import { OperatorDriversTab } from './OperatorDriversTab'
 import { OperatorsDetailModals } from './OperatorsDetailModals'
 import { useOperator, useOperatorDetailStats, useOperatorKyc } from './hooks/use-operators'
 import { useOperatorDetailActions } from './hooks/use-operator-detail-actions'
 import { buildOperatorDetailActions } from './buildOperatorDetailActions'
 
 const OPERATOR_TABS = [
-  'overview', 'vehicles', 'plans', 'swaps', 'ledger', 'activity', 'cases', 'risk',
+  'overview',
+  'vehicles',
+  'drivers',
+  'plans',
+  'swaps',
+  'ledger',
+  'activity',
+  'cases',
+  'risk',
 ] as const
 
 export function OperatorsDetailPanel({ id }: { id: string }) {
@@ -189,6 +198,12 @@ export function OperatorsDetailPanel({ id }: { id: string }) {
             label: 'Vehicles',
             count: operator.vehicleIds?.length,
             content: <OperatorVehiclesTab operator={liveOperator} />,
+          },
+          {
+            id: 'drivers',
+            label: 'Drivers',
+            count: detailStats?.drivers_count,
+            content: <OperatorDriversTab operator={liveOperator} />,
           },
           {
             id: 'plans',

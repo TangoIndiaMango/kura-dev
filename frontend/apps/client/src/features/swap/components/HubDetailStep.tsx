@@ -13,6 +13,8 @@ export interface HubDetailData {
   hours: string
   chargingSlots: string
   agent: string
+  /** Public hub code (e.g. HUB-YBA-01) — what riders read on the signage. */
+  code?: string
   acceptsCash: boolean
   lat: number
   lng: number
@@ -42,7 +44,7 @@ export const HubDetailStep: React.FC<HubDetailStepProps> = ({
     <div className="flex flex-col gap-4">
       <OperatorBackHeader
         title={hub.name}
-        subtitle={`${hub.id} · ${hub.distance} · ${hub.status}`}
+        subtitle={`${hub.code ?? hub.name} · ${hub.distance} · ${hub.status}`}
         onBack={onBack}
       />
 
@@ -102,8 +104,9 @@ export const HubDetailStep: React.FC<HubDetailStepProps> = ({
 
       <div className="divide-y divide-[var(--kura-border-subtle)] rounded-2xl border border-[var(--kura-border)] bg-[var(--kura-bg-elevated)] px-4">
         <InfoRow label="Opening hours" value={hub.hours} />
-        <InfoRow label="Charging slots" value={hub.chargingSlots} />
-        <InfoRow label="Agent on duty" value={hub.agent} />
+        <InfoRow label="Ready to issue" value={hub.chargingSlots} />
+        {hub.code ? <InfoRow label="Hub code" value={hub.code} /> : null}
+        {hub.agent ? <InfoRow label="Agent on duty" value={hub.agent} /> : null}
         <InfoRow
           label="Cash deposit"
           value={hub.acceptsCash ? 'Accepted' : 'Not accepted'}

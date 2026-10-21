@@ -131,7 +131,7 @@ export function useAccountSwaps(
   const enabled = Boolean(id) && options?.enabled !== false
   const query = useFetchData<CursorPaginated<SwapListApi>>(
     MOBILITY_ENDPOINTS.swaps,
-    { account: id, page_size: options?.page_size ?? 25 },
+    { account: id, page_size: options?.page_size ?? 10 },
     { enabled, keepPreviousData: true, staleTime: 30_000 },
   )
   return {

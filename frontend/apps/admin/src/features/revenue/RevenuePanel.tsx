@@ -1,4 +1,8 @@
-import { AdminModuleLayout, useAdminModuleControls } from '@shared/components'
+import {
+  AdminModuleLayout,
+  DemoDataBanner,
+  useAdminModuleControls,
+} from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
 import {
   MOCK_REVENUE_COLLECTIONS,
@@ -116,6 +120,14 @@ export function RevenuePanel() {
         onTabChange={setTab}
         kpis={tab === 'overview' ? liveKpis : modelKpis}
       >
+        {tab !== 'overview' ? (
+          <div className="mb-3">
+            <DemoDataBanner
+              module="Revenue model"
+              detail="Streams / cohorts use planning assumptions — not ledger truth. Use Live collections for ops."
+            />
+          </div>
+        ) : null}
         {tab === 'overview' ? (
           <RevenueLiveOverview
             data={data}

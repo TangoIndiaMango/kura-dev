@@ -22,11 +22,13 @@ import { RecentActivityList } from './components/RecentActivityList'
 import { HomeWalletStrip } from './components/HomeWalletStrip'
 import { HomeCreditScoreBlock } from './components/HomeCreditScoreBlock'
 import { HomeOnboardingChecklist } from './components/HomeOnboardingChecklist'
+import { swapsPausedMessage } from '../../shared/session/accountStatus'
 
 function hasDisplayName(name: string | undefined | null) {
   const n = (name ?? '').trim()
   if (!n) return false
-  return n.toLowerCase() !== 'rider'
+  // Backend placeholder for new accounts is "Rider 1234" (last 4 of phone).
+  return !/^rider(\s+\d{4})?$/i.test(n)
 }
 
 interface OperatorHomeScreenProps {
@@ -158,8 +160,22 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
     !hasCompletedFirstSwap &&
     !hasLivePass
 
+  const swapsPaused = swapsPausedMessage(session.accountStatus)
+
   return (
     <div className="flex flex-col gap-4">
+      {swapsPaused ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-[var(--kura-coral)]/40 bg-[var(--kura-coral)]/10 px-4 py-3.5"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kura-coral)]">
+            Swaps paused
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--kura-text)]">{swapsPaused}</p>
+        </div>
+      ) : null}
+
       {holds.length > 0 ? (
         <ActiveSwapBanner holds={holds} onOpen={openHoldPass} />
       ) : null}

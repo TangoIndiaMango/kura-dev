@@ -84,6 +84,15 @@ def assert_pin_grant(*, token: str, user_id) -> None:
         )
 
 
+def _wat(dt):
+    """Riders and staff read hub-local (Lagos) time, not UTC."""
+    from zoneinfo import ZoneInfo
+
+    from django.conf import settings
+
+    return dt.astimezone(ZoneInfo(getattr(settings, "DISPLAY_TIME_ZONE", "Africa/Lagos")))
+
+
 class AuthService:
     @staticmethod
     @transaction.atomic
@@ -376,7 +385,7 @@ class AuthService:
                 title="Console sign-in",
                 body=(
                     f"{display} ({label}) signed in to the admin console at "
-                    f"{when.strftime('%d %b %Y · %H:%M')} UTC."
+                    f"{_wat(when).strftime('%d %b %Y · %H:%M')} WAT."
                 ),
                 source="System",
                 severity=Notification.Severity.INFO,
@@ -431,7 +440,7 @@ class AuthService:
                 title="Operator sign-in",
                 body=(
                     f"{display} ({label}) signed in on {ch} at "
-                    f"{when.strftime('%d %b %Y · %H:%M')} UTC."
+                    f"{_wat(when).strftime('%d %b %Y · %H:%M')} WAT."
                 ),
                 source="System",
                 severity=Notification.Severity.INFO,

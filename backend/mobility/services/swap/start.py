@@ -181,6 +181,18 @@ def start_swap(
                     "driver_id and account_id are required for walk-in start.",
                 )
 
+        from accounts.models import Driver as DriverModel
+        from mobility.services.reservations.fleet_guards import (
+            assert_driver_may_use_vehicle,
+        )
+
+        swap_driver = (
+            reservation.driver
+            if reservation is not None
+            else DriverModel.objects.filter(pk=driver_id).first()
+        )
+        assert_driver_may_use_vehicle(driver=swap_driver, vehicle=vehicle)
+
         try:
             swap = Swap.objects.create(
                 reservation=reservation,

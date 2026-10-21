@@ -7,6 +7,7 @@ import {
   type OperatorActiveReservation,
 } from '../../shared/session'
 import { tariffFor } from '../../shared/tariffs/vehicleTariffs'
+import type { DiscountRedeemOk } from '../../shared/utils/discountRedeem'
 import { KuraIllustrationModal } from '../../shared/components'
 import { apiErrorMessage } from '../../lib/api/auth'
 import {
@@ -36,6 +37,7 @@ import { ForgotPinFlow } from './components/ForgotPinFlow'
 import { ReservationCodeStep } from './components/ReservationCodeStep'
 import { InsufficientBalanceStep } from './components/InsufficientBalanceStep'
 import { useMySwaps } from './hooks/use-swap-live'
+import { swapsPausedMessage } from '../../shared/session/accountStatus'
 
 type View = 'hub' | 'book' | 'pass'
 type BookStep =
@@ -142,6 +144,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const [countdownOpen, setCountdownOpen] = useState(false)
   const [paymentMode, setPaymentMode] = useState<BookingPaymentMode>('WALLET')
   const [pendingDueNaira, setPendingDueNaira] = useState(450)
+  const [pendingDiscountCode, setPendingDiscountCode] = useState('')
 
   useEffect(() => {
     if (vehiclesLoading) return
@@ -179,11 +182,13 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const balanceNaira = liveWallet.balanceNaira ?? 0
   const vehicle = vehicles.find((v) => v.id === vehicleId)
   const hub = catalogueHubs.find((h) => h.id === hubId)
-  const listPriceNaira = tariffFor(
-    [vehicle?.name, vehicle?.short, vehicle?.battery, vehicle?.reg]
-      .filter(Boolean)
-      .join(' '),
-  ).payPerSwap
+  const listPriceNaira =
+    vehicle?.payPerSwapNaira ??
+    tariffFor(
+      [vehicle?.name, vehicle?.short, vehicle?.battery, vehicle?.reg]
+        .filter(Boolean)
+        .join(' '),
+    ).payPerSwap
   const covered = vehicle ? vehicleCoveredByPlan(vehicle.plan) : false
   const walletOk = balanceNaira >= listPriceNaira
   const activeLoan = creditLoans.activeLoan
@@ -241,8 +246,9 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     setBookStep('confirm')
   }
 
-  const afterConfirm = (dueNaira: number) => {
+  const afterConfirm = (dueNaira: number, discount: DiscountRedeemOk | null) => {
     setPendingDueNaira(dueNaira)
+    setPendingDiscountCode(discount?.code ?? '')
     if (!session.hasPin) {
       setPin(emptyPin())
       setConfirmPin(emptyPin())
@@ -259,7 +265,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     const mode = modeOverride ?? effectiveMode
     if (!(hub && vehicle) || bookingBusy) return
 
-    createHold({ hub, vehicle, mode }).then((created) => {
+    createHold({ hub, vehicle, mode, discountCode: pendingDiscountCode }).then((created) => {
       if (!created) return
       const hold: OperatorActiveReservation = {
         id: created.id,
@@ -272,7 +278,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         createdAt: Date.now(),
         paymentMode: mode,
         ...(created.qr ? { qr: created.qr } : {}),
-        dueNaira: pendingDueNaira,
+        dueNaira: created.dueNaira ?? pendingDueNaira,
       }
       setLocalHold(hold)
       setPinnedHold(hold)
@@ -285,18 +291,11 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     })
   }
 
+  // From the shortfall screen: preselect cash/credit, but still show the summary
+  // (price, discount code) before the PIN — same path as a normal booking.
   const beginReserveWithMode = (mode: BookingPaymentMode) => {
     setPaymentMode(mode)
-    if (!session.hasPin) {
-      setPin(emptyPin())
-      setConfirmPin(emptyPin())
-      setBookStep('set-pin')
-      return
-    }
-    setPin(emptyPin())
-    setPinError(null)
-    setPinAttemptsLeft(3)
-    setBookStep('pin')
+    setBookStep('confirm')
   }
 
   const openPass = (id: string) => {
@@ -534,6 +533,30 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     )
   }
 
+  const swapsPaused = swapsPausedMessage(session?.accountStatus)
+  if (bookStep === 'vehicle' && swapsPaused) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setView('hub')}
+          className="mb-3 text-[13px] font-semibold text-[var(--kura-muted)]"
+        >
+          ← All swaps
+        </button>
+        <div
+          role="alert"
+          className="rounded-2xl border border-[var(--kura-coral)]/40 bg-[var(--kura-coral)]/10 px-4 py-3.5"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kura-coral)]">
+            Swaps paused
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-[var(--kura-text)]">{swapsPaused}</p>
+        </div>
+      </>
+    )
+  }
+
   if (bookStep === 'vehicle') {
     const list =
       vehiclesAvailableToBook.length > 0 ? vehiclesAvailableToBook : vehicles
@@ -571,7 +594,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         hubs={bookable}
         unavailableHubs={unavailable}
         selectedId={hubId}
-        vehicleLabel={vehicle?.battery ?? 'your battery'}
+        vehicleLabel={vehicle?.batteryType || 'your battery type'}
         userPosition={mapOrigin}
         loading={hubsLoading}
         onSelect={(id) => {
@@ -619,7 +642,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         rows={[
           { label: 'Vehicle', value: `${vehicle.short} · ${vehicle.reg}` },
           { label: 'Hub', value: hub.name },
-          { label: 'Battery', value: vehicle.battery },
+          { label: 'Battery type', value: vehicle.batteryType || '—' },
           { label: 'Payment', value: paymentLabel },
         ]}
         coveredByPlan={covered}
@@ -712,6 +735,11 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
       <>
         {!swapProgressOpen && !reservedOpen && !countdownOpen ? (
           <PinStep
+            subtitle={
+              effectiveMode === 'WALLET'
+                ? 'Wallet debit needs your 4-digit PIN.'
+                : 'Enter your 4-digit PIN to confirm this booking.'
+            }
             pin={pin}
             onPinChange={(vals) => {
               if (pinAttemptsLeft <= 0) {

@@ -14,6 +14,8 @@ export const BAY_ENDPOINTS = {
   swapComplete: '/mobility/swaps/complete/',
   identityMismatch: '/mobility/swaps/identity-mismatch/',
   verifyRiderPin: '/mobility/swaps/verify-rider-pin/',
+  velocityStatus: '/mobility/swaps/velocity-status/',
+  requestVelocityException: '/mobility/swaps/request-velocity-exception/',
   vehicles: '/mobility/vehicles/',
 } as const
 
@@ -32,6 +34,9 @@ export type ReservationApi = {
   status: string
   payment_mode: string
   hold_amount_kobo: number
+  list_price_kobo?: number
+  discount_code?: string
+  discount_kobo?: number
   expires_at: string
   created_at: string
 }
@@ -110,6 +115,52 @@ export function useStartSwap() {
   )
 }
 
+export type VelocityBayStatus = {
+  vehicle_id: string
+  blocked: boolean
+  reason?: string | null
+  message?: string | null
+  retry_after_seconds?: number
+  risk_event_id?: string | null
+  bay_request_note?: string | null
+  exception_requested?: boolean
+  active_grant?: {
+    id: string
+    uses_remaining: number
+    max_uses: number
+    expires_at: string
+  } | null
+}
+
+export function useVelocityBayStatus(
+  vehicleId: string | undefined,
+  options?: { enabled?: boolean; refetchInterval?: number | false },
+) {
+  return useFetchData<VelocityBayStatus>(
+    BAY_ENDPOINTS.velocityStatus,
+    { vehicle_id: vehicleId },
+    {
+      enabled: Boolean(vehicleId) && options?.enabled !== false,
+      staleTime: 5_000,
+      refetchInterval: options?.refetchInterval,
+    },
+  )
+}
+
+export function useRequestVelocityException() {
+  return usePostData<
+    {
+      vehicle_id: string
+      note: string
+      hub_id?: string
+      account_id?: string
+    },
+    { risk_event_id: string; status: string; exception_requested: boolean }
+  >(BAY_ENDPOINTS.requestVelocityException, [BAY_ENDPOINTS.velocityStatus], {
+    silentError: true,
+  })
+}
+
 export function useSwapReturn() {
   return usePostData<
     { swapId: string; battery_serial: string; charge_pct?: number; mismatch_reason?: string },
@@ -151,6 +202,7 @@ export function useSwapSessionComplete() {
       swapId: string
       payment_mode?: 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH' | null
       amount_kobo?: number | null
+      discount_code?: string
       rider_pin_grant?: string
     },
     SwapSessionApi
@@ -162,6 +214,7 @@ export function useSwapSessionComplete() {
       body: (v) => ({
         payment_mode: v.payment_mode,
         amount_kobo: v.amount_kobo,
+        discount_code: v.discount_code,
         rider_pin_grant: v.rider_pin_grant,
       }),
     },

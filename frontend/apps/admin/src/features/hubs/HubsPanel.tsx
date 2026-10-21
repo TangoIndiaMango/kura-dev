@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
@@ -10,10 +10,11 @@ import {
   useAdminModuleControls,
   type TableExportFormat,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { apiErrorMessage } from '@lib/api/auth'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '@features/auth'
 import {
   HUBS_ENDPOINTS,
@@ -46,20 +47,6 @@ function statusTone(status: HubStatus) {
   return 'danger' as const
 }
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function HubsPanel() {
   const navigate = useNavigate()
@@ -73,22 +60,16 @@ export function HubsPanel() {
     includeDateRangeInFilter: false,
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset page on filter/search only
-  }, [controls.search, controls.filterValues])
 
   const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+    controls.getFilter('status')
 
   const listFilters = {
     ...(controls.search ? { search: controls.search } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
   }
 
-  const { hubs, isPending, isError, totalPages, currentPage } = useHubs({
+  const { hubs, isPending, isError, totalPages, isPlaceholderData } = useHubs({
     search: controls.search || undefined,
     status: statusFilter,
     page: controls.page,
@@ -158,7 +139,7 @@ export function HubsPanel() {
         chartsSlot={<HubNetworkCharts readyByHub={readyByHub} />}
       >
         {isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : isError ? (
           <p className="mb-4 text-[13px] text-[var(--mu)]">
             Could not load hubs (need hubs:read).
@@ -168,12 +149,13 @@ export function HubsPanel() {
             variant="embedded"
             headers={HUB_HEADERS}
             data={hubs}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: 'All Hubs',

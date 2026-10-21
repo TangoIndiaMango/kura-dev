@@ -3,6 +3,7 @@ import type { BatteryRecord, ReservationRecord } from '@shared/mock/adminMockDat
 import type { BatteryListApi } from '@features/batteries/types'
 import type { ReservationApi, ReservationLookupApi } from './hooks/use-bay-swap'
 import { nowMs } from '@shared/time/serverClock'
+import type { DiscountRedeemOk } from '@features/discounts/discountRedeem'
 
 function expiresLabel(iso: string): string {
   const ms = new Date(iso).getTime() - nowMs()
@@ -19,6 +20,8 @@ export function mapReservationApi(r: ReservationApi): ReservationRecord & {
   driverId: string
   hubId: string
   holdAmountKobo: number
+  bookedDiscount: BookedDiscount | null
+  reservedBatteryId: string | null
 } {
   const mode = r.payment_mode === 'CASH' ? 'CASH_AT_HUB' : r.payment_mode
   const uiStatus =
@@ -44,7 +47,34 @@ export function mapReservationApi(r: ReservationApi): ReservationRecord & {
     driverId: r.driver,
     hubId: r.hub,
     holdAmountKobo: r.hold_amount_kobo,
+    bookedDiscount: bookedDiscountFrom(r),
+    reservedBatteryId: r.battery,
     firstSwap: false,
+  }
+}
+
+/** Code the rider redeemed when booking — the server charges this price at the bay. */
+export type BookedDiscount = { code: string; listKobo: number; discountKobo: number }
+
+function bookedDiscountFrom(r: ReservationApi): BookedDiscount | null {
+  if (!r.discount_code) return null
+  return {
+    code: r.discount_code,
+    listKobo: r.list_price_kobo ?? 0,
+    discountKobo: r.discount_kobo ?? 0,
+  }
+}
+
+export function bookedDiscountRedeem(b: BookedDiscount): DiscountRedeemOk {
+  const listNaira = b.listKobo / 100
+  const discountNaira = b.discountKobo / 100
+  return {
+    ok: true,
+    code: b.code,
+    listNaira,
+    discountNaira,
+    dueNaira: Math.max(0, listNaira - discountNaira),
+    valueLabel: 'Booked',
   }
 }
 
@@ -74,7 +104,9 @@ export function mapBatteryApi(b: BatteryListApi): BatteryRecord {
   else if (b.status === 'RETIRED') status = 'RETIRED'
   else if (b.status === 'FAULTED' || b.status === 'UNAVAILABLE' || b.status === 'LOST') {
     status = 'MAINTENANCE'
-  } else if (b.status === 'AVAILABLE' || b.status === 'RESERVED' || b.status === 'RETURNED') {
+  } else if (b.status === 'RESERVED') {
+    status = 'RESERVED'
+  } else if (b.status === 'AVAILABLE' || b.status === 'RETURNED') {
     status = 'AVAILABLE'
   }
   return {

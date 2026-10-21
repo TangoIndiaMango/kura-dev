@@ -5,6 +5,7 @@ from .accounts import (
     AccountProfileSerializer,
     AccountSerializer,
     AccountSuspendSerializer,
+    OperatorRegisterSerializer,
 )
 from .auth import (
     LoginBeginSerializer,
@@ -25,7 +26,7 @@ from .cooperatives import (
     CooperativeListSerializer,
     CooperativeWriteSerializer,
 )
-from .drivers import DriverSerializer
+from .drivers import DriverAttachSerializer, DriverLimitsSerializer, DriverSerializer
 from .identity import (
     AccountNotifySerializer,
     IdentityAdjustPhotosSerializer,
@@ -55,6 +56,8 @@ __all__ = [
     "CooperativeDetailSerializer",
     "CooperativeListSerializer",
     "CooperativeWriteSerializer",
+    "DriverAttachSerializer",
+    "DriverLimitsSerializer",
     "DriverSerializer",
     "IdentityAdjustPhotosSerializer",
     "IdentityRejectSerializer",
@@ -65,6 +68,7 @@ __all__ = [
     "LoginSerializer",
     "LogoutSerializer",
     "OnboardingCompleteSerializer",
+    "OperatorRegisterSerializer",
     "OtpRequestSerializer",
     "OtpVerifySerializer",
     "PasswordChangeSerializer",

@@ -1,5 +1,6 @@
 /** Live shifts + cash deposits for Payments cash recon tab. */
 import { useFetchData, usePostData } from '@shared/hooks/api'
+import { ADMIN_LIST_PAGE_SIZE } from '@shared/utils/cursor-pagination'
 import { shiftCashPhase } from '../cashReconHelpers'
 
 export const OPS_ENDPOINTS = {
@@ -38,6 +39,7 @@ type Page<T> = { results: T[]; count?: number }
 export function useShifts(params?: {
   status?: string
   page?: number
+  page_size?: number
   enabled?: boolean
   hub?: string
   agent?: string
@@ -48,7 +50,7 @@ export function useShifts(params?: {
     OPS_ENDPOINTS.shifts,
     {
       page: params?.page ?? 1,
-      page_size: 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status ? { status: params.status } : {}),
       ...(params?.hub ? { hub: params.hub } : {}),
       ...(params?.agent ? { agent: params.agent } : {}),

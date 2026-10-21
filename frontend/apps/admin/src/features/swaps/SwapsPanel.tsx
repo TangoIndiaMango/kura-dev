@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Skeleton } from '@mantine/core'
 import {
   AdminModuleLayout,
   useAdminModuleControls,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { useHubs } from '@features/hubs'
 import { readHoldPolicy } from './holdPolicy'
 import { useReservations, useSwaps } from './hooks/use-swaps'
@@ -44,34 +47,14 @@ function readFilter(
   return String(raw)
 }
 
-function cursorPagination(
-  cursor: string | undefined,
-  nextCursor: string | undefined,
-  previousCursor: string | undefined,
-  pageSize: number,
-  setCursor: (c: string | undefined) => void,
-): TablePaginationConfig {
-  return {
-    page: cursor ? 2 : 1,
-    totalPages: nextCursor ? (cursor ? 3 : 2) : cursor ? 2 : 1,
-    onPageChange: () => undefined,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-    onNext: nextCursor ? () => setCursor(nextCursor) : undefined,
-    onPrevious: previousCursor
-      ? () => setCursor(previousCursor)
-      : cursor
-        ? () => setCursor(undefined)
-        : undefined,
-  }
-}
-
 export function SwapsPanel() {
   const navigate = useNavigate()
   const holdPolicy = readHoldPolicy()
   const [tab, setTab] = useUrlTab('swaps', { valid: ['swaps', 'reservations'] })
   const [swapCursor, setSwapCursor] = useState<string | undefined>()
+  const [swapPage, setSwapPage] = useState(1)
   const [rsvCursor, setRsvCursor] = useState<string | undefined>()
+  const [rsvPage, setRsvPage] = useState(1)
 
   const { hubs } = useHubs({ page_size: 100 }, { enabled: true })
   const hubOptions = useMemo(
@@ -85,6 +68,7 @@ export function SwapsPanel() {
     filterTitle: 'Filter swaps',
     includeNameSort: false,
     includeValueSort: false,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
     extraFilterFields: [
       {
         type: 'select',
@@ -113,6 +97,7 @@ export function SwapsPanel() {
     filterTitle: 'Filter reservations',
     includeNameSort: false,
     includeValueSort: false,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
     extraFilterFields: [
       {
         type: 'select',
@@ -125,18 +110,29 @@ export function SwapsPanel() {
   })
   const controls = tab === 'swaps' ? swapsControls : reservationsControls
 
+  const swapStatus = readFilter(swapsControls.filterValues, 'status')
+  const swapHub = readFilter(swapsControls.filterValues, 'hub')
+  const swapPayMode = readFilter(swapsControls.filterValues, 'payment_mode')
+  const rsvStatus = readFilter(reservationsControls.filterValues, 'status')
+  const rsvHub = readFilter(reservationsControls.filterValues, 'hub')
+
   useEffect(() => {
     setSwapCursor(undefined)
+    setSwapPage(1)
   }, [
-    swapsControls.filterValues,
+    swapStatus,
+    swapHub,
+    swapPayMode,
     swapsControls.dateRange.start_date,
     swapsControls.dateRange.end_date,
   ])
 
   useEffect(() => {
     setRsvCursor(undefined)
+    setRsvPage(1)
   }, [
-    reservationsControls.filterValues,
+    rsvStatus,
+    rsvHub,
     reservationsControls.search,
     reservationsControls.dateRange.start_date,
     reservationsControls.dateRange.end_date,
@@ -146,13 +142,14 @@ export function SwapsPanel() {
     swaps,
     isPending: swapsPending,
     isError: swapsError,
+    isPlaceholderData: swapsPlaceholder,
     nextCursor: swapNext,
     previousCursor: swapPrev,
   } = useSwaps(
     {
-      status: readFilter(swapsControls.filterValues, 'status'),
-      hub: readFilter(swapsControls.filterValues, 'hub'),
-      payment_mode: readFilter(swapsControls.filterValues, 'payment_mode'),
+      status: swapStatus,
+      hub: swapHub,
+      payment_mode: swapPayMode,
       start_date: swapsControls.dateRange.start_date || undefined,
       end_date: swapsControls.dateRange.end_date || undefined,
       cursor: swapCursor,
@@ -165,12 +162,13 @@ export function SwapsPanel() {
     reservations,
     isPending: rsvPending,
     isError: rsvError,
+    isPlaceholderData: rsvPlaceholder,
     nextCursor: rsvNext,
     previousCursor: rsvPrev,
   } = useReservations(
     {
-      status: readFilter(reservationsControls.filterValues, 'status'),
-      hub: readFilter(reservationsControls.filterValues, 'hub'),
+      status: rsvStatus,
+      hub: rsvHub,
       code: reservationsControls.search.trim() || undefined,
       start_date: reservationsControls.dateRange.start_date || undefined,
       end_date: reservationsControls.dateRange.end_date || undefined,
@@ -213,6 +211,27 @@ export function SwapsPanel() {
     },
   ]
 
+  const swapsPagination = buildCursorPagination({
+    page: swapPage,
+    setPage: setSwapPage,
+    cursor: swapCursor,
+    setCursor: setSwapCursor,
+    nextCursor: swapNext,
+    previousCursor: swapPrev,
+    isPlaceholderData: swapsPlaceholder,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
+  const rsvPagination = buildCursorPagination({
+    page: rsvPage,
+    setPage: setRsvPage,
+    cursor: rsvCursor,
+    setCursor: setRsvCursor,
+    nextCursor: rsvNext,
+    previousCursor: rsvPrev,
+    isPlaceholderData: rsvPlaceholder,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
+
   const reservationKpis = [
     {
       title: 'This page',
@@ -254,7 +273,7 @@ export function SwapsPanel() {
       >
         {tab === 'swaps' ? (
           <>
-            {swapsPending ? <Skeleton height={280} radius="md" /> : null}
+            {swapsPending ? <LoadingState cols={6} rows={8} /> : null}
             {swapsError ? (
               <p className="mb-4 text-[13px] text-[var(--mu)]">
                 Could not load swaps (need swaps:read).
@@ -263,15 +282,13 @@ export function SwapsPanel() {
             {!swapsPending && !swapsError ? (
               <SwapsSessionsTable
                 swaps={swaps}
-                pagination={cursorPagination(
-                  swapCursor,
-                  swapNext,
-                  swapPrev,
-                  swapsControls.pageSize,
-                  setSwapCursor,
-                )}
+                pagination={swapsPagination}
                 searchQuery={swapsControls.searchQuery}
-                onSearchChange={swapsControls.setSearchQuery}
+                onSearchChange={(v) => {
+                  setSwapCursor(undefined)
+                  setSwapPage(1)
+                  swapsControls.setSearchQuery(v)
+                }}
                 onFilter={swapsControls.openFilter}
                 onRowClick={(s) => navigate(`/swaps/${s.id}`)}
               />
@@ -279,7 +296,7 @@ export function SwapsPanel() {
           </>
         ) : (
           <>
-            {rsvPending ? <Skeleton height={280} radius="md" /> : null}
+            {rsvPending ? <LoadingState cols={6} rows={8} /> : null}
             {rsvError ? (
               <p className="mb-4 text-[13px] text-[var(--mu)]">
                 Could not load reservations.
@@ -288,15 +305,13 @@ export function SwapsPanel() {
             {!rsvPending && !rsvError ? (
               <SwapsReservationsTable
                 reservations={reservations}
-                pagination={cursorPagination(
-                  rsvCursor,
-                  rsvNext,
-                  rsvPrev,
-                  reservationsControls.pageSize,
-                  setRsvCursor,
-                )}
+                pagination={rsvPagination}
                 searchQuery={reservationsControls.searchQuery}
-                onSearchChange={reservationsControls.setSearchQuery}
+                onSearchChange={(v) => {
+                  setRsvCursor(undefined)
+                  setRsvPage(1)
+                  reservationsControls.setSearchQuery(v)
+                }}
                 onFilter={reservationsControls.openFilter}
                 onRowClick={(r) => navigate(`/swaps/${r.id}`)}
                 onAttend={(r) =>

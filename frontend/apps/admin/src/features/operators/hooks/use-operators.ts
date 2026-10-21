@@ -35,7 +35,10 @@ export type { AccountDetailStats }
 export function useOperators(params?: {
   search?: string
   status?: string
+  kind?: string
   kyc_status?: string
+  start_date?: string
+  end_date?: string
   page?: number
   page_size?: number
 }) {
@@ -48,12 +51,15 @@ export function useOperators(params?: {
     queryParams.search = params.search
   }
   if (params?.status && params.status !== 'all') queryParams.status = params.status
+  if (params?.kind && params.kind !== 'all') queryParams.kind = params.kind
   if (params?.kyc_status) queryParams.kyc_status = params.kyc_status
+  if (params?.start_date) queryParams.start_date = params.start_date
+  if (params?.end_date) queryParams.end_date = params.end_date
 
   const query = useFetchData<PageNumberPaginated<AccountCrmList>>(
     ACCOUNTS_ENDPOINTS.list,
     queryParams,
-    { keepPreviousData: true },
+    { keepPreviousData: true, staleTime: 30_000 },
   )
 
   return {
@@ -150,6 +156,28 @@ export function useRequestOperatorKycPhotos(id: string) {
       ACCOUNTS_ENDPOINTS.detail(id),
       ACCOUNTS_ENDPOINTS.kyc(id),
     ],
+    { silentError: true },
+  )
+}
+
+export type RegisterOperatorPayload = {
+  full_name: string
+  phone: string
+  email: string
+  id_type?: string
+  id_number?: string
+  cooperative_id?: string | null
+}
+
+export type RegisterOperatorResult = AccountCrmDetail & {
+  invite_email_sent: boolean
+  invite_expires_hours: number
+}
+
+export function useRegisterOperator() {
+  return usePostData<RegisterOperatorPayload, RegisterOperatorResult>(
+    ACCOUNTS_ENDPOINTS.register,
+    [ACCOUNTS_QUERY_KEY, ACCOUNTS_ENDPOINTS.list],
     { silentError: true },
   )
 }

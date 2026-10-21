@@ -122,6 +122,57 @@ export function useRetireVehicle(vehicleId: string) {
   )
 }
 
+export function useAssignVehicleDriver(vehicleId: string) {
+  return usePostData<{ driver_id: string | null }, VehicleDetailApi>(
+    VEHICLES_ENDPOINTS.assignDriver(vehicleId),
+    [...INVALIDATE, VEHICLES_ENDPOINTS.vehicle(vehicleId)],
+    { silentError: true },
+  )
+}
+
+export type VehicleCommandRow = {
+  id: string
+  kind: string
+  status: string
+  note: string
+  error: string
+  created_at: string
+  acked_at: string | null
+}
+
+export function useVehicleCommands(
+  vehicleId: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
+  const { can } = useCapabilities()
+  const id = vehicleId ?? ''
+  const enabled =
+    Boolean(id) && options?.enabled !== false && can('vehicles:read')
+  const query = useFetchData<VehicleCommandRow[]>(
+    id ? VEHICLES_ENDPOINTS.commands(id) : VEHICLES_ENDPOINTS.list,
+    undefined,
+    { enabled, staleTime: 10_000 },
+  )
+  return { ...query, commands: query.data ?? [] }
+}
+
+export function useEnqueueVehicleCommand(vehicleId: string) {
+  return usePostData<{ kind: string; note?: string }, VehicleCommandRow>(
+    VEHICLES_ENDPOINTS.command(vehicleId),
+    [VEHICLES_ENDPOINTS.commands(vehicleId), VEHICLES_ENDPOINTS.vehicle(vehicleId)],
+    { silentError: true },
+  )
+}
+
+export function useRotateVehicleIotKey(vehicleId: string) {
+  return usePostData<
+    Record<string, never>,
+    { vehicle_id: string; hardware_id: string; api_key: string; hint: string }
+  >(VEHICLES_ENDPOINTS.rotateIotKey(vehicleId), [VEHICLES_ENDPOINTS.vehicle(vehicleId)], {
+    silentError: true,
+  })
+}
+
 type CursorPage<T> = {
   results: T[]
   next: string | null

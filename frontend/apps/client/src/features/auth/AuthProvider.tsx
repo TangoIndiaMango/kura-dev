@@ -77,9 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null
     }
     setMeEnabled(true)
+    // staleTime 0: a "refresh" after saving must hit the server, not the cache.
     const profile = await queryClient.fetchQuery({
       queryKey: AUTH_ME_QUERY_KEY,
       queryFn: fetchMe,
+      staleTime: 0,
     })
     return profile
   }, [clearSession, queryClient])

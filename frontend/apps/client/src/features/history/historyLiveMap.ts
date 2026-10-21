@@ -1,4 +1,10 @@
 import { formatNaira } from '../../shared/utils/currency'
+import {
+  isCredit,
+  paymentAmount,
+  paymentMeta,
+  paymentTitle,
+} from '../../shared/utils/paymentDisplay'
 import { swapUiStatus } from '../swap/swapRecentMap'
 import type { SwapListApi } from '../swap/hooks/use-swap-live'
 import type { HistoryItem } from './historyTypes'
@@ -15,13 +21,21 @@ export function paymentToHistory(p: {
   return {
     id: p.id,
     kind: 'payments',
-    title: p.purpose || p.channel,
-    meta: `${p.status} · ${new Date(p.created_at).toLocaleString()}`,
-    amountLabel: formatNaira(p.amount_kobo, { fromKobo: true }),
-    tone: p.purpose?.toLowerCase().includes('fund') ? 'credit' : 'debit',
+    title: paymentTitle(p),
+    meta: paymentMeta(p),
+    amountLabel: paymentAmount(p),
+    tone: isCredit(p) ? 'credit' : 'debit',
     receiptId: p.id,
     tapKind: 'receipt',
   }
+}
+
+const SWAP_MODE_LABEL: Record<string, string> = {
+  WALLET: 'Wallet',
+  CASH: 'Cash at hub',
+  CASH_AT_HUB: 'Cash at hub',
+  PLAN: 'Plan',
+  CREDIT: 'Swap credit',
 }
 
 function uiLabel(ui: string): string {
@@ -72,7 +86,7 @@ export function swapToHistory(s: SwapListApi): HistoryItem {
     kind: 'swaps',
     title: `Swap · ${s.hub_name || 'Hub'}`,
     meta: `${s.vehicle_plate || 'Vehicle'} · ${uiLabel(ui)} · ${
-      swapPayment === 'WALLET' ? 'Pay as you go' : s.payment_mode
+      SWAP_MODE_LABEL[mode] ?? mode
     }`,
     amountLabel:
       mode === 'PLAN' && amount <= 0

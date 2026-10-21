@@ -1,13 +1,14 @@
-import { useEffect } from 'react'
+import { } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
   DynamicTableSection,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { useCapabilities } from '../auth/useCapabilities'
 import {
@@ -30,20 +31,6 @@ const TYPE_OPTIONS = [
   { value: 'BOAT', label: 'Boat' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 function serviceLabel(item: VehicleModelApi) {
   const parts = [
@@ -55,14 +42,6 @@ function serviceLabel(item: VehicleModelApi) {
       : null,
   ].filter(Boolean)
   return parts.length ? parts.join(' · ') : '—'
-}
-
-function readTypeFilter(values: Record<string, unknown>): string | undefined {
-  const raw =
-    values.vehicle_type ??
-    Object.entries(values).find(([k]) => k.endsWith('_vehicle_type'))?.[1]
-  if (raw == null || raw === '' || raw === 'all') return undefined
-  return String(raw)
 }
 
 export function VehicleModelsPanel() {
@@ -86,14 +65,10 @@ export function VehicleModelsPanel() {
       },
     ],
   })
-  const vehicleTypeFilter = readTypeFilter(controls.filterValues)
+  const vehicleTypeFilter = controls.getFilter('vehicle_type')
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
-  const { models, isPending, isError, count, totalPages, currentPage } =
+  const { models, isPending, isError, count, totalPages, isPlaceholderData } =
     useVehicleModelsList(
       {
         search: controls.search || undefined,
@@ -116,19 +91,20 @@ export function VehicleModelsPanel() {
       </p>
     )
   } else if (isPending) {
-    tableBody = <Skeleton height={280} radius="md" />
+    tableBody = <LoadingState cols={6} rows={8} />
   } else {
     tableBody = (
       <DynamicTableSection<VehicleModelApi>
         variant="embedded"
         headers={HEADERS}
         data={models}
-        pagination={serverPagination(
-          currentPage,
-          totalPages,
-          controls.pageSize,
-          controls.setPage,
-        )}
+        pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
+              totalPages,
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
         getRowKey={(item) => item.id}
         getRowHref={(item) => `/vehicles/models/${item.id}/edit`}
         emptyTitle="No vehicle models"

@@ -111,7 +111,7 @@ class RiskEventApiTests(TestCase):
         self.assertTrue(res.content.startswith(b"%PDF"))
 
     def test_list_and_update_risk_rule(self):
-        res = self.client.get("/api/v1/risk/rules/")
+        res = self.client.get("/api/v1/risk/rules/", {"page_size": 50})
         self.assertEqual(res.status_code, 200)
         results = res.json()["results"]
         self.assertGreaterEqual(len(results), 10)

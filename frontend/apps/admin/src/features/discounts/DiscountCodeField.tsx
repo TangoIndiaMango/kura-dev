@@ -26,6 +26,7 @@ export function DiscountCodeField({
 }: Props) {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
 
   if (disabled || listNaira <= 0) return null
 
@@ -82,8 +83,12 @@ export function DiscountCodeField({
         <Button
           color="brand"
           variant="light"
-          onClick={() => {
-            const result = redeemDiscountCode(draft, listNaira, context)
+          loading={checking}
+          disabled={checking}
+          onClick={async () => {
+            setChecking(true)
+            const result = await redeemDiscountCode(draft, listNaira, context)
+            setChecking(false)
             if (!result.ok) {
               setError(result.reason)
               return

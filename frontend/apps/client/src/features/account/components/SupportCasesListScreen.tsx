@@ -1,3 +1,4 @@
+import { caseStatusLabel } from './caseStatusLabel'
 import React from 'react'
 import { ArrowRight01Icon } from 'hugeicons-react'
 import { useAuth } from '../../auth/AuthProvider'
@@ -79,7 +80,7 @@ export const SupportCasesListScreen: React.FC<SupportCasesListScreenProps> = ({
                     {c.code} · {c.type} · {c.openedAt}
                   </span>
                   <span className={`text-[11px] font-bold ${tone(c.status)}`}>
-                    {c.status}
+                    {caseStatusLabel(c.status)}
                   </span>
                 </span>
                 <ArrowRight01Icon

@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
@@ -8,7 +9,7 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { useCapabilities } from '../auth/useCapabilities'
 import { useEBoarderStats, useEBoarders } from './hooks/use-eboarders'
@@ -41,20 +42,6 @@ function tone(
   return 'info'
 }
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function EBoardersPanel() {
   const navigate = useNavigate()
@@ -65,17 +52,11 @@ export function EBoardersPanel() {
     filterTitle: 'Filter e-boarders',
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
   const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+    controls.getFilter('status')
 
-  const { rows, isPending, isError, count, totalPages, currentPage } =
+  const { rows, isPending, isError, count, totalPages, isPlaceholderData } =
     useEBoarders(
       {
         page: controls.page,
@@ -134,18 +115,19 @@ export function EBoardersPanel() {
             Could not load e-boarders.
           </p>
         ) : isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<EBoarderListApi>
             variant="embedded"
             headers={HEADERS}
             data={rows}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: `E-boarders · ${count}`,

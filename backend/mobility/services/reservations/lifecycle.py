@@ -12,6 +12,15 @@ from mobility.services.plans.pricing import PricingService
 from mobility.services.reservations.qr_token import issue_reservation_qr
 
 
+def release_reservation_battery(*, reservation: Reservation, keep_battery_id=None) -> None:
+    """Return the hold's pack to stock unless it is the pack being issued."""
+    if not reservation.battery_id or reservation.battery_id == keep_battery_id:
+        return
+    Battery.objects.filter(
+        pk=reservation.battery_id, status=Battery.Status.RESERVED
+    ).update(status=Battery.Status.AVAILABLE)
+
+
 def cancel_reservation(
     *,
     reservation: Reservation,
@@ -38,6 +47,11 @@ def cancel_reservation(
                 reference=reservation.code,
             )
             reservation.hold_amount_kobo = 0
+
+        if reservation.discount_code:
+            from mobility.services.plans.discounts import DiscountService
+
+            DiscountService.release_reservation(reservation=reservation)
 
         if reservation.battery_id:
             Battery.objects.filter(pk=reservation.battery_id).update(
@@ -102,6 +116,11 @@ def expire_reservation(*, reservation: Reservation) -> Reservation:
                 reference=reservation.code,
             )
             reservation.hold_amount_kobo = 0
+
+        if reservation.discount_code:
+            from mobility.services.plans.discounts import DiscountService
+
+            DiscountService.release_reservation(reservation=reservation)
 
         if reservation.battery_id:
             Battery.objects.filter(pk=reservation.battery_id).update(

@@ -13,6 +13,7 @@ from accounts.helpers.maker_checker import (
 from core.exceptions import DomainError
 from core.services.events import emit_event
 from mobility.models import BayHoldPolicy, PriceMatrix, Plan, VehicleType
+from mobility.models.choices import normalize_vehicle_type
 
 # Seed tariffs aligned with admin vehicleTariffs.ts (Naira → kobo at write).
 _DEFAULT_MATRICES_NAIRA: dict[str, dict[str, int]] = {
@@ -194,7 +195,7 @@ class PricingService:
             if value <= 0:
                 raise DomainError("VALIDATION_ERROR", f"{label} must be positive.")
         matrix = PriceMatrix.objects.create(
-            vehicle_type=vehicle_type,
+            vehicle_type=normalize_vehicle_type(vehicle_type),
             daily_kobo=daily_kobo,
             weekly_kobo=weekly_kobo,
             monthly_kobo=monthly_kobo,

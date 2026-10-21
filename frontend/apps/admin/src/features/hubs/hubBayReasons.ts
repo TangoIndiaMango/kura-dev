@@ -21,6 +21,14 @@ export const HUB_ABORT_REASONS = [
   { value: 'safety', label: 'Safety stop' },
 ] as const
 
+export const HUB_VELOCITY_EXCEPTION_REASONS = [
+  { value: 'prior_aborted', label: 'Prior swap aborted — pack never issued' },
+  { value: 'failed_pack', label: 'Issued pack failed / DOA at bay' },
+  { value: 'ops_instructed', label: 'Ops instructed to proceed' },
+  { value: 'multi_hub_day', label: 'Legitimate multi-hub / long-haul day' },
+  { value: 'other', label: 'Other (see note)' },
+] as const
+
 export function reasonLabel(
   options: ReadonlyArray<{ value: string; label: string }>,
   value: string,

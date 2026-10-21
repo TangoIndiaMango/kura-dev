@@ -1,6 +1,6 @@
-import { Skeleton } from '@mantine/core'
 import {
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   type TablePaginationConfig,
 } from '@shared/components'
@@ -31,7 +31,7 @@ export function PaymentsLedgerTable({
   onFilter: () => void
   onRowClick: (item: PaymentApi) => void
 }) {
-  if (pending) return <Skeleton height={220} radius="md" />
+  if (pending) return <LoadingState variant="inline" cols={7} rows={8} />
 
   return (
     <DynamicTableSection<PaymentApi>

@@ -12,6 +12,8 @@ interface PinStepProps {
   onForgotPin: () => void
   error?: string | null
   attemptsLeft?: number | null
+  /** Line under the title — what the PIN authorises. */
+  subtitle?: string
 }
 
 export const PinStep: React.FC<PinStepProps> = ({
@@ -22,6 +24,7 @@ export const PinStep: React.FC<PinStepProps> = ({
   onForgotPin,
   error = null,
   attemptsLeft = null,
+  subtitle = 'Wallet debit needs your 4-digit PIN.',
 }) => {
   const ready = pin.every((d) => d.length === 1)
   const hasError = Boolean(error)
@@ -43,7 +46,7 @@ export const PinStep: React.FC<PinStepProps> = ({
           Confirm with PIN
         </h2>
         <p className="mt-1 text-xs text-[var(--kura-muted)]">
-          Wallet debit needs your 4-digit PIN.
+          {subtitle}
         </p>
       </div>
 

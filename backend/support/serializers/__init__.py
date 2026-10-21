@@ -8,6 +8,12 @@ class SupportCaseListSerializer(serializers.ModelSerializer):
     account_id = serializers.UUIDField(read_only=True)
     assigned_to_id = serializers.UUIDField(read_only=True, allow_null=True)
     payment_id = serializers.UUIDField(read_only=True, allow_null=True)
+    payment_receipt_code = serializers.CharField(
+        source="payment.receipt_code", read_only=True, allow_null=True, default=None
+    )
+    payment_amount_kobo = serializers.IntegerField(
+        source="payment.amount_kobo", read_only=True, allow_null=True, default=None
+    )
     account_kura_id = serializers.CharField(source="account.kura_id", read_only=True)
     account_display_name = serializers.CharField(
         source="account.display_name", read_only=True
@@ -29,6 +35,8 @@ class SupportCaseListSerializer(serializers.ModelSerializer):
             "assigned_to_id",
             "assigned_to_name",
             "payment_id",
+            "payment_receipt_code",
+            "payment_amount_kobo",
             "sla_due_at",
             "created_at",
         ]

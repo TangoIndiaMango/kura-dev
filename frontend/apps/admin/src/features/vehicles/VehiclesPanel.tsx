@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   useAdminModuleControls,
   type TableExportFormat,
   type TableHeader,
-  type TablePaginationConfig,
 } from '@shared/components'
 import { AdminDonutChart, ADMIN_CHART_COLORS } from '@shared/components/charts'
 import { apiErrorMessage } from '@lib/api/auth'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../auth/useCapabilities'
 import {
   VEHICLES_ENDPOINTS,
@@ -46,28 +47,6 @@ function statusTone(status: string) {
   return 'danger' as const
 }
 
-function readStatusFilter(values: Record<string, unknown>): string | undefined {
-  const raw =
-    values.status ??
-    Object.entries(values).find(([k]) => k.endsWith('_status'))?.[1]
-  if (raw == null || raw === '' || raw === 'all') return undefined
-  return String(raw)
-}
-
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 export function VehiclesPanel() {
   const navigate = useNavigate()
@@ -81,24 +60,21 @@ export function VehiclesPanel() {
     includeDateRangeInFilter: false,
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
-  const statusFilter = readStatusFilter(controls.filterValues)
+  const statusFilter = controls.getFilter('status')
 
   const listFilters = {
     ...(controls.search ? { search: controls.search } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
   }
 
-  const { vehicles, isPending, isError, totalPages, currentPage } = useVehicles({
-    search: controls.search || undefined,
-    status: statusFilter,
-    page: controls.page,
-    page_size: controls.pageSize,
-  })
+  const { vehicles, isPending, isFetching, isError, totalPages, isPlaceholderData } =
+    useVehicles({
+      search: controls.search || undefined,
+      status: statusFilter,
+      page: controls.page,
+      page_size: controls.pageSize,
+    })
 
   const { data: stats } = useVehicleStats()
   const totals = stats?.totals
@@ -182,22 +158,24 @@ export function VehiclesPanel() {
         }
       >
         {isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : isError ? (
           <p className="mb-4 text-[13px] text-[var(--mu)]">
             Could not load vehicles (need vehicles:read).
           </p>
         ) : (
+          <div className={isFetching ? 'opacity-70 transition-opacity' : undefined}>
           <DynamicTableSection<VehicleListApi>
             variant="embedded"
             headers={HEADERS}
             data={vehicles}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: 'Fleet register',
@@ -248,6 +226,7 @@ export function VehiclesPanel() {
               />,
             ]}
           />
+          </div>
         )}
       </AdminModuleLayout>
       {controls.filterModal}

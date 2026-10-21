@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from operations.views import (
+    AlertRuleViewSet,
     AlertViewSet,
     CashDepositViewSet,
     InventoryCountViewSet,
@@ -15,6 +16,7 @@ router.register(r"shifts", ShiftViewSet, basename="shifts")
 router.register(r"cash-deposits", CashDepositViewSet, basename="cash-deposits")
 router.register(r"overrides", OverrideViewSet, basename="overrides")
 router.register(r"alerts", AlertViewSet, basename="alerts")
+router.register(r"alert-rules", AlertRuleViewSet, basename="alert-rules")
 router.register(
     r"inventory-counts", InventoryCountViewSet, basename="inventory-counts"
 )

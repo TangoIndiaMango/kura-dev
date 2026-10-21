@@ -170,6 +170,30 @@ export const HoldFillButton: React.FC<HoldFillButtonProps> = ({
     if (activeRef.current) abortHold()
   }
 
+  // Keyboard: holding Space/Enter fills the bar the same as a pointer hold.
+  const isHoldKey = (key: string) => key === ' ' || key === 'Enter'
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!isHoldKey(e.key)) return
+    e.preventDefault()
+    if (disabled || e.repeat || activeRef.current) return
+    clearRaf()
+    clearResetTimer()
+    completedRef.current = false
+    activeRef.current = true
+    startRef.current = performance.now()
+    setHolding(true)
+    setProgress(0)
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  const onKeyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!isHoldKey(e.key)) return
+    e.preventDefault()
+    if (completedRef.current) return
+    if (activeRef.current) abortHold()
+  }
+
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       <button
@@ -178,6 +202,11 @@ export const HoldFillButton: React.FC<HoldFillButtonProps> = ({
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
+        onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
+        onBlur={() => {
+          if (activeRef.current && !completedRef.current) abortHold()
+        }}
         onContextMenu={(e) => e.preventDefault()}
         className={[
           'relative isolate overflow-hidden rounded-xl border px-4 py-3.5 text-[15px] font-bold tracking-wide select-none touch-none transition disabled:opacity-50',

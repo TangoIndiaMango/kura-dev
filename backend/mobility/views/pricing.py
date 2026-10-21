@@ -42,7 +42,7 @@ class PriceMatrixDetailSerializer(PriceMatrixListSerializer):
 
 
 class PriceMatrixCreateSerializer(serializers.Serializer):
-    vehicle_type = serializers.ChoiceField(choices=VehicleType.choices)
+    vehicle_type = serializers.CharField(max_length=50)
     daily_kobo = serializers.IntegerField(min_value=1)
     weekly_kobo = serializers.IntegerField(min_value=1)
     monthly_kobo = serializers.IntegerField(min_value=1)

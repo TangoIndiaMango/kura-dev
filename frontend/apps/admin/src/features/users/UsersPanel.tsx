@@ -5,8 +5,8 @@ import {
   LoadingState,
   useAdminModuleControls,
   type TableExportFormat,
-  type TablePaginationConfig,
 } from '@shared/components'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
 import { apiErrorMessage } from '@lib/api/auth'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
@@ -32,21 +32,6 @@ const ROLE_STATUS_OPTIONS = [
   { value: 'INACTIVE', label: 'Inactive' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
-
 const USER_TABS = ['users', 'roles'] as const
 
 export function UsersPanel() {
@@ -67,15 +52,8 @@ export function UsersPanel() {
   })
   const controls = onRoles ? rolesControls : usersControls
 
-  const userStatus =
-    usersControls.filterValues.status && usersControls.filterValues.status !== 'all'
-      ? String(usersControls.filterValues.status)
-      : undefined
-
-  const roleStatus =
-    rolesControls.filterValues.status && rolesControls.filterValues.status !== 'all'
-      ? String(rolesControls.filterValues.status)
-      : undefined
+  const userStatus = usersControls.getFilter('status')
+  const roleStatus = rolesControls.getFilter('status')
 
   const {
     users,
@@ -83,7 +61,7 @@ export function UsersPanel() {
     isFetching: usersFetching,
     isError: usersError,
     totalPages: userPages,
-    currentPage: userPage,
+    isPlaceholderData: usersPlaceholder,
   } = useStaffUsers({
     search: usersControls.search || undefined,
     status: userStatus,
@@ -98,7 +76,7 @@ export function UsersPanel() {
     isFetching: rolesFetching,
     isError: rolesError,
     totalPages: rolePages,
-    currentPage: rolePage,
+    isPlaceholderData: rolesPlaceholder,
   } = useRoles({
     search: rolesControls.search || undefined,
     page: rolesControls.page,
@@ -233,12 +211,13 @@ export function UsersPanel() {
             {onUsers ? (
               <UsersTable
                 users={users}
-                pagination={serverPagination(
-                  userPage,
-                  userPages,
-                  usersControls.pageSize,
-                  usersControls.setPage,
-                )}
+                pagination={buildPagePagination({
+                  page: usersControls.page,
+                  setPage: usersControls.setPage,
+                  totalPages: userPages,
+                  isPlaceholderData: usersPlaceholder,
+                  pageSize: usersControls.pageSize,
+                })}
                 searchQuery={usersControls.searchQuery}
                 setSearchQuery={usersControls.setSearchQuery}
                 onFilter={usersControls.openFilter}
@@ -248,12 +227,13 @@ export function UsersPanel() {
             ) : (
               <RolesTable
                 roles={roles}
-                pagination={serverPagination(
-                  rolePage,
-                  rolePages,
-                  rolesControls.pageSize,
-                  rolesControls.setPage,
-                )}
+                pagination={buildPagePagination({
+                  page: rolesControls.page,
+                  setPage: rolesControls.setPage,
+                  totalPages: rolePages,
+                  isPlaceholderData: rolesPlaceholder,
+                  pageSize: rolesControls.pageSize,
+                })}
                 searchQuery={rolesControls.searchQuery}
                 setSearchQuery={rolesControls.setSearchQuery}
                 onFilter={rolesControls.openFilter}

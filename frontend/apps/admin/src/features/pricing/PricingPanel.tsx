@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
   DynamicTableSection,
   TableStatusBadge,
   useAdminModuleControls,
+  LoadingState,
 } from '@shared/components'
 import type { PriceRecord } from '@shared/mock/adminMockData'
 import { formatNaira } from '@shared/utils/currency'
@@ -83,7 +84,7 @@ export function PricingPanel() {
         ]}
       >
         {matricesPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : matricesError ? (
           <p className="text-[13px] text-[var(--mu)]">
             Could not load price matrices. Check tariffs:manage and retry.

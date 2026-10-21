@@ -2,12 +2,29 @@ import { axiosInstance } from './client'
 import { getRefreshToken, setTokens } from './token-storage'
 
 export type ApiErrorBody = {
-  error?: { code?: string; message?: string }
+  error?: {
+    code?: string
+    message?: string
+    details?: Record<string, unknown>
+  }
+}
+
+export function apiErrorEnvelope(err: unknown): {
+  code?: string
+  message?: string
+  details?: Record<string, unknown>
+} {
+  const ax = err as { response?: { data?: ApiErrorBody }; message?: string }
+  const error = ax.response?.data?.error
+  return {
+    code: error?.code,
+    message: error?.message || ax.message,
+    details: error?.details,
+  }
 }
 
 export function apiErrorMessage(err: unknown, fallback = 'Something went wrong') {
-  const ax = err as { response?: { data?: ApiErrorBody }; message?: string }
-  return ax.response?.data?.error?.message || ax.message || fallback
+  return apiErrorEnvelope(err).message || fallback
 }
 
 export type AdminMePayload = {

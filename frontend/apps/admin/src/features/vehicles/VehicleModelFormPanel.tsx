@@ -6,6 +6,7 @@ import { notifications } from '@mantine/notifications'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { z } from 'zod'
 import {
+  VehicleTypeField,
   AdminFormSuccessModal,
   FormFooterActions,
   SidebarFormLayout,
@@ -22,7 +23,7 @@ import {
 const schema = z.object({
   make: z.string().trim().min(1).max(100),
   model: z.string().trim().min(1).max(100),
-  vehicle_type: z.enum(['MOTORCYCLE', 'TRICYCLE', 'BOAT']),
+  vehicle_type: z.string().trim().min(1, 'Select or add a vehicle type').max(50),
   battery_type: z.string().uuid('Select a battery type'),
   service_interval_km: z.number().int().positive().nullable().optional(),
   service_interval_days: z.number().int().positive().nullable().optional(),
@@ -34,12 +35,6 @@ const TIPS = [
   'Make + model must be unique in the catalogue.',
   'Battery type is copied onto each registered vehicle for hub matching.',
   'Service intervals are optional until maintenance reminders go live.',
-]
-
-const TYPE_DATA = [
-  { value: 'MOTORCYCLE', label: 'Motorcycle' },
-  { value: 'TRICYCLE', label: 'Tricycle' },
-  { value: 'BOAT', label: 'Boat' },
 ]
 
 export function VehicleModelFormPanel({ modelId }: { modelId?: string }) {
@@ -180,19 +175,10 @@ export function VehicleModelFormPanel({ modelId }: { modelId?: string }) {
             required
             {...form.getInputProps('model')}
           />
-          <Select
-            label="Vehicle type"
-            data={TYPE_DATA}
-            searchable
-            required
-            allowDeselect={false}
-            nothingFoundMessage="No types"
-            maxDropdownHeight={280}
-            comboboxProps={{
-              withinPortal: true,
-              transitionProps: { transition: 'pop', duration: 200 },
-            }}
-            {...form.getInputProps('vehicle_type')}
+          <VehicleTypeField
+            value={form.values.vehicle_type}
+            onChange={(v) => form.setFieldValue('vehicle_type', v)}
+            error={form.errors.vehicle_type as string | undefined}
           />
           <Select
             label="Battery type"

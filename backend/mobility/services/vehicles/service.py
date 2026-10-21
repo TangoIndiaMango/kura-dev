@@ -48,6 +48,7 @@ class VehicleService:
         ):
             actor.onboarding_step = User.OnboardingStep.PLAN
             actor.save(update_fields=["onboarding_step", "updated_at"])
+        VehicleService._maybe_promote_fleet(account_id=vehicle.account_id, actor=actor)
         emit_event(
             action="vehicle.created",
             subject_type="vehicle",
@@ -63,6 +64,32 @@ class VehicleService:
             },
         )
         return vehicle
+
+    @staticmethod
+    def _maybe_promote_fleet(*, account_id, actor=None) -> None:
+        """Promote INDIVIDUAL → FLEET when the account reaches 2+ vehicles."""
+        account = (
+            Account.objects.select_for_update()
+            .filter(pk=account_id)
+            .first()
+        )
+        if account is None or account.kind == Account.Kind.FLEET:
+            return
+        if Vehicle.objects.filter(account_id=account_id).count() < 2:
+            return
+        before = {"kind": account.kind}
+        account.kind = Account.Kind.FLEET
+        account.save(update_fields=["kind", "updated_at"])
+        emit_event(
+            action="account.promoted_fleet",
+            subject_type="account",
+            subject_id=str(account.id),
+            subject_label=account.display_name,
+            actor=actor,
+            before=before,
+            after={"kind": account.kind},
+            metadata={"reason": "vehicle_count_gte_2"},
+        )
 
     @staticmethod
     @transaction.atomic

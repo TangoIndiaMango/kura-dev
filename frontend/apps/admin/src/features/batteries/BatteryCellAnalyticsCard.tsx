@@ -34,7 +34,7 @@ function gradeForSoh(soh: number) {
   }
 }
 
-/** Live pack health + 20S cell balance — fed by batteryHealthMap. */
+/** Pack health + 20S cell balance — real BMS cells when telemetry provides them, else modelled. */
 export function BatteryCellAnalyticsCard({
   analytics,
 }: {
@@ -68,7 +68,9 @@ export function BatteryCellAnalyticsCard({
                 Pack health tier
               </h3>
               <p className="text-[11.5px] text-[var(--mu)]">
-                From live SOH, cycles, and cell balance
+                {analytics.cellsSource === 'telemetry'
+                  ? 'From live SOH, cycles, and BMS cell balance'
+                  : 'Live SOH and cycles · cell balance modelled (no BMS feed yet)'}
               </p>
             </div>
           </div>

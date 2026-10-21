@@ -24,7 +24,7 @@ def _own_account_ids(user) -> list:
 
 def cases_for(user) -> QuerySet[SupportCase]:
     qs = SupportCase.objects.select_related(
-        "account", "assigned_to", "opened_by", "driver"
+        "account", "assigned_to", "opened_by", "driver", "payment"
     ).prefetch_related("events__attachment", "events__actor")
     if user_has_capability(user, "cases:read"):
         return qs

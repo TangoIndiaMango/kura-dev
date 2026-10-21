@@ -23,8 +23,9 @@ import {
   VehicleHoldsTable,
   VehicleSwapsTable,
 } from './VehicleRelatedTables'
+import { VehicleVcuPanel } from './VehicleVcuPanel'
 
-const DETAIL_TABS = ['swaps', 'holds'] as const
+const DETAIL_TABS = ['swaps', 'holds', 'vcu'] as const
 
 export function VehiclesDetailPanel({ id }: { id: string }) {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export function VehiclesDetailPanel({ id }: { id: string }) {
   const { reservations, isPending: holdsPending } = useVehicleReservations(id, {
     enabled: tab === 'holds',
   })
+  const vcuActive = tab === 'vcu'
   const setStatus = useSetVehicleStatus(id)
   const rotateQr = useRotateVehicleQr(id)
   const retireVehicle = useRetireVehicle(id)
@@ -191,9 +193,27 @@ export function VehiclesDetailPanel({ id }: { id: string }) {
               />
             ),
           },
+          {
+            id: 'vcu',
+            label: 'VCU / IoT',
+            content: vcuActive ? (
+              <VehicleVcuPanel
+                vehicleId={id}
+                canCommand={can('vehicles:manage')}
+                canRotateIot={can('telemetry:ingest')}
+              />
+            ) : null,
+          },
         ]}
       >
-        <VehicleOverview vehicle={vehicle} qrPreview={qrPreview} />
+        <VehicleOverview
+          vehicle={vehicle}
+          qrPreview={qrPreview}
+          canAssign={can('vehicles:manage')}
+          onAssigned={() => {
+            refetch()
+          }}
+        />
       </AdminDetailPage>
 
       <AdminConfirmModal

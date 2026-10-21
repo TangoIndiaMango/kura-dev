@@ -68,6 +68,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             driver=driver,
             hub=hub,
             payment_mode=payment_mode,
+            discount_code=request.data.get("discount_code") or "",
         )
         return Response(
             ReservationSerializer(reservation).data, status=status.HTTP_201_CREATED

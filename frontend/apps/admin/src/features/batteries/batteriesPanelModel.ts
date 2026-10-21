@@ -1,4 +1,4 @@
-import type { TableHeader, TablePaginationConfig } from '@shared/components'
+import type { TableHeader } from '@shared/components'
 import { ADMIN_CHART_COLORS } from '@shared/components/charts'
 import type { BatteryStats, BatteryStatus } from './types'
 
@@ -33,21 +33,6 @@ export function batteryTone(status: BatteryStatus) {
   if (status === 'ISSUED') return 'neutral' as const
   if (status === 'RETIRED' || status === 'FAULTED') return 'danger' as const
   return 'warning' as const
-}
-
-export function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
 }
 
 export function fleetDonutFromStats(totals: BatteryStats['totals'] | undefined) {

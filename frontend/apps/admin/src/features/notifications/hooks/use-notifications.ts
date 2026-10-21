@@ -1,4 +1,8 @@
 import { useFetchData, usePostData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 
 export const NOTIFICATIONS_ENDPOINTS = {
   list: '/notifications/',
@@ -52,7 +56,7 @@ export function useNotifications(params?: NotificationListParams) {
       ...(params?.severity ? { severity: params.severity } : {}),
       ...(params?.start_date ? { start_date: params.start_date } : {}),
       ...(params?.end_date ? { end_date: params.end_date } : {}),
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.cursor ? { cursor: params.cursor } : {}),
     },
     { keepPreviousData: true },
@@ -62,6 +66,8 @@ export function useNotifications(params?: NotificationListParams) {
     notifications: query.data?.results ?? [],
     next: query.data?.next ?? null,
     previous: query.data?.previous ?? null,
+    nextCursor: cursorFromLink(query.data?.next),
+    previousCursor: cursorFromLink(query.data?.previous),
     isPending: query.isPending,
     isFetching: query.isFetching,
   }

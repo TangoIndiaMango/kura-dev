@@ -25,6 +25,10 @@ from mobility.serializers.catalogue import (
     SwapSessionCompleteSerializer,
     SwapStartRequestSerializer,
 )
+from mobility.serializers.velocity import (
+    VelocityExceptionRequestSerializer,
+    VelocityStatusQuerySerializer,
+)
 from mobility.services import SwapService
 
 
@@ -45,6 +49,8 @@ class SwapViewSet(viewsets.ModelViewSet):
         "verify_rider_pin": "swaps:complete",
         "reverse": "swaps:reverse",
         "identity_mismatch": "swaps:complete",
+        "velocity_status": "swaps:complete",
+        "request_velocity_exception": "swaps:complete",
     }
     http_method_names = ["get", "post", "head", "options"]
 
@@ -112,6 +118,7 @@ class SwapViewSet(viewsets.ModelViewSet):
             swap=self.get_object(),
             payment_mode=data.get("payment_mode"),
             amount_kobo=data.get("amount_kobo"),
+            discount_code=data.get("discount_code") or "",
             rider_pin_grant=data.get("rider_pin_grant") or "",
             override=data.get("override"),
             agent=request.user,
@@ -159,6 +166,44 @@ class SwapViewSet(viewsets.ModelViewSet):
             reservation_code=data.get("reservation_code") or "",
         )
         return ok(result)
+
+    @extend_schema(responses={200: dict})
+    @action(detail=False, methods=["get"], url_path="velocity-status")
+    def velocity_status(self, request):
+        from risk.services.velocity_bay import velocity_bay_status
+
+        ser = VelocityStatusQuerySerializer(data=request.query_params)
+        ser.is_valid(raise_exception=True)
+        return ok(velocity_bay_status(vehicle_id=ser.validated_data["vehicle_id"]))
+
+    @extend_schema(
+        request=VelocityExceptionRequestSerializer, responses={200: dict}
+    )
+    @action(detail=False, methods=["post"], url_path="request-velocity-exception")
+    def request_velocity_exception(self, request):
+        from accounts.models import Account
+        from risk.services.velocity_bay import request_velocity_exception
+
+        ser = VelocityExceptionRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        account = None
+        if data.get("account_id"):
+            account = Account.objects.filter(pk=data["account_id"]).first()
+        event = request_velocity_exception(
+            vehicle_id=data["vehicle_id"],
+            note=data["note"],
+            agent=request.user,
+            hub_id=data.get("hub_id"),
+            account=account,
+        )
+        return ok(
+            {
+                "risk_event_id": str(event.id),
+                "status": event.status,
+                "exception_requested": True,
+            }
+        )
 
     @extend_schema(request=RiderPinVerifySerializer, responses={200: dict})
     @action(detail=False, methods=["post"], url_path="verify-rider-pin")
@@ -209,6 +254,7 @@ class SwapViewSet(viewsets.ModelViewSet):
             issued_charge_pct=data.get("issued_charge_pct", 100),
             amount_kobo=data.get("amount_kobo"),
             payment_mode=data.get("payment_mode"),
+            discount_code=data.get("discount_code") or "",
             rider_pin_grant=data.get("rider_pin_grant") or "",
             override=data.get("override"),
             agent=request.user,

@@ -31,6 +31,7 @@ export type LiveVehicleApi = {
   make: string
   model_name: string
   vehicle_type: string
+  pay_per_swap_kobo?: number | null
   current_battery_serial?: string | null
   current_battery_charge?: number | null
   current_battery_charge_source?: string | null
@@ -39,6 +40,8 @@ export type LiveVehicleApi = {
   status: string
   account_id?: string
   battery_type_name?: string | null
+  assigned_driver_id?: string | null
+  assigned_driver_name?: string | null
 }
 
 export type VehicleModelApi = {
@@ -68,6 +71,7 @@ export type ReservationCreatePayload = {
   hub: string
   payment_mode: string
   account?: string
+  discount_code?: string
 }
 
 export type ReservationApi = {
@@ -83,6 +87,9 @@ export type ReservationApi = {
   status: string
   created_at?: string
   hold_amount_kobo?: number
+  list_price_kobo?: number
+  discount_code?: string
+  discount_kobo?: number
 }
 
 export type HoldPolicyApi = {

@@ -1,4 +1,5 @@
 import { useFetchData, usePatchData, usePostData } from '@shared/hooks/api'
+import { ADMIN_LIST_PAGE_SIZE } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { SEGMENTS_ENDPOINTS } from '../constants'
 import type {
@@ -31,7 +32,7 @@ export function useSegments(
     SEGMENTS_ENDPOINTS.list,
     {
       page: params?.page ?? 1,
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),
@@ -81,7 +82,7 @@ export function useSegmentMembers(
     segmentId ? SEGMENTS_ENDPOINTS.members(segmentId) : SEGMENTS_ENDPOINTS.list,
     {
       page: params?.page ?? 1,
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
     },
     { enabled, keepPreviousData: true, staleTime: 15_000 },
   )

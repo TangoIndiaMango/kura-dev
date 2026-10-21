@@ -18,6 +18,7 @@ export type BatteryHealthAnalytics = {
   cycles: number
   maxRatedCycles: number
   cells: BatteryCellMv[]
+  cellsSource: 'telemetry' | 'derived'
   internalResistanceMohm: number
   sohTrend: { label: string; soh: number }[]
 }
@@ -85,8 +86,9 @@ export function mapBatteryHealthAnalytics(
   const chargePct = battery.charge_pct
   const cycles = battery.cycle_count
   const maxRatedCycles = options?.maxRatedCycles ?? DEFAULT_RATED_CYCLES
+  const telemetryCells = cellsFromTelemetryRaw(options?.telemetryRaw)
   const cells =
-    cellsFromTelemetryRaw(options?.telemetryRaw) ??
+    telemetryCells ??
     cellModuleSeries({
       id: battery.id,
       healthPct,
@@ -104,6 +106,7 @@ export function mapBatteryHealthAnalytics(
     cycles,
     maxRatedCycles,
     cells,
+    cellsSource: telemetryCells ? 'telemetry' : 'derived',
     internalResistanceMohm,
     sohTrend: sohSeries(healthPct, options?.periodFactor ?? 1),
   }

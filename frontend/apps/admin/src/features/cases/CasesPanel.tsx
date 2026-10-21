@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   useAdminModuleControls,
   type TableExportFormat,
   type TableHeader,
-  type TablePaginationConfig,
 } from '@shared/components'
 import { AdminDonutChart, ADMIN_CHART_COLORS } from '@shared/components/charts'
 import { apiErrorMessage } from '@lib/api/auth'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  buildCursorPagination,
+} from '@shared/utils/cursor-pagination'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
 import {
   SUPPORT_ENDPOINTS,
@@ -59,26 +63,26 @@ export function CasesPanel() {
     Boolean(presetAccount || presetSubject),
   )
   const [cursor, setCursor] = useState<string | undefined>()
+  const [page, setPage] = useState(1)
 
   const controls = useAdminModuleControls({
     scope: 'cases',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter cases',
+    pageSize: ADMIN_LIST_PAGE_SIZE,
   })
+
+  const statusFilter = controls.getFilter('status')
 
   useEffect(() => {
     setCursor(undefined)
+    setPage(1)
   }, [
     controls.search,
-    controls.filterValues.status,
+    statusFilter,
     controls.dateRange.start_date,
     controls.dateRange.end_date,
   ])
-
-  const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
 
   const listFilters = {
     ...(controls.search ? { search: controls.search } : {}),
@@ -91,12 +95,19 @@ export function CasesPanel() {
       : {}),
   }
 
-  const { cases, isPending, isError, refetch, nextCursor, previousCursor } =
-    useSupportCases({
-      ...listFilters,
-      cursor,
-      page_size: controls.pageSize,
-    })
+  const {
+    cases,
+    isPending,
+    isError,
+    refetch,
+    isPlaceholderData,
+    nextCursor,
+    previousCursor,
+  } = useSupportCases({
+    ...listFilters,
+    cursor,
+    page_size: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const { data: stats } = useSupportCaseStats({
     start_date: controls.dateRange.start_date || undefined,
@@ -106,19 +117,16 @@ export function CasesPanel() {
   const donut = useMemo(() => casesDonutFromStats(stats), [stats])
   const kpis = useMemo(() => casesKpisFromStats(stats), [stats])
 
-  const pagination: TablePaginationConfig = {
-    page: cursor ? 2 : 1,
-    totalPages: nextCursor ? (cursor ? 3 : 2) : cursor ? 2 : 1,
-    onPageChange: () => undefined,
-    variant: 'controls',
-    pageSize: String(controls.pageSize).padStart(2, '0'),
-    onNext: nextCursor ? () => setCursor(nextCursor) : undefined,
-    onPrevious: previousCursor
-      ? () => setCursor(previousCursor)
-      : cursor
-        ? () => setCursor(undefined)
-        : undefined,
-  }
+  const pagination = buildCursorPagination({
+    page,
+    setPage,
+    cursor,
+    setCursor,
+    nextCursor,
+    previousCursor,
+    isPlaceholderData,
+    pageSize: ADMIN_LIST_PAGE_SIZE,
+  })
 
   const clearPresets = () => {
     const next = new URLSearchParams(searchParams)
@@ -172,7 +180,7 @@ export function CasesPanel() {
           </div>
         }
       >
-        {isPending ? <Skeleton height={280} radius="md" /> : null}
+        {isPending ? <LoadingState cols={7} rows={8} /> : null}
         {isError ? (
           <p className="mb-4 text-[13px] text-[var(--mu)]">
             Could not load cases (need cases:read).

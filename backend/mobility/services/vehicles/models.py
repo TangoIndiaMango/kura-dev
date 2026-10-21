@@ -5,7 +5,8 @@ from django.db import IntegrityError, transaction
 
 from core.exceptions import DomainError
 from core.services.events import emit_event
-from mobility.models import BatteryType, VehicleModel, VehicleType
+from mobility.models import BatteryType, VehicleModel
+from mobility.models.choices import normalize_vehicle_type
 
 
 class VehicleModelService:
@@ -25,7 +26,7 @@ class VehicleModelService:
             row = VehicleModel.objects.create(
                 make=make,
                 model=model,
-                vehicle_type=data.get("vehicle_type") or VehicleType.MOTORCYCLE,
+                vehicle_type=normalize_vehicle_type(data.get("vehicle_type")),
                 battery_type=battery_type,
                 service_interval_km=data.get("service_interval_km"),
                 service_interval_days=data.get("service_interval_days"),
@@ -68,7 +69,7 @@ class VehicleModelService:
         if "model" in data and data["model"] is not None:
             locked.model = str(data["model"]).strip()
         if "vehicle_type" in data and data["vehicle_type"]:
-            locked.vehicle_type = data["vehicle_type"]
+            locked.vehicle_type = normalize_vehicle_type(data["vehicle_type"])
         if "battery_type" in data and data["battery_type"] is not None:
             bt = data["battery_type"]
             locked.battery_type = (

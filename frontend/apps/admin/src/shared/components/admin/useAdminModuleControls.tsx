@@ -55,6 +55,17 @@ function readScopedFilter(
   return key ? values[key] : null
 }
 
+/** Resolve a scoped drawer value (`operators_status` or `status`) for API params. */
+export function readAdminFilter(
+  values: TableFilterValues | Record<string, unknown>,
+  logicalKey: string,
+): string | undefined {
+  const raw = readScopedFilter(values as TableFilterValues, logicalKey)
+  if (raw == null || raw === '' || raw === 'all') return undefined
+  if (Array.isArray(raw)) return raw.length ? String(raw[0]) : undefined
+  return String(raw)
+}
+
 /** True when no status filter is set, or the row status is included. */
 export function matchesStatusFilter(
   values: TableFilterValues,
@@ -186,6 +197,8 @@ export function useAdminModuleControls(options: AdminModuleControlsOptions) {
       onPageChange: list.setPage,
       variant: 'controls',
       pageSize: String(pageSize).padStart(2, '0'),
+      hasNext: safePage < totalPages,
+      hasPrevious: safePage > 1,
     }
     return { pageRows, pagination, totalPages, page: safePage }
   }
@@ -207,6 +220,8 @@ export function useAdminModuleControls(options: AdminModuleControlsOptions) {
     filterValues: tableFilter.values,
     applyFilters: tableFilter.apply,
     resetFilters: tableFilter.reset,
+    getFilter: (logicalKey: string) =>
+      readAdminFilter(tableFilter.values, logicalKey),
     matchesStatus: (status: string) =>
       matchesStatusFilter(tableFilter.values, status),
     matchesFilter: (logicalKey: string, candidate: string) =>

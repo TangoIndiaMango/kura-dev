@@ -8,6 +8,7 @@ from core.exceptions import DomainError
 from core.money import split_vat_inclusive
 from mobility.models import Reservation, Swap
 from mobility.services.plans.pricing import PricingService
+from mobility.services.reservations.lifecycle import release_reservation_battery
 from mobility.services.swap.finalize import finalize_completed_swap
 from mobility.services.swap.risk import flag_geo_impossible_if_needed
 from mobility.services.swap.settle import settle_swap_payment
@@ -18,6 +19,7 @@ def complete_started_swap(
     swap: Swap,
     payment_mode: str | None = None,
     amount_kobo: int | None = None,
+    discount_code: str = "",
     rider_pin_grant: str = "",
     override: dict | None = None,
     agent=None,
@@ -72,10 +74,28 @@ def complete_started_swap(
             fee = held
         elif mode == Reservation.PaymentMode.PLAN:
             fee = 0
+        elif reservation is not None and reservation.discount_code:
+            # Booking-time code already redeemed — the booked price is the price.
+            fee = max(0, reservation.list_price_kobo - reservation.discount_kobo)
         elif mode == Reservation.PaymentMode.CASH and amount_kobo is not None:
             fee = int(amount_kobo)
         else:
             fee = fee_default if amount_kobo is None else int(amount_kobo)
+
+        discount_quote = None
+        if (discount_code or "").strip():
+            from mobility.services.plans.discounts import DiscountService
+
+            fee, discount_quote = DiscountService.consume_for_swap(
+                code=discount_code,
+                reservation=reservation,
+                held_kobo=held,
+                mode=mode,
+                fee_kobo=fee,
+                list_price_kobo=fee_default,
+                account=locked.account,
+                idempotency_key=f"swap:{locked.id}",
+            )
         _net, vat_kobo = (0, 0) if fee <= 0 else split_vat_inclusive(fee)
 
         if mode == Reservation.PaymentMode.WALLET and fee > 0 and held <= 0:
@@ -101,13 +121,25 @@ def complete_started_swap(
             vehicle=locked.vehicle,
             hub=locked.hub,
             agent=agent,
+            swap_key=str(locked.id),
         )
+
+        if discount_quote is not None:
+            from mobility.services.plans.discounts import DiscountService
+
+            DiscountService.link_redemption_payment(
+                idempotency_key=f"swap:{locked.id}",
+                payment=settled.payment,
+            )
 
         if reservation is not None:
             reservation.status = Reservation.Status.USED
             reservation.hold_amount_kobo = 0
             reservation.save(
                 update_fields=["status", "hold_amount_kobo", "updated_at"]
+            )
+            release_reservation_battery(
+                reservation=reservation, keep_battery_id=locked.issued_battery_id
             )
 
         flag_geo_impossible_if_needed(

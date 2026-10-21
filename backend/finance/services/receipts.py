@@ -19,6 +19,20 @@ from fpdf import FPDF
 
 from core.money import format_naira
 
+CHANNEL_LABELS = {
+    "WALLET_DEBIT": "Wallet",
+    "NUBAN_TRANSFER": "Bank transfer",
+    "CARD": "Card",
+    "AGENT_CASH": "Cash at hub",
+    "CREDIT": "Swap credit",
+}
+STATUS_LABELS = {
+    "SUCCESS": "Paid",
+    "PENDING": "Pending",
+    "FAILED": "Failed",
+    "REVERSED": "Reversed",
+}
+
 
 def _signing_secret() -> bytes:
     raw = (
@@ -112,6 +126,36 @@ def _attach_swap_pack_fields(doc: dict[str, Any], swap) -> None:
         doc["battery_out"] = " · ".join(bits)
 
 
+def _attach_discount_fields(doc: dict[str, Any], *, payment, swap) -> None:
+    """Show list price and code so a rider can see why they paid less."""
+    from mobility.models import DiscountRedemption
+
+    row = (
+        DiscountRedemption.objects.filter(payment_id=payment.id)
+        .select_related("discount")
+        .first()
+    )
+    if row is None and swap is not None and swap.reservation_id:
+        # Booking-time codes are keyed to the reservation, not the payment.
+        row = (
+            DiscountRedemption.objects.filter(
+                idempotency_key=f"reservation:{swap.reservation_id}"
+            )
+            .select_related("discount")
+            .first()
+        )
+    if row is None or row.discount_kobo <= 0:
+        return
+    doc["list_price_kobo"] = int(row.list_price_kobo)
+    doc["discount_code"] = row.discount.code
+    doc["discount_kobo"] = int(row.discount_kobo)
+    doc["lines"] = [
+        {"label": "List price", "amount_kobo": int(row.list_price_kobo)},
+        {"label": f"Discount ({row.discount.code})", "amount_kobo": -int(row.discount_kobo)},
+        *doc["lines"],
+    ]
+
+
 def _swap_for_payment(*, payment_id) -> Any | None:
     if not payment_id:
         return None
@@ -199,6 +243,7 @@ def build_payment_receipt_document(*, payment) -> dict[str, Any]:
         "account_id": str(payment.account_id),
         "account_kura_id": payment.account.kura_id,
         "channel": payment.channel,
+        "channel_label": CHANNEL_LABELS.get(payment.channel, payment.channel),
         "amount_kobo": amount,
         "net_kobo": net,
         "vat_kobo": vat,
@@ -211,6 +256,7 @@ def build_payment_receipt_document(*, payment) -> dict[str, Any]:
         "operator_user_id": str(owner.id) if owner else None,
         "psp_reference": payment.psp_reference or "",
         "status": payment.status,
+        "status_label": STATUS_LABELS.get(payment.status, payment.status),
         "issued_at": payment.created_at.isoformat(),
         "issued_at_label": _format_when(payment.created_at),
         "lines": [
@@ -220,8 +266,11 @@ def build_payment_receipt_document(*, payment) -> dict[str, Any]:
         ],
     }
 
+    swap = None
     if purpose == "SWAP":
-        _attach_swap_pack_fields(doc, _swap_for_payment(payment_id=payment.id))
+        swap = _swap_for_payment(payment_id=payment.id)
+        _attach_swap_pack_fields(doc, swap)
+    _attach_discount_fields(doc, payment=payment, swap=swap)
 
     seal = seal_receipt_payload(doc)
     doc["integrity_hash"] = seal
@@ -273,14 +322,22 @@ def render_receipt_pdf(doc: dict[str, Any]) -> bytes:
     line(str(doc.get("purpose_label", "Payment")), size=11, color=(90, 107, 117))
     pdf.ln(2)
     line(str(doc.get("amount_label", "")), bold=True, size=20, color=(13, 124, 143))
-    pdf.ln(4)
+    pdf.ln(2)
+    # Itemised: list price / discount (when a code applied) / net / VAT / total.
+    for item in doc.get("lines") or []:
+        line(
+            f"{item.get('label')}: {format_naira(int(item.get('amount_kobo') or 0))}",
+            size=10,
+            color=(60, 72, 80),
+        )
+    pdf.ln(3)
 
     when = doc.get("issued_at_label") or doc.get("issued_at")
     for label, value in (
         ("Receipt", doc.get("receipt_code")),
-        ("Channel", doc.get("channel")),
+        ("Paid by", doc.get("channel_label") or doc.get("channel")),
         ("PSP reference", doc.get("psp_reference")),
-        ("Status", doc.get("status")),
+        ("Status", doc.get("status_label") or doc.get("status")),
         ("Hub", f"{doc.get('hub_code')} - {doc.get('hub_name')}"),
         ("Vehicle", doc.get("vehicle_plate")),
         ("Battery out", doc.get("battery_out")),

@@ -46,9 +46,13 @@ def hubs_with_slot_counts(user=None) -> QuerySet[Hub]:
 
 def hub_stats(user=None) -> dict[str, Any]:
     qs = hubs_with_slot_counts(user)
+    # Count hubs on an un-joined queryset — the slot annotations multiply rows.
+    hubs = Hub.objects.all()
+    if user is not None:
+        hubs = _apply_hub_scope(hubs, hub_ids_for(user), "id")
     by_status = {
         row["status"]: row["count"]
-        for row in qs.values("status").annotate(count=Count("id"))
+        for row in hubs.order_by().values("status").annotate(count=Count("id"))
     }
     inv = qs.aggregate(
         ready=Count("slots", filter=Q(slots__state=HubSlot.State.READY)),
@@ -184,6 +188,7 @@ def hub_detail_stats(
         "status": hub.status,
         "solar_capacity_kw": solar_cap,
         "solar_output_kw": round(solar_base if hub.status == Hub.Status.ONLINE else 0.0, 1),
+        "solar_output_is_estimate": True,
         "total_slots": total_slots,
         "ready_count": ready_count,
         "charging_count": charging_count,
@@ -348,7 +353,13 @@ def eboarder_stats() -> dict[str, Any]:
 
 def vehicles_for(user) -> QuerySet[Vehicle]:
     qs = Vehicle.objects.select_related(
-        "vehicle_model", "current_battery", "account"
+        "vehicle_model",
+        "vehicle_model__battery_type",
+        "current_battery",
+        "current_battery__battery_type",
+        "account",
+        "assigned_driver",
+        "assigned_driver__user",
     ).order_by("-created_at")
     if _can_read_all_mobility(user):
         return qs

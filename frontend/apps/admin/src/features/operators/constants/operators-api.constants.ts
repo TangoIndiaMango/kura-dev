@@ -1,11 +1,13 @@
 export const ACCOUNTS_ENDPOINTS = {
   list: '/accounts/',
+  register: '/accounts/register/',
   stats: '/accounts/stats/',
   export: '/accounts/export/',
   detail: (id: string) => `/accounts/${id}/`,
   detailStats: (id: string) => `/accounts/${id}/stats/`,
   kyc: (id: string) => `/accounts/${id}/kyc/`,
   verifyKyc: (id: string) => `/accounts/${id}/kyc/verify/`,
+  submitKyc: (id: string) => `/accounts/${id}/kyc/submit/`,
   rejectKyc: (id: string) => `/accounts/${id}/kyc/reject/`,
   requestKycPhotos: (id: string) => `/accounts/${id}/kyc/request-photos/`,
   suspend: (id: string) => `/accounts/${id}/suspend/`,

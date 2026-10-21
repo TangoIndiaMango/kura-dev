@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useFetchData, usePostData } from '@shared/hooks/api'
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  cursorFromLink,
+} from '@shared/utils/cursor-pagination'
 import { ALERTS_ENDPOINTS } from '../constants'
 import type {
   AlertDetailApi,
@@ -11,15 +15,6 @@ import type {
 import { useCapabilities } from '@/features/auth/useCapabilities'
 
 const INVALIDATE = [ALERTS_ENDPOINTS.list, ALERTS_ENDPOINTS.stats]
-
-function cursorFromLink(link: string | null | undefined): string | undefined {
-  if (!link) return undefined
-  try {
-    return new URL(link).searchParams.get('cursor') ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 function useDocumentVisible() {
   const [visible, setVisible] = useState(
@@ -54,7 +49,7 @@ export function useAlerts(
   const query = useFetchData<CursorPaginated<AlertListApi>>(
     ALERTS_ENDPOINTS.list,
     {
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),

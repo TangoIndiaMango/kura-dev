@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { Button, Skeleton } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
@@ -10,7 +11,7 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { downloadCsv } from '@shared/utils/downloadCsv'
 import { FeatureMasterSwitch } from '@features/platform-config'
@@ -39,21 +40,6 @@ const TYPE_OPTIONS = [
   { value: 'FINANCING', label: 'Financing' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
-
 export function OffersPanel() {
   const navigate = useNavigate()
   const controls = useAdminModuleControls({
@@ -72,13 +58,11 @@ export function OffersPanel() {
   })
 
   const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : undefined
+    controls.getFilter('status')
 
-  const { offers, isPending, count, totalPages, currentPage } = useOffers({
+  const { offers, isPending, isPlaceholderData, count, totalPages } = useOffers({
     page: controls.page,
-    page_size: 25,
+    page_size: controls.pageSize,
     status: statusFilter,
     search: controls.search || undefined,
   })
@@ -154,18 +138,19 @@ export function OffersPanel() {
           />
         </div>
         {isPending ? (
-          <Skeleton height={280} radius="md" className="m-4" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<OfferListApi>
             variant="embedded"
             headers={HEADERS}
             data={rows}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              25,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: 'All offers',

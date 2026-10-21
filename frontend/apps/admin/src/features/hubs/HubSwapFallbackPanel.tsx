@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Button, Skeleton, TextInput } from '@mantine/core'
+import { Button, NumberInput, Skeleton, TextInput } from '@mantine/core'
 import {
   AdminConfirmModal,
   AdminDetailPage,
@@ -45,6 +45,11 @@ import { notifications } from '@mantine/notifications'
 import { apiErrorMessage } from '@lib/api/auth'
 import { useHub, useHubs } from './hooks/use-hubs'
 import {
+  HubBayVelocityGate,
+  throttleHitFromError,
+  type VelocityThrottleHit,
+} from './HubBayVelocityGate'
+import {
   useHubBayBatteries,
   useHubReservations,
   useIdentityMismatch,
@@ -58,7 +63,14 @@ import {
 } from './hooks/use-bay-swap'
 import { packStubFromSerial, resumeStepFromSwap } from './hubBayResume'
 import { useVerifyAgentPin, useVerifyRiderPin, useRecordBayOverride } from './hooks/use-bay-pins'
-import { apiPaymentMode, mapBatteryApi, mapLookupApi, mapReservationApi } from './hubBayLiveMap'
+import {
+  apiPaymentMode,
+  bookedDiscountRedeem,
+  mapBatteryApi,
+  mapLookupApi,
+  mapReservationApi,
+  type BookedDiscount,
+} from './hubBayLiveMap'
 import { buildReturnCandidates } from './hubBayReturnCandidates'
 import {
   enrichHoldContext,
@@ -134,6 +146,8 @@ interface Identified {
     driverId: string
     reservationId: string
     holdAmountKobo: number
+    bookedDiscount?: BookedDiscount | null
+    reservedBatteryId?: string | null
   }
 }
 
@@ -143,6 +157,8 @@ type LiveApplyMeta = {
   driverId: string
   reservationId: string
   holdAmountKobo?: number
+  bookedDiscount?: BookedDiscount | null
+  reservedBatteryId?: string | null
   account?: LiveBayAccount
   walletBalanceNaira?: number
   vehicleType?: string
@@ -403,10 +419,19 @@ export function HubSwapFallbackPanel() {
   const [vehicleQuery, setVehicleQuery] = useState('')
   const [debouncedVehicleQuery, setDebouncedVehicleQuery] = useState('')
   const [lookupError, setLookupError] = useState<string | null>(null)
+  const [velocityHit, setVelocityHit] = useState<VelocityThrottleHit | null>(null)
   const [identified, setIdentified] = useState<Identified | null>(null)
   const [returned, setReturned] = useState<BatteryRecord | null>(null)
   const [issued, setIssued] = useState<BatteryRecord | null>(null)
-  const [returnCharge, setReturnCharge] = useState('62')
+  const [returnCharge, setReturnCharge] = useState('')
+  // Summary shows packs only once the server accepted the step, not on selection.
+  const returnedConfirmed =
+    returned && (step === 'issue' || step === 'settle' || step === 'done') ? returned : null
+  const issuedConfirmed = issued && (step === 'settle' || step === 'done') ? issued : null
+  const returnChargePct = useMemo(() => {
+    const n = Number(returnCharge)
+    return returnCharge.trim() !== '' && Number.isInteger(n) && n >= 0 && n <= 100 ? n : null
+  }, [returnCharge])
   const [settleMode, setSettleMode] = useState<BaySettleMode>('PLAN')
   const [topUpRef, setTopUpRef] = useState<string | null>(null)
   const [cashReceiptRef, setCashReceiptRef] = useState<string | null>(null)
@@ -468,23 +493,20 @@ export function HubSwapFallbackPanel() {
 
   const hubReady = useMemo(() => {
     if (!hub) return []
+    // Packs held for other riders are not issuable; this hold's own pack is, and goes first.
+    const ownPackId = identified?.liveMeta?.reservedBatteryId ?? null
+    const issuable = (b: BatteryRecord) =>
+      (b.status === 'AVAILABLE' || (b.status === 'RESERVED' && b.id === ownPackId)) &&
+      !String(b.id).startsWith('BAT-NEW-')
     const atHub = catalogue.filter(
-      (b) =>
-        (b.location === hub.name || b.location.includes(hub.name)) &&
-        b.status === 'AVAILABLE' &&
-        !String(b.id).startsWith('BAT-NEW-'),
+      (b) => (b.location === hub.name || b.location.includes(hub.name)) && issuable(b),
     )
-    const pool =
-      atHub.length > 0
-        ? atHub
-        : catalogue.filter(
-            (b) =>
-              b.status === 'AVAILABLE' && !String(b.id).startsWith('BAT-NEW-'),
-          )
-    if (!identified?.batteryTypeHint) return pool
-    return pool.filter((b) =>
-      b.type.toLowerCase().includes(identified.batteryTypeHint!.toLowerCase()),
-    )
+    let pool = atHub.length > 0 ? atHub : catalogue.filter(issuable)
+    if (identified?.batteryTypeHint) {
+      const hint = identified.batteryTypeHint.toLowerCase()
+      pool = pool.filter((b) => b.type.toLowerCase().includes(hint))
+    }
+    return [...pool].sort((a, b) => Number(b.id === ownPackId) - Number(a.id === ownPackId))
   }, [catalogue, hub, identified])
 
   const returnPackQuery = useReturnPackBySerial(
@@ -693,6 +715,8 @@ export function HubSwapFallbackPanel() {
               driverId: live.driverId,
               reservationId: live.reservationId,
               holdAmountKobo: live.holdAmountKobo ?? 0,
+              bookedDiscount: live.bookedDiscount ?? null,
+              reservedBatteryId: live.reservedBatteryId ?? null,
             }
           : undefined,
       }
@@ -708,6 +732,7 @@ export function HubSwapFallbackPanel() {
       setReturned(null)
       setIssued(null)
       setLookupError(null)
+      setVelocityHit(null)
       setStep('triage')
       pushLog(
         'Identify',
@@ -751,6 +776,8 @@ export function HubSwapFallbackPanel() {
           driverId: mapped.driverId,
           reservationId: mapped.id,
           holdAmountKobo: mapped.holdAmountKobo,
+          bookedDiscount: mapped.bookedDiscount,
+          reservedBatteryId: mapped.reservedBatteryId,
           account,
           walletBalanceNaira: enriched.walletBalanceNaira,
           vehicleType: enriched.vehicle?.vehicle_type,
@@ -908,39 +935,51 @@ export function HubSwapFallbackPanel() {
     return identified?.walletBalance ?? 0
   }, [wallet, walletListRow, identified?.walletBalance])
 
+  // Agents without finance:read get no balance (privacy). Treat it as unknown, not ₦0:
+  // wallet stays selectable and the server checks funds at the rider-PIN debit.
+  const walletVisible = (wallet?.available_kobo ?? walletListRow?.available_kobo) != null
+  const walletForSettle = walletVisible ? liveWalletNaira : Number.POSITIVE_INFINITY
+
   const settleActor = useMemo((): SettleActor | undefined => {
     if (!identified) return undefined
     const planCovers = subscriptions.some((s) => s.status === 'ACTIVE')
     return {
-      walletBalanceNaira: liveWalletNaira,
+      walletBalanceNaira: walletForSettle,
       planCovers,
       creditOk: identified.reservation.paymentMode === 'CREDIT',
     }
-  }, [identified, liveWalletNaira, subscriptions])
+  }, [identified, walletForSettle, subscriptions])
+
+  // Code redeemed at booking: the server charges the booked price, so the bay shows it too.
+  const bookedDiscount = identified?.liveMeta?.bookedDiscount
+  const bookedRedeem = useMemo(
+    () => (bookedDiscount ? bookedDiscountRedeem(bookedDiscount) : null),
+    [bookedDiscount],
+  )
+  const appliedDiscount = settleDiscount ?? bookedRedeem
 
   const settlePlan = useMemo(() => {
     if (!identified || !settleActor) return null
     const listDue = listSwapDueNaira(
       identified.vehicleType ?? identified.makeModel,
     )
-    const due = settleDiscount?.dueNaira ?? listDue
-    const bookedWithWallet =
-      !identified.isWalkIn && identified.reservation.paymentMode === 'WALLET'
-    const holdNaira =
-      (identified.liveMeta?.holdAmountKobo ?? (bookedWithWallet ? due * 100 : 0)) / 100
+    const due = appliedDiscount?.dueNaira ?? listDue
+    const holdKobo = Math.max(0, identified.liveMeta?.holdAmountKobo ?? 0)
+    const holdNaira = holdKobo / 100
+    const hasActiveHold = holdKobo > 0
     const base = buildSettlePlan(identified.reservation, settleActor, {
       isWalkIn: identified.isWalkIn,
       overridden: identified.overridden,
       dueNaira: due,
       vehicleType: identified.vehicleType,
-      holdAmountKobo: identified.liveMeta?.holdAmountKobo,
+      holdAmountKobo: holdKobo,
     })
-    const effectiveWallet = bookedWithWallet
-      ? liveWalletNaira + holdNaira
-      : liveWalletNaira
+    const effectiveWallet = hasActiveHold
+      ? walletForSettle + holdNaira
+      : walletForSettle
     const fundedWallet =
       effectiveWallet + (topUpRef ? Math.max(0, due - effectiveWallet) : 0)
-    const shortfall = bookedWithWallet ? 0 : Math.max(0, due - fundedWallet)
+    const shortfall = hasActiveHold ? 0 : Math.max(0, due - fundedWallet)
     return describeMode(settleMode, {
       due,
       wallet: fundedWallet,
@@ -948,8 +987,9 @@ export function HubSwapFallbackPanel() {
       allowed: base.allowed,
       isWalkIn: identified.isWalkIn,
       reservation: identified.reservation,
+      holdAmountKobo: holdKobo,
     })
-  }, [identified, settleActor, settleMode, topUpRef, settleDiscount, liveWalletNaira])
+  }, [identified, settleActor, settleMode, topUpRef, appliedDiscount, walletForSettle])
 
   const settleVehicleCount = Math.max(1, accountVehicles.length || 1)
 
@@ -1011,7 +1051,7 @@ export function HubSwapFallbackPanel() {
     setSelectedVehicle(null)
     setReturned(null)
     setIssued(null)
-    setReturnCharge('62')
+    setReturnCharge('')
     setSettleMode('PLAN')
     setTopUpRef(null)
     setCashReceiptRef(null)
@@ -1020,6 +1060,7 @@ export function HubSwapFallbackPanel() {
     setAgentPinGrant(null)
     setSwapSessionId(null)
     setLookupError(null)
+    setVelocityHit(null)
     setSuccessOpen(false)
     setMismatchAckOpen(false)
     setMismatchCaseQuery(null)
@@ -1034,6 +1075,7 @@ export function HubSwapFallbackPanel() {
     if (!identified || identified.triage === 'RED' || !liveHubId || !identified.liveMeta) {
       return
     }
+    const vehicleId = identified.liveMeta.vehicleId
     try {
       const session = await startMut.mutateAsync({
         hub_id: liveHubId,
@@ -1041,12 +1083,13 @@ export function HubSwapFallbackPanel() {
         reservation_id: identified.isWalkIn
           ? null
           : identified.liveMeta.reservationId,
-        vehicle_id: identified.liveMeta.vehicleId,
+        vehicle_id: vehicleId,
         driver_id: identified.liveMeta.driverId,
         account_id: identified.liveMeta.accountId,
       })
       setSwapSessionId(session.id)
       setLookupError(null)
+      setVelocityHit(null)
       const next = resumeStepFromSwap(session, identified.skipReturn)
       const returnedPack = packStubFromSerial(session.returned_serial, catalogue)
       const issuedPack = packStubFromSerial(session.issued_serial, catalogue)
@@ -1062,6 +1105,13 @@ export function HubSwapFallbackPanel() {
             : `Matches · session ${session.id.slice(0, 8)} · return`,
       )
     } catch (err) {
+      const throttle = throttleHitFromError(err, vehicleId)
+      if (throttle) {
+        setVelocityHit(throttle)
+        setLookupError(null)
+        pushLog('Triage', `Velocity · ${throttle.message}`, true)
+        return
+      }
       const msg = apiErrorMessage(err, 'Could not start swap session.')
       setLookupError(msg)
       notifications.show({ color: 'red', message: msg })
@@ -1233,19 +1283,25 @@ export function HubSwapFallbackPanel() {
     }
 
     const dueAmt = settlePlan.dueNaira
-    const discountNote = settleDiscount
-      ? ` · ${settleDiscount.code} (−${formatNaira(settleDiscount.discountNaira)})`
+    const discountNote = appliedDiscount
+      ? ` · ${appliedDiscount.code} (−${formatNaira(appliedDiscount.discountNaira)})`
       : ''
 
     try {
       const amount_kobo = Math.round(dueAmt * 100)
+      const hasHold = (identified.liveMeta.holdAmountKobo || 0) > 0
       await sessionCompleteMut.mutateAsync({
         swapId: swapSessionId,
         amount_kobo:
-          settleMode === 'CASH_AT_HUB' || settleMode === 'WALLET'
-            ? amount_kobo
-            : identified.liveMeta.holdAmountKobo || amount_kobo,
+          settleDiscount && !hasHold
+            ? Math.round(settleDiscount.listNaira * 100)
+            : settleMode === 'CASH_AT_HUB' || settleMode === 'WALLET'
+              ? amount_kobo
+              : identified.liveMeta.holdAmountKobo || amount_kobo,
         payment_mode: apiPaymentMode(settleMode),
+        ...(settleDiscount && !hasHold
+          ? { discount_code: settleDiscount.code }
+          : {}),
         ...(settlePlan.riderPinRequired && riderPinGrant
           ? { rider_pin_grant: riderPinGrant }
           : {}),
@@ -1254,7 +1310,7 @@ export function HubSwapFallbackPanel() {
       await liveBatteries.refetch()
 
       if (settleMode === 'CASH_AT_HUB' && cashReceiptRef) {
-        setCashDepositRef(cashReceiptRef)
+        setCashDepositRef(formatNaira(dueAmt))
         pushLog(
           'Confirm',
           `Cash ${cashReceiptRef} · ${formatNaira(dueAmt)}${discountNote} · receipt queued`,
@@ -1368,9 +1424,17 @@ export function HubSwapFallbackPanel() {
           showBack: true,
         }
       }
+      if (velocityHit) {
+        return {
+          label: 'Velocity gate open',
+          disabled: true,
+          onClick: () => undefined,
+          showBack: true,
+        }
+      }
       return {
         label: 'Matches · continue',
-        disabled: false,
+        disabled: startMut.isPending,
         onClick: acceptFace,
         showBack: true,
       }
@@ -1378,16 +1442,18 @@ export function HubSwapFallbackPanel() {
     if (identified && step === 'return') {
       return {
         label: 'Continue to issue',
-        disabled: !returned || !swapSessionId || returnMut.isPending,
+        disabled:
+          !returned || !swapSessionId || returnMut.isPending || returnChargePct === null,
         onClick: async () => {
-          if (!returned || !swapSessionId) return
+          if (!returned || !swapSessionId || returnChargePct === null) return
           try {
             await returnMut.mutateAsync({
               swapId: swapSessionId,
               battery_serial: returned.serial,
-              charge_pct: Number(returnCharge) || 15,
+              charge_pct: returnChargePct,
             })
             pushLog('Return', `${returned.serial} · ${returnCharge}%`)
+            setLookupError(null)
             setStep('issue')
           } catch (err) {
             const msg = apiErrorMessage(err, 'Could not record return.')
@@ -1411,6 +1477,7 @@ export function HubSwapFallbackPanel() {
               charge_pct: issued.chargePct || 100,
             })
             pushLog('Issue', issued.serial)
+            setLookupError(null)
             setStep('settle')
           } catch (err) {
             const msg = apiErrorMessage(err, 'Could not issue pack.')
@@ -1501,6 +1568,18 @@ export function HubSwapFallbackPanel() {
               >
                 {lookupError}
               </div>
+            ) : null}
+            {velocityHit && step === 'triage' && identified ? (
+              <HubBayVelocityGate
+                hit={velocityHit}
+                hubId={liveHubId}
+                accountId={identified.liveMeta?.accountId}
+                retrying={startMut.isPending}
+                onRetry={() => {
+                  acceptFace()
+                }}
+                onDismiss={() => setVelocityHit(null)}
+              />
             ) : null}
             {step === 'lookup' ? (
               <section className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)]">
@@ -1614,13 +1693,13 @@ export function HubSwapFallbackPanel() {
                       Packs
                     </dt>
                     <dd className="mt-0.5 text-[13px] font-medium text-[var(--tx)]">
-                      {issued ? (
+                      {issuedConfirmed ? (
                         <>
-                          Out <span className="font-bold">{issued.serial}</span>
-                          {returned ? (
+                          Out <span className="font-bold">{issuedConfirmed.serial}</span>
+                          {returnedConfirmed ? (
                             <>
                               {' '}
-                              · in <span className="font-bold">{returned.serial}</span>
+                              · in <span className="font-bold">{returnedConfirmed.serial}</span>
                               {` · ${returnCharge}%`}
                             </>
                           ) : identified.skipReturn ? (
@@ -1629,9 +1708,9 @@ export function HubSwapFallbackPanel() {
                             ' · return pending'
                           )}
                         </>
-                      ) : returned ? (
+                      ) : returnedConfirmed ? (
                         <>
-                          In <span className="font-bold">{returned.serial}</span>
+                          In <span className="font-bold">{returnedConfirmed.serial}</span>
                           {` · ${returnCharge}%`} · issue pending
                         </>
                       ) : identified.skipReturn ? (
@@ -1719,17 +1798,26 @@ export function HubSwapFallbackPanel() {
                     if (b && b.chargePct > 0) setReturnCharge(String(b.chargePct))
                   }}
                 />
-                <TextInput
+                <NumberInput
                   mt="sm"
                   label="Charge level (%)"
+                  placeholder="Read from the pack gauge"
                   value={returnCharge}
-                  onChange={(e) => setReturnCharge(e.currentTarget.value)}
+                  onChange={(v) => setReturnCharge(String(v))}
+                  min={0}
+                  max={100}
+                  clampBehavior="strict"
+                  allowDecimal={false}
+                  allowNegative={false}
+                  error={returned && returnChargePct === null ? 'Enter 0–100' : undefined}
                   disabled={!returned}
                 />
                 <Button
                   mt="md"
                   color="brand"
-                  disabled={!returned || !swapSessionId || returnMut.isPending}
+                  disabled={
+                    !returned || !swapSessionId || returnMut.isPending || returnChargePct === null
+                  }
                   loading={returnMut.isPending}
                   onClick={() => {
                     primaryFooter.onClick()
@@ -1809,14 +1897,16 @@ export function HubSwapFallbackPanel() {
                 cashReceiptRef={cashReceiptRef}
                 onCollectCash={() => {
                   setCashReceiptRef('LIVE-CASH')
-                  setCashDepositRef('LIVE-CASH')
-                  const note = settleDiscount ? ` · ${settleDiscount.code}` : ''
+                  const note = appliedDiscount ? ` · ${appliedDiscount.code}` : ''
                   pushLog(
                     'Cash deposit',
                     `Posts on complete · ${formatNaira(settlePlan.dueNaira)}${note} · SWAP`,
                   )
                 }}
-                discount={settleDiscount}
+                walletVisible={walletVisible}
+                walletHeld={(identified.liveMeta?.holdAmountKobo ?? 0) > 0}
+                discount={appliedDiscount}
+                discountLocked={Boolean(bookedRedeem)}
                 onDiscountChange={(next) => {
                   setSettleDiscount(next)
                   setCashReceiptRef(null)
@@ -1885,10 +1975,10 @@ export function HubSwapFallbackPanel() {
                 ? 'Clears issued packs for this session and returns to Identify. Custody is not finalized.'
                 : identified && settlePlan
                   ? settleMode === 'CASH_AT_HUB'
-                    ? `Cash ${cashReceiptRef}. ${formatNaira(settlePlan.dueNaira)}${settleDiscount ? ` · ${settleDiscount.code}` : ''}. Update custody.`
+                    ? `Collect ${formatNaira(settlePlan.dueNaira)} cash${appliedDiscount ? ` · ${appliedDiscount.code}` : ''}. Update custody.`
                     : settlePlan.riderPinRequired
-                      ? `Wallet debit ${formatNaira(settlePlan.dueNaira)}${settleDiscount ? ` · ${settleDiscount.code}` : ''}. Ask the rider for their app PIN.`
-                      : `${settlePlan.label}${settleDiscount ? ` · ${settleDiscount.code}` : ''}. Finish swap.`
+                      ? `Wallet debit ${formatNaira(settlePlan.dueNaira)}${appliedDiscount ? ` · ${appliedDiscount.code}` : ''}. Ask the rider for their app PIN.`
+                      : `${settlePlan.label}${appliedDiscount ? ` · ${appliedDiscount.code}` : ''}. Finish swap.`
                   : 'Finish swap.'
         }
         confirmLabel={
@@ -2027,7 +2117,7 @@ export function HubSwapFallbackPanel() {
         title="Swap completed"
         description={
           cashDepositRef
-            ? `${identified?.reservation.code} done. Cash ${cashDepositRef} logged on this shift.`
+            ? `${identified?.reservation.code} done. ${cashDepositRef} cash logged on this shift.`
             : `${identified?.reservation.code} done. Receipt queued.`
         }
         primaryAction={{

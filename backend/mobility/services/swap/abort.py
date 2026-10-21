@@ -8,6 +8,7 @@ from core.exceptions import DomainError
 from core.services.events import emit_event
 from finance.services import WalletHoldService
 from mobility.models import Reservation, Swap
+from mobility.services.reservations.lifecycle import release_reservation_battery
 from mobility.services.swap.custody import rollback_issue_custody
 
 
@@ -45,6 +46,10 @@ def abort_swap(*, swap: Swap, reason: str = "", agent=None) -> Swap:
         reservation = locked.reservation
         if reservation is not None:
             reservation = Reservation.objects.select_for_update().get(pk=reservation.pk)
+            was_live = reservation.status in {
+                Reservation.Status.PENDING,
+                Reservation.Status.CONFIRMED,
+            }
             held = int(reservation.hold_amount_kobo or 0)
             if held > 0 and reservation.payment_mode == Reservation.PaymentMode.WALLET:
                 WalletHoldService.release(
@@ -69,6 +74,12 @@ def abort_swap(*, swap: Swap, reason: str = "", agent=None) -> Swap:
             reservation.save(
                 update_fields=["hold_amount_kobo", "status", "updated_at"]
             )
+            if was_live:
+                release_reservation_battery(reservation=reservation)
+                if reservation.discount_code:
+                    from mobility.services.plans.discounts import DiscountService
+
+                    DiscountService.release_reservation(reservation=reservation)
 
         locked.status = Swap.Status.FAILED
         locked.save(update_fields=["status", "updated_at"])

@@ -9,11 +9,18 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from accounts.models import Account
+from accounts.models import Account, Driver
 from accounts.services.roles import RoleService
-from analytics.models import DailyAccountMetric, ImpactStory, MonthlyImpactMetric
+from analytics.models import ImpactStory, MonthlyImpactMetric
 from audit.models import AuditEvent
-from mobility.models import BatteryType, TelemetryEvent, Vehicle, VehicleModel
+from mobility.models import (
+    BatteryType,
+    Hub,
+    Swap,
+    TelemetryEvent,
+    Vehicle,
+    VehicleModel,
+)
 
 User = get_user_model()
 
@@ -46,13 +53,6 @@ class ImpactTelemetryApiTests(TestCase):
             co2_kg=Decimal("17200.000"),
             inputs={"disclaimer": "estimate"},
         )
-        DailyAccountMetric.objects.create(
-            account=self.account,
-            date=timezone.localdate() - timedelta(days=1),
-            swaps_completed=4,
-            fuel_savings_kobo=200_000,
-            co2_kg_est=Decimal("5.000"),
-        )
         btype = BatteryType.objects.create(name="T Pack", manufacturer="KURA")
         model = VehicleModel.objects.create(
             make="Silversun", model="T1", battery_type=btype
@@ -62,6 +62,20 @@ class ImpactTelemetryApiTests(TestCase):
             vehicle_model=model,
             registration_plate="TEL-001-XY",
         )
+        hub = Hub.objects.create(code="HUB-IMP", name="Impact Hub", address="Lagos")
+        driver = Driver.objects.create(user=self.driver, account=self.account)
+        for i in range(4):
+            Swap.objects.create(
+                account=self.account,
+                vehicle=self.vehicle,
+                driver=driver,
+                hub=hub,
+                status=Swap.Status.COMPLETED,
+                payment_mode="WALLET",
+                started_at=timezone.now() - timedelta(days=1),
+                completed_at=timezone.now() - timedelta(days=1),
+                client_event_id=f"impact-{i}",
+            )
         TelemetryEvent.objects.create(
             vehicle=self.vehicle,
             recorded_at=timezone.now() - timedelta(hours=1),
@@ -109,6 +123,8 @@ class ImpactTelemetryApiTests(TestCase):
         me = self.client.get("/api/v1/accounts/me/impact/")
         self.assertEqual(me.status_code, 200, me.content)
         self.assertEqual(me.json()["swaps_completed"], 4)
+        # 4 swaps × 1.2 L × ₦850/L (default factors)
+        self.assertEqual(me.json()["saved_vs_petrol_kobo"], 4 * 1_020 * 100)
         self.assertIn("disclaimer", me.json())
 
         self.client.force_authenticate(user=self.ops)

@@ -1,4 +1,5 @@
 import { useFetchData, usePatchData, usePostData } from '@shared/hooks/api'
+import { ADMIN_LIST_PAGE_SIZE } from '@shared/utils/cursor-pagination'
 import { axiosInstance } from '@lib/api/client'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { IMPACT_ENDPOINTS, REPORTS_ENDPOINTS } from '../constants'
@@ -47,7 +48,7 @@ export function useImpactStories(
     IMPACT_ENDPOINTS.stories,
     {
       page: params?.page ?? 1,
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),

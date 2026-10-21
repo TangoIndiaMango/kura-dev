@@ -11,6 +11,7 @@ class StaffUserFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(method="filter_search")
     search = django_filters.CharFilter(method="filter_search")
     role = django_filters.CharFilter(field_name="role")
+    hub = django_filters.CharFilter(method="filter_hub")
     is_active = django_filters.BooleanFilter(field_name="is_active")
     status = django_filters.CharFilter(method="filter_status")
     start_date = django_filters.DateFilter(field_name="created_at", lookup_expr="gte")
@@ -19,6 +20,14 @@ class StaffUserFilter(django_filters.FilterSet):
     class Meta:
         model = User
         fields = ["role", "is_active"]
+
+    def filter_hub(self, queryset, name, value):
+        hub = (value or "").strip()
+        if not hub:
+            return queryset
+        return queryset.filter(
+            Q(memberships__hub_id=hub) | Q(memberships__hub_id="*")
+        ).distinct()
 
     def filter_search(self, queryset, name, value):
         value = (value or "").strip()

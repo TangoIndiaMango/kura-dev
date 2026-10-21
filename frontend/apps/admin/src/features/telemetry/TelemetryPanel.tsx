@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Skeleton } from '@mantine/core'
 import {
   AdminModuleLayout,
   DynamicTableSection,
+  LoadingState,
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
 } from '@shared/components'
+import { scopeFilterKey } from '@shared/utils/table-filters/create-scoped-filters'
 import { downloadCsv } from '@shared/utils/downloadCsv'
 import { useCapabilities } from '../auth/useCapabilities'
 import { useTelemetryFleet } from './hooks/use-telemetry'
@@ -42,6 +43,8 @@ export function TelemetryPanel() {
     scope: 'telemetry',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter telemetry',
+    showDateRange: false,
+    includeDateRangeInFilter: false,
     extraFilterFields: [
       {
         type: 'select',
@@ -57,6 +60,8 @@ export function TelemetryPanel() {
     ],
   })
 
+  const teleFilter = controls.getFilter('telemetry')
+
   const { rows, totals, isPending, isError } = useTelemetryFleet(
     { search: controls.search || undefined },
     { enabled: can('telemetry:read') },
@@ -68,9 +73,16 @@ export function TelemetryPanel() {
       if (!controls.matchesFilter('telemetry', v.telemetry_status)) return false
       return true
     })
-  }, [rows, controls.filterValues, controls.search])
+  }, [rows, controls.filterValues])
 
   const { pageRows, pagination } = controls.paginate(filtered)
+
+  const focusOffline = () => {
+    controls.applyFilters({
+      ...controls.filterValues,
+      [scopeFilterKey('telemetry', 'telemetry')]: 'OFFLINE',
+    })
+  }
 
   if (!can('telemetry:read')) {
     return (
@@ -88,40 +100,44 @@ export function TelemetryPanel() {
     <>
       <AdminModuleLayout
         title="Telemetry"
-        subtitle="Live fleet pings from hubs and vehicles"
-        dateRangeSlot={controls.dateRangeSlot}
+        subtitle="Who needs attention right now — offline first, then live coverage"
+        overviewTitle="Fleet signal"
         kpis={[
           {
-            title: 'Reporting live',
+            title: 'Offline',
+            value: isPending ? '—' : String(totals.offline),
+            sub: totals.offline > 0 ? 'Needs follow-up' : 'None silent',
+            tone: totals.offline > 0 ? 'danger' : 'success',
+          },
+          {
+            title: 'Live',
             value: isPending ? '—' : String(totals.live),
-            sub: 'Last 24h',
+            sub: 'Pinged in last 24h',
             tone: 'success',
           },
           {
             title: 'Stationary',
             value: isPending ? '—' : String(totals.stationary),
-            sub: 'Low speed / aging ping',
+            sub: 'Aging / low-motion ping',
             tone: totals.stationary > 0 ? 'warning' : 'default',
-          },
-          {
-            title: 'Offline',
-            value: isPending ? '—' : String(totals.offline),
-            sub: 'No recent events',
-            tone: totals.offline > 0 ? 'danger' : 'default',
-          },
-          {
-            title: 'Active vehicles',
-            value: isPending ? '—' : String(totals.vehicles),
-            sub: 'In fleet register',
           },
         ]}
       >
+        {totals.offline > 0 && !teleFilter ? (
+          <button
+            type="button"
+            onClick={focusOffline}
+            className="mb-3 text-left text-[12.5px] font-semibold text-[var(--pr)] hover:underline"
+          >
+            Show {totals.offline} offline vehicle{totals.offline === 1 ? '' : 's'} →
+          </button>
+        ) : null}
         {isError ? (
           <p className="text-sm text-[var(--danger,#b42318)]">
             Could not load telemetry fleet.
           </p>
         ) : isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<TelemetryFleetRow>
             variant="embedded"
@@ -163,6 +179,12 @@ export function TelemetryPanel() {
                 ),
             }}
             onRowClick={(item) => navigate(`/telemetry/${item.vehicle_id}`)}
+            emptyTitle={teleFilter ? 'No vehicles in this state' : 'No telemetry yet'}
+            emptyMessage={
+              teleFilter
+                ? 'Clear the telemetry filter to see the full fleet.'
+                : 'Vehicles appear here once hubs report events.'
+            }
             renderItems={(item) => [
               <span
                 key="reg"

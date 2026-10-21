@@ -20,6 +20,7 @@ from accounts.serializers import (
     AccountProfileSerializer,
     AccountSerializer,
     AccountSuspendSerializer,
+    OperatorRegisterSerializer,
 )
 from accounts.services import AccountService
 from accounts.services.cooperatives import CooperativeService
@@ -60,10 +61,12 @@ class AccountViewSet(AccountIdentityActionsMixin, viewsets.ModelViewSet):
         "verify_kyc": "accounts:manage",
         "reject_kyc": "accounts:manage",
         "request_kyc_photos": "accounts:manage",
+        "submit_kyc": "accounts:manage",
         "notify_rider": "accounts:manage",
         "suspend": "accounts:manage",
         "reinstate": "accounts:manage",
         "set_cooperative": "accounts:manage",
+        "register_operator": "accounts:manage",
     }
 
     def get_queryset(self):
@@ -185,6 +188,32 @@ class AccountViewSet(AccountIdentityActionsMixin, viewsets.ModelViewSet):
             **ser.validated_data,
         )
         return created(AccountSerializer(account).data)
+
+    @extend_schema(
+        request=OperatorRegisterSerializer, responses={201: AccountCrmDetailSerializer}
+    )
+    @action(detail=False, methods=["post"], url_path="register")
+    def register_operator(self, request):
+        from accounts.services.registration import register_operator
+
+        ser = OperatorRegisterSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        account, meta = register_operator(
+            actor=request.user,
+            full_name=data["full_name"],
+            phone=data["phone"],
+            email=data["email"],
+            id_type=data.get("id_type") or "",
+            id_number=data.get("id_number") or "",
+            cooperative_id=(
+                str(data["cooperative_id"]) if data.get("cooperative_id") else None
+            ),
+        )
+        payload = AccountCrmDetailSerializer(account).data
+        payload["invite_email_sent"] = meta["invite_email_sent"]
+        payload["invite_expires_hours"] = meta["expires_hours"]
+        return created(payload)
 
     def partial_update(self, request, *args, **kwargs):
         account = self.get_object()

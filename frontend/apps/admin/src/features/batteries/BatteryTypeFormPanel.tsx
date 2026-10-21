@@ -6,6 +6,7 @@ import { notifications } from '@mantine/notifications'
 import { zodResolver } from 'mantine-form-zod-resolver'
 import { z } from 'zod'
 import {
+  VehicleTypeField,
   AdminConfirmModal,
   AdminFormSuccessModal,
   FormFooterActions,
@@ -25,7 +26,7 @@ const schema = z.object({
   manufacturer: z.string().trim().min(1).max(100),
   capacity_kwh: z.number().positive(),
   nominal_voltage: z.number().int().positive(),
-  vehicle_type: z.enum(['MOTORCYCLE', 'TRICYCLE', 'BOAT']),
+  vehicle_type: z.string().trim().min(1, 'Select or add a vehicle type').max(50),
   qr_scheme: z.enum(['PRINTED', 'SIGNED', 'BMS_AUTH', 'NFC_SUN']),
 })
 
@@ -38,7 +39,12 @@ const TIPS = [
 ]
 
 const VEHICLE = [{ value: 'MOTORCYCLE', label: 'Motorcycle' }, { value: 'TRICYCLE', label: 'Tricycle' }, { value: 'BOAT', label: 'Boat' }]
-const QR = [{ value: 'PRINTED', label: 'Printed serial' }, { value: 'SIGNED', label: 'HMAC signed QR' }, { value: 'BMS_AUTH', label: 'OEM BMS auth' }, { value: 'NFC_SUN', label: 'NFC SUN' }]
+const QR = [
+  { value: 'PRINTED', label: 'Printed serial' },
+  { value: 'SIGNED', label: 'HMAC signed QR — usable now' },
+  { value: 'BMS_AUTH', label: 'OEM BMS auth (not yet supported)', disabled: true },
+  { value: 'NFC_SUN', label: 'NFC SUN (not yet supported)', disabled: true },
+]
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -245,13 +251,14 @@ export function BatteryTypeFormPanel({ typeId }: { typeId?: string }) {
                 {...form.getInputProps('nominal_voltage')}
               />
             </div>
-            <Select
-              label="Vehicle type"
-              data={VEHICLE}
-              {...form.getInputProps('vehicle_type')}
+            <VehicleTypeField
+              value={form.values.vehicle_type}
+              onChange={(v) => form.setFieldValue('vehicle_type', v)}
+              error={form.errors.vehicle_type as string | undefined}
             />
             <Select
               label="QR scheme"
+              description="Use HMAC signed QR for packs you label in Kura. Printed serial is for factory-printed labels. BMS/NFC need OEM hardware and are not live yet."
               data={QR}
               {...form.getInputProps('qr_scheme')}
             />

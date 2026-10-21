@@ -4,6 +4,8 @@ from mobility.models.hubs import Hub
 from mobility.models.batteries import Battery
 from mobility.models.slots import HubSlot
 from mobility.models.vehicles import Vehicle, VehicleModel
+from mobility.models.assignments import VehicleAssignment
+from mobility.models.commands import VehicleCommand
 from mobility.models.plans import BayHoldPolicy, Plan, PriceMatrix, Subscription
 from mobility.models.swaps import Reservation, Swap
 from mobility.models.custody import BatteryEvent
@@ -32,6 +34,8 @@ __all__ = [
     "Swap",
     "TelemetryEvent",
     "Vehicle",
+    "VehicleAssignment",
+    "VehicleCommand",
     "VehicleModel",
     "VehicleType",
 ]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.db import models
 from django.db.models import Count, Sum
@@ -11,6 +11,14 @@ from finance.models import Payment
 from mobility.models import Subscription
 
 
+def _day_bounds(start: date, end: date) -> tuple[datetime, datetime]:
+    """Inclusive local-day window as aware datetimes (uses created_at index)."""
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(start, time.min), tz)
+    end_dt = timezone.make_aware(datetime.combine(end, time.max), tz)
+    return start_dt, end_dt
+
+
 def revenue_overview(*, start_date: date | None, end_date: date | None) -> dict:
     today = timezone.localdate()
     start = start_date or today - timedelta(days=29)
@@ -18,9 +26,10 @@ def revenue_overview(*, start_date: date | None, end_date: date | None) -> dict:
     if start > end:
         start, end = end, start
 
+    start_dt, end_dt = _day_bounds(start, end)
     payments = Payment.objects.filter(
-        created_at__date__gte=start,
-        created_at__date__lte=end,
+        created_at__gte=start_dt,
+        created_at__lte=end_dt,
     )
     successful = payments.filter(status=Payment.Status.SUCCESS)
     totals = successful.aggregate(
@@ -73,4 +82,24 @@ def revenue_overview(*, start_date: date | None, end_date: date | None) -> dict:
             for row in daily
         ],
         "subscriptions": subscriptions,
+    }
+
+
+def revenue_streams(*, start_date: date | None, end_date: date | None) -> dict:
+    """Purpose/channel breakdown — live ledger streams (not modelled MRR)."""
+    overview = revenue_overview(start_date=start_date, end_date=end_date)
+    streams = [
+        {
+            "code": row["purpose"] or "OTHER",
+            "label": row["purpose"] or "Other",
+            "amount_kobo": int(row["amount_kobo"] or 0),
+            "transactions": int(row["transactions"] or 0),
+        }
+        for row in overview["purposes"]
+    ]
+    return {
+        "range": overview["range"],
+        "gross_kobo": overview["gross_kobo"],
+        "streams": streams,
+        "channels": overview["channels"],
     }

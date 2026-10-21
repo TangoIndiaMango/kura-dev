@@ -9,7 +9,7 @@ from accounts.views import (
     StaffUserViewSet,
 )
 from accounts.views.cooperatives import CooperativeViewSet
-from analytics.views.impact import MeImpactView
+from analytics.views.impact import MeFleetSpendView, MeImpactView
 
 router = DefaultRouter()
 router.register(r"accounts", AccountViewSet, basename="accounts")
@@ -21,5 +21,10 @@ router.register(r"cooperatives", CooperativeViewSet, basename="cooperatives")
 
 urlpatterns = [
     path("accounts/me/impact/", MeImpactView.as_view(), name="accounts-me-impact"),
+    path(
+        "accounts/me/fleet-spend/",
+        MeFleetSpendView.as_view(),
+        name="accounts-me-fleet-spend",
+    ),
     *router.urls,
 ]

@@ -1,4 +1,5 @@
 import { useFetchData, usePatchData, usePostData } from '@shared/hooks/api'
+import { ADMIN_LIST_PAGE_SIZE } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../../auth/useCapabilities'
 import { DISCOUNTS_ENDPOINTS } from '../constants'
 import type {
@@ -29,7 +30,7 @@ export function useDiscounts(
     DISCOUNTS_ENDPOINTS.list,
     {
       page: params?.page ?? 1,
-      page_size: params?.page_size ?? 25,
+      page_size: params?.page_size ?? ADMIN_LIST_PAGE_SIZE,
       ...(params?.status && params.status !== 'all'
         ? { status: params.status }
         : {}),
@@ -126,7 +127,7 @@ export function useDiscountRedemptions(
     Boolean(id) && options?.enabled !== false && can('tariffs:manage')
   const query = useFetchData<CursorPaginated<DiscountRedemptionApi>>(
     id ? DISCOUNTS_ENDPOINTS.redemptions(id) : DISCOUNTS_ENDPOINTS.list,
-    { page_size: 25 },
+    { page_size: ADMIN_LIST_PAGE_SIZE },
     { enabled, staleTime: 15_000 },
   )
   return {

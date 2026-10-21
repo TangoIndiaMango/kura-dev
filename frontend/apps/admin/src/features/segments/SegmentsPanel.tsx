@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
@@ -8,9 +8,10 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
-  type TablePaginationConfig,
+  LoadingState,
 } from '@shared/components'
 import { downloadCsv } from '@shared/utils/downloadCsv'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../auth/useCapabilities'
 import { useSegments } from './hooks/use-segments'
 import type { SegmentListApi } from './types'
@@ -28,20 +29,6 @@ const STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
 ]
 
-function serverPagination(
-  page: number,
-  totalPages: number,
-  pageSize: number,
-  setPage: (p: number) => void,
-): TablePaginationConfig {
-  return {
-    page,
-    totalPages: Math.max(1, totalPages),
-    onPageChange: setPage,
-    variant: 'controls',
-    pageSize: String(pageSize).padStart(2, '0'),
-  }
-}
 
 function formatWhen(iso: string) {
   try {
@@ -62,22 +49,13 @@ export function SegmentsPanel() {
     includeDateRangeInFilter: false,
   })
 
-  useEffect(() => {
-    if (controls.page !== 1) controls.setPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controls.search, controls.filterValues])
 
-  const statusFilter =
-    controls.filterValues.status && controls.filterValues.status !== 'all'
-      ? String(controls.filterValues.status)
-      : Object.entries(controls.filterValues).find(([k]) =>
-          k.endsWith('_status'),
-        )?.[1]
+  const statusFilter = controls.getFilter('status')
 
   const status =
     statusFilter && statusFilter !== 'all' ? String(statusFilter) : undefined
 
-  const { segments, isPending, isError, count, totalPages, currentPage } =
+  const { segments, isPending, isError, count, totalPages, isPlaceholderData } =
     useSegments(
       {
         page: controls.page,
@@ -134,7 +112,7 @@ export function SegmentsPanel() {
             Need segments:manage to view cohorts.
           </p>
         ) : isPending ? (
-          <Skeleton height={280} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : isError ? (
           <p className="mb-4 text-[13px] text-[var(--mu)]">
             Could not load segments.
@@ -144,12 +122,13 @@ export function SegmentsPanel() {
             variant="embedded"
             headers={HEADERS}
             data={segments}
-            pagination={serverPagination(
-              currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              controls.pageSize,
-              controls.setPage,
-            )}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(item) => item.id}
             toolbar={{
               title: 'All segments',

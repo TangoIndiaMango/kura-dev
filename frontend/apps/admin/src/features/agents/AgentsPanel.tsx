@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Skeleton } from '@mantine/core'
+import { buildPagePagination } from '@shared/utils/cursor-pagination'
+import { Button } from '@mantine/core'
 import { PlusSignIcon } from 'hugeicons-react'
 import {
   AdminModuleLayout,
@@ -8,6 +9,7 @@ import {
   TableStatusBadge,
   useAdminModuleControls,
   type TableHeader,
+  LoadingState,
 } from '@shared/components'
 import { useCapabilities } from '../auth/useCapabilities'
 import { useAgents, type AgentListRow } from './hooks/use-agents'
@@ -43,15 +45,13 @@ export function AgentsPanel() {
     includeNameSort: false,
   })
 
-  const statusRaw = controls.filterValues.status
-  const status =
-    statusRaw && statusRaw !== 'all' ? String(statusRaw) : undefined
+  const status = controls.getFilter('status')
 
-  const { agents, isPending, count, currentPage, totalPages } = useAgents({
+  const { agents, isPending, isPlaceholderData, count, totalPages } = useAgents({
     search: controls.search || undefined,
     status,
     page: controls.page,
-    page_size: 25,
+    page_size: controls.pageSize,
   })
 
   const shiftsQuery = useShifts({ status: 'OPEN', page: 1, enabled: true })
@@ -93,19 +93,19 @@ export function AgentsPanel() {
         ]}
       >
         {isPending ? (
-          <Skeleton height={220} radius="md" />
+          <LoadingState cols={6} rows={8} />
         ) : (
           <DynamicTableSection<AgentListRow>
             variant="embedded"
             headers={HEADERS}
             data={agents}
-            pagination={{
-              page: currentPage,
+            pagination={buildPagePagination({
+              page: controls.page,
+              setPage: controls.setPage,
               totalPages,
-              onPageChange: controls.setPage,
-              variant: 'controls',
-              pageSize: '25',
-            }}
+              isPlaceholderData,
+              pageSize: controls.pageSize,
+            })}
             getRowKey={(a) => a.id}
             toolbar={{
               title: 'Hub operators',

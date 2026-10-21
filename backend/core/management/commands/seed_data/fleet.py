@@ -177,7 +177,11 @@ def seed_vehicle_plans_alerts(
     _upsert_motorcycle_plans()
 
     yaba = hubs[0]
-    Reservation.objects.get_or_create(
+    # Match ReservationService.create_reservation: WALLET bookings must carry a
+    # live hold. Seed rows with hold_amount_kobo=0 make bay complete demand a
+    # rider PIN while the UI used to skip it ("hold already captured").
+    hold_kobo = _FALLBACK_PRICE_KOBO[VehicleType.MOTORCYCLE][Plan.Period.SWAP]
+    reservation, _ = Reservation.objects.get_or_create(
         code="KB-4921",
         defaults={
             "account": account,
@@ -186,9 +190,27 @@ def seed_vehicle_plans_alerts(
             "hub": yaba,
             "payment_mode": Reservation.PaymentMode.WALLET,
             "status": Reservation.Status.CONFIRMED,
+            "hold_amount_kobo": 0,
             "expires_at": timezone.now() + timezone.timedelta(minutes=18),
         },
     )
+    if (
+        reservation.status == Reservation.Status.CONFIRMED
+        and reservation.payment_mode == Reservation.PaymentMode.WALLET
+        and int(reservation.hold_amount_kobo or 0) <= 0
+    ):
+        from finance.services.holds import WalletHoldService
+
+        WalletHoldService.hold(
+            account=account,
+            amount_kobo=hold_kobo,
+            reference=reservation.code,
+        )
+        reservation.hold_amount_kobo = hold_kobo
+        reservation.expires_at = timezone.now() + timezone.timedelta(minutes=18)
+        reservation.save(
+            update_fields=["hold_amount_kobo", "expires_at", "updated_at"]
+        )
     Alert.objects.get_or_create(
         kind=Alert.Kind.LOW_INVENTORY,
         hub=yaba,
