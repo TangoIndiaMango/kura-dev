@@ -38,6 +38,7 @@ class ShiftListSerializer(serializers.ModelSerializer):
             "created_at",
             "collected_cash_kobo",
             "is_stale",
+            "auto_closed",
         ]
 
     def get_collected_cash_kobo(self, obj: Shift) -> int:

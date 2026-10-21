@@ -174,7 +174,7 @@ class CashSettlementService:
                 body=f"{locked.hub.code}: {format_naira(lodge_amt)} · {ref}",
                 source="Shifts",
                 severity=Notification.Severity.INFO,
-                link_path=f"/payments?tab=cash&id={locked.id}",
+                link_path=f"/payments/cash/{locked.id}",
                 template_code="shift.cash_lodged",
                 dedupe_key=f"shift.cash_lodged:{locked.id}:{ref}",
             )

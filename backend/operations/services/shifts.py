@@ -76,7 +76,12 @@ class ShiftService:
         )
         if locked is None:
             raise DomainError("NOT_FOUND", "Shift not found.", http=404)
-        if locked.status != Shift.Status.OPEN:
+        counting_auto_closed = (
+            locked.status == Shift.Status.CLOSED
+            and locked.auto_closed
+            and locked.closing_cash_kobo is None
+        )
+        if locked.status != Shift.Status.OPEN and not counting_auto_closed:
             raise DomainError(
                 "INVALID_TRANSITION",
                 "Shift is already closed.",
@@ -101,7 +106,8 @@ class ShiftService:
         locked.closing_cash_kobo = closing_cash_kobo
         locked.expected_cash_kobo = expected
         locked.variance_kobo = variance
-        locked.closed_at = timezone.now()
+        # A late count on an auto-closed window keeps its original close time.
+        locked.closed_at = locked.closed_at if counting_auto_closed else timezone.now()
         locked.status = Shift.Status.CLOSED
         locked.save(
             update_fields=[
@@ -157,7 +163,7 @@ class ShiftService:
                     ),
                     source="Shifts",
                     severity=Notification.Severity.WARNING,
-                    link_path=f"/payments?tab=cash&id={locked.id}",
+                    link_path=f"/payments/cash/{locked.id}",
                     template_code="shift.cash_variance",
                     dedupe_key=f"shift.cash_variance:{locked.id}",
                 )
@@ -166,3 +172,71 @@ class ShiftService:
             ),
         )
         return locked
+
+    @staticmethod
+    def auto_close_stale_shifts(*, now=None) -> dict:
+        """Nightly: close windows still open from an earlier Lagos day.
+
+        Cash is reconciled per day, so a window may not span midnight. We record
+        expected cash (float + takings) and leave the physical count pending —
+        never invent a count or a variance. The agent's next cash take opens a
+        fresh window automatically.
+        """
+        from datetime import datetime, time
+
+        now = now or timezone.now()
+        today_start = timezone.make_aware(
+            datetime.combine(timezone.localdate(now), time.min)
+        )
+        closed = 0
+        for shift_id in Shift.objects.filter(
+            status=Shift.Status.OPEN, opened_at__lt=today_start
+        ).values_list("id", flat=True)[:500]:
+            with transaction.atomic():
+                locked = (
+                    Shift.objects.select_for_update()
+                    .select_related("hub", "agent")
+                    .filter(pk=shift_id, status=Shift.Status.OPEN)
+                    .first()
+                )
+                if locked is None:
+                    continue
+                expected = int(locked.opening_cash_kobo) + CashDepositService.sum_success_kobo(
+                    shift=locked
+                )
+                locked.expected_cash_kobo = expected
+                locked.closed_at = now
+                locked.status = Shift.Status.CLOSED
+                locked.auto_closed = True
+                locked.save(
+                    update_fields=[
+                        "expected_cash_kobo",
+                        "closed_at",
+                        "status",
+                        "auto_closed",
+                        "updated_at",
+                    ]
+                )
+                emit_event(
+                    action="shift.auto_closed",
+                    subject_type="shift",
+                    subject_id=str(locked.id),
+                    subject_label=f"{locked.hub.code} · auto-closed",
+                    actor=None,
+                    after={"expected_cash_kobo": expected, "status": locked.status},
+                    notify=NotifySpec(
+                        user=locked.agent,
+                        title="Duty window closed for the day",
+                        body=(
+                            f"{locked.hub.code}: expected cash {format_naira(expected)}. "
+                            "Count your drawer with ops to record it."
+                        ),
+                        source="Shifts",
+                        severity=Notification.Severity.INFO,
+                        link_path=f"/payments/cash/{locked.id}",
+                        template_code="shift.auto_closed",
+                        dedupe_key=f"shift.auto_closed:{locked.id}",
+                    ),
+                )
+                closed += 1
+        return {"auto_closed": closed}

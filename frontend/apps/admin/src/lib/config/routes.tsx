@@ -135,6 +135,7 @@ export const router = createBrowserRouter([
       { path: 'swaps', element: <SwapsPage /> },
       { path: 'swaps/:id', element: <SwapsPage /> },
       { path: 'payments', element: <PaymentsPage /> },
+      { path: 'payments/cash/:shiftId', element: <PaymentsPage /> },
       { path: 'payments/:id', element: <PaymentsPage /> },
       { path: 'alerts', element: <AlertsPage /> },
       { path: 'alerts/rules/new', element: <AlertsPage /> },

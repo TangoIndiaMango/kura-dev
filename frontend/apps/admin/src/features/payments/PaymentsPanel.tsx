@@ -315,7 +315,7 @@ export function PaymentsPanel() {
             searchQuery={cashControls.searchQuery}
             onSearchChange={cashControls.setSearchQuery}
             onFilter={cashControls.openFilter}
-            onRowClick={(item) => navigate(`/payments/${item.id}`)}
+            onRowClick={(item) => navigate(`/payments/cash/${item.id}`)}
             onRecordCash={() => navigate('/payments/record-cash')}
             canRecord={can('shifts:manage')}
           />

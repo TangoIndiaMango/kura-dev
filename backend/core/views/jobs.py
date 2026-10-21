@@ -89,3 +89,18 @@ class ActivateDueMatricesJobView(APIView):
         limit = int(request.query_params.get("limit") or request.data.get("limit") or 100)
         result = activate_due_price_matrices(limit=max(1, min(limit, 500)))
         return Response({"ok": True, "job": "activate_due_matrices", **result})
+
+
+class AutoCloseShiftsJobView(APIView):
+    """POST /api/v1/internal/jobs/auto-close-shifts/ — close windows past midnight."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(exclude=True)
+    def post(self, request):
+        if not _cron_secret_ok(request):
+            raise DomainError("AUTH_INVALID", "Invalid cron secret.", http=401)
+        from operations.services.shifts import ShiftService
+
+        return Response({"ok": True, "job": "auto_close_shifts", **ShiftService.auto_close_stale_shifts()})

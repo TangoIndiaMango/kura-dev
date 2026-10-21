@@ -20,6 +20,8 @@ export type ShiftRow = {
   collected_cash_kobo?: number | null
   /** Open longer than 24h. */
   is_stale?: boolean
+  /** Closed by the nightly sweep; closing count still owed. */
+  auto_closed?: boolean
   agent_id: string
   agent_name: string
   hub_id: string

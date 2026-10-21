@@ -65,7 +65,13 @@ export function cashTabKpis(
   cashOnHand: number,
   hubScoped: boolean,
 ) {
-  const varianceHubs = cashMapped.filter((r) => r.status === 'VARIANCE').length
+  const varianceHubs = cashMapped.filter(
+    (r) => r.status === 'VARIANCE' || r.status === 'COUNT_PENDING',
+  ).length
+  // Cash not yet lodged: open drawers + auto-closed windows awaiting count.
+  const countPendingNaira = cashMapped
+    .filter((r) => r.status === 'COUNT_PENDING')
+    .reduce((s, r) => s + r.openingNaira + Math.max(0, r.collectedNaira ?? 0), 0)
   const closedCount = cashMapped.filter(
     (r) =>
       r.status === 'SETTLED' ||
@@ -85,15 +91,15 @@ export function cashTabKpis(
       tone: 'success' as const,
     },
     {
-      title: 'Variance / review',
+      title: 'Needs ops action',
       value: varianceHubs,
-      sub: 'Needs ops action',
+      sub: 'Variance or count pending',
       tone: (varianceHubs > 0 ? 'danger' : 'default') as 'danger' | 'default',
     },
     {
       title: 'Outstanding',
-      value: formatNaira(cashOnHand),
-      sub: 'Deposit pending',
+      value: formatNaira(cashOnHand + countPendingNaira),
+      sub: 'On duty + awaiting count',
       tone: 'warning' as const,
     },
   ]

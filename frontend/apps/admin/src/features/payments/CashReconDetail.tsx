@@ -27,8 +27,13 @@ export function CashReconDetail({ id }: { id: string }) {
   const { data: shift, isPending, isError, refetch } = useShift(id)
   const deposits = useCashDeposits({ shift: id, enabled: Boolean(id) })
   const closeMut = useCloseShift(id)
+  // Return to the filtered list the user came from (hub/dates kept).
+  const goBack = () =>
+    window.history.length > 1 ? navigate(-1) : navigate('/payments?tab=cash')
   const lodgeMut = useLodgeShift(id)
-  const [closing, setClosing] = useState<number | string>('')
+  const [closing, setClosing] = useState('')
+  // Mismatched count needs a second click — a typo here becomes a variance alert.
+  const [confirmMismatch, setConfirmMismatch] = useState(false)
   const [lodgeRef, setLodgeRef] = useState('')
   const [lodgeAmount, setLodgeAmount] = useState<number | string>('')
 
@@ -36,7 +41,7 @@ export function CashReconDetail({ id }: { id: string }) {
     return (
       <AdminDetailPage
         backLabel="Back to payments"
-        onBack={() => navigate('/payments?tab=cash')}
+        onBack={goBack}
         title="Loading shift…"
         summaryRows={[{ label: 'ID', value: id }]}
       />
@@ -47,7 +52,7 @@ export function CashReconDetail({ id }: { id: string }) {
     return (
       <AdminDetailPage
         backLabel="Back to payments"
-        onBack={() => navigate('/payments?tab=cash')}
+        onBack={goBack}
         title="Shift not found"
         summaryRows={[{ label: 'ID', value: id }]}
       />
@@ -58,13 +63,21 @@ export function CashReconDetail({ id }: { id: string }) {
   const variance = shift.variance_kobo ?? 0
   const takes = deposits.data?.results ?? []
 
+  const expectedKobo =
+    shift.expected_cash_kobo ??
+    shift.opening_cash_kobo + (shift.collected_cash_kobo ?? 0)
+
   const onClose = async () => {
     const kobo = Math.round(Number(closing) * 100)
-    if (!Number.isFinite(kobo) || kobo < 0) {
+    if (closing.trim() === '' || !Number.isFinite(kobo) || kobo < 0) {
       notifications.show({
         color: 'red',
         message: 'Enter how much cash is in the drawer (₦).',
       })
+      return
+    }
+    if (kobo !== expectedKobo && !confirmMismatch) {
+      setConfirmMismatch(true)
       return
     }
     try {
@@ -111,7 +124,7 @@ export function CashReconDetail({ id }: { id: string }) {
   return (
     <AdminDetailPage
       backLabel="Back to cash"
-      onBack={() => navigate('/payments?tab=cash')}
+      onBack={goBack}
       title={shift.agent_name}
       subtitle={`${shift.hub_name || shift.hub_code} · cash shift`}
       statusLabel={cashStatusLabel(phase)}
@@ -195,20 +208,35 @@ export function CashReconDetail({ id }: { id: string }) {
         ) : null}
       </ul>
 
-      {shift.status === 'OPEN' ? (
+      {shift.status === 'OPEN' || (shift.auto_closed && shift.closing_cash_kobo == null) ? (
         <div className="mt-6 flex flex-col gap-3 border-t border-[var(--bd)] pt-4 sm:flex-row sm:items-end">
-          <NumberInput
-            label="Cash in drawer now (₦)"
-            description="Count physical notes and coins"
-            value={closing}
-            onChange={setClosing}
-            min={0}
-            decimalScale={2}
-            className="sm:w-56"
-          />
+          <div className="flex flex-col gap-1 sm:w-64">
+            <TextInput
+              label="Cash in drawer now (₦)"
+              description={`Count notes and coins · expected ${formatNaira(expectedKobo, { fromKobo: true })}`}
+              inputMode="decimal"
+              placeholder="e.g. 2855"
+              value={closing}
+              onChange={(e) => {
+                const v = e.currentTarget.value.replace(/,/g, '')
+                if (/^\d*\.?\d{0,2}$/.test(v)) {
+                  setClosing(v)
+                  setConfirmMismatch(false)
+                }
+              }}
+            />
+            {confirmMismatch ? (
+              <p className="text-[12px] font-semibold text-[#C0392B]">
+                Counted {formatNaira(Math.round(Number(closing) * 100), { fromKobo: true })} vs
+                expected {formatNaira(expectedKobo, { fromKobo: true })} (
+                {formatNaira(Math.round(Number(closing) * 100) - expectedKobo, { fromKobo: true })}).
+                Click again to record this count.
+              </p>
+            ) : null}
+          </div>
           <FormFooterActions
-            onBack={() => navigate('/payments?tab=cash')}
-            submitLabel="Close shift"
+            onBack={goBack}
+            submitLabel={shift.status === 'OPEN' ? 'Close shift' : 'Record count'}
             submitType="button"
             disabled={closeMut.isPending}
             onSubmitClick={onClose}
@@ -232,7 +260,7 @@ export function CashReconDetail({ id }: { id: string }) {
             className="sm:w-48"
           />
           <FormFooterActions
-            onBack={() => navigate('/payments?tab=cash')}
+            onBack={goBack}
             submitLabel="Confirm lodge"
             submitType="button"
             disabled={lodgeMut.isPending}

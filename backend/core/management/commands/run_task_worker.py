@@ -11,7 +11,7 @@ from core.models import QueuedTask
 from core.tasks.backends.database import execute_queued_row
 from core.tasks.credit import credit_auto_debit_task, recompute_credit_scores_task
 from core.tasks.pricing import activate_due_price_matrices_task
-from core.tasks.settlement import reconcile_cash_settlements_task
+from core.tasks.settlement import auto_close_shifts_task, reconcile_cash_settlements_task
 from core.tasks.subscriptions import renew_subscriptions_task
 from core.tasks.unreturned import flag_unreturned_batteries_task
 from mobility.tasks.mock_iot import tick_mock_iot_task
@@ -88,6 +88,7 @@ class Command(BaseCommand):
             if do_mock_iot:
                 tick_mock_iot_task.enqueue(limit=200)
             if do_settlement:
+                auto_close_shifts_task.enqueue()
                 reconcile_cash_settlements_task.enqueue(stale_hours=12)
             if do_subs:
                 renew_subscriptions_task.enqueue(limit=100)

@@ -81,27 +81,5 @@ export function shortPaymentRef(id: string) {
   return id.replace(/-/g, '').slice(0, 8).toUpperCase()
 }
 
-export function cashStatusLabel(status: string) {
-  if (status === 'ON_DUTY' || status === 'DEPOSIT_PENDING') return 'On duty'
-  if (status === 'AWAITING_LODGE') return 'Awaiting bank lodge'
-  if (status === 'SETTLED' || status === 'CLOSED') return 'Settled'
-  if (status === 'SHORT' || status === 'CLOSED_SHORT') return 'Short drawer'
-  if (status === 'VARIANCE') return 'Needs review'
-  if (status === 'IN_REVIEW') return 'In review'
-  return status
-}
-
-export function cashStatusTone(status: string) {
-  if (status === 'SETTLED' || status === 'CLOSED') return 'success' as const
-  if (status === 'SHORT' || status === 'CLOSED_SHORT') return 'info' as const
-  if (
-    status === 'ON_DUTY' ||
-    status === 'DEPOSIT_PENDING' ||
-    status === 'AWAITING_LODGE' ||
-    status === 'IN_REVIEW'
-  ) {
-    return 'warning' as const
-  }
-  if (status === 'VARIANCE' || status === 'REJECTED') return 'danger' as const
-  return 'neutral' as const
-}
+// Single source of truth for cash phase labels/tones.
+export { cashStatusLabel, cashStatusTone } from './cashReconHelpers'

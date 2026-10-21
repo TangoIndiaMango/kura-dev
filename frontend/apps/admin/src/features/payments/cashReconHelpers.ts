@@ -2,6 +2,8 @@
 
 export type CashDisplayStatus =
   | 'ON_DUTY'
+  /** Auto-closed at midnight — expected cash known, physical count owed. */
+  | 'COUNT_PENDING'
   | 'AWAITING_LODGE'
   | 'SETTLED'
   | 'VARIANCE'
@@ -17,8 +19,11 @@ export function shiftCashPhase(input: {
   status: string
   lodged_at?: string | null
   variance_kobo?: number | null
+  auto_closed?: boolean
+  closing_cash_kobo?: number | null
 }): Exclude<CashDisplayStatus, 'DEPOSIT_PENDING' | 'CLOSED' | 'CLOSED_SHORT'> {
   if (input.status === 'OPEN') return 'ON_DUTY'
+  if (input.auto_closed && input.closing_cash_kobo == null) return 'COUNT_PENDING'
   const variance = input.variance_kobo ?? 0
   const flagged = Math.abs(variance) >= 10_000
   const short = variance < 0
@@ -35,6 +40,7 @@ export function shiftCashPhase(input: {
 export function cashStatusTone(status: CashDisplayStatus | string) {
   if (status === 'SETTLED' || status === 'CLOSED') return 'success' as const
   if (status === 'SHORT' || status === 'CLOSED_SHORT') return 'info' as const
+  if (status === 'COUNT_PENDING') return 'danger' as const
   if (
     status === 'ON_DUTY' ||
     status === 'DEPOSIT_PENDING' ||
@@ -50,6 +56,8 @@ export function cashStatusLabel(status: CashDisplayStatus | string) {
     case 'ON_DUTY':
     case 'DEPOSIT_PENDING':
       return 'On duty'
+    case 'COUNT_PENDING':
+      return 'Auto-closed · count pending'
     case 'AWAITING_LODGE':
       return 'Awaiting bank lodge'
     case 'SETTLED':
@@ -70,6 +78,7 @@ export function cashNextActionLabel(status: CashDisplayStatus | string) {
   switch (status) {
     case 'ON_DUTY':
     case 'DEPOSIT_PENDING':
+    case 'COUNT_PENDING':
       return 'Count drawer'
     case 'AWAITING_LODGE':
     case 'VARIANCE':
@@ -86,6 +95,8 @@ export function cashPhaseHint(status: CashDisplayStatus | string) {
     case 'ON_DUTY':
     case 'DEPOSIT_PENDING':
       return 'Agent is collecting cash. End of day: count the drawer, then lodge.'
+    case 'COUNT_PENDING':
+      return 'Closed automatically at midnight. Count the drawer with the agent and record it.'
     case 'AWAITING_LODGE':
       return 'Drawer counted. Confirm the bank or PSP lodge to clear the float.'
     case 'VARIANCE':

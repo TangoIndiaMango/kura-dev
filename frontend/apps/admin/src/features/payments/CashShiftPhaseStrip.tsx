@@ -8,13 +8,16 @@ const STEPS = [
 
 function activeIndex(phase: string) {
   if (phase === 'ON_DUTY' || phase === 'DEPOSIT_PENDING') return 0
+  // Auto-closed: collection is done, the drawer count is the current step.
+  if (phase === 'COUNT_PENDING') return 1
   if (
     phase === 'AWAITING_LODGE' ||
     phase === 'VARIANCE' ||
     phase === 'SHORT' ||
     phase === 'CLOSED_SHORT'
   ) {
-    return 1
+    // Drawer counted — collect + count done, lodge is the current step.
+    return 2
   }
   return 2
 }

@@ -26,6 +26,9 @@ class Shift(BaseModel):
     lodge_ref = models.CharField(max_length=100, blank=True, default="")
     lodged_amount_kobo = models.BigIntegerField(null=True, blank=True)
     lodged_at = models.DateTimeField(null=True, blank=True)
+    # Closed by the nightly sweep: expected cash is recorded, the physical count
+    # (closing_cash_kobo) is still owed — ops record it via close.
+    auto_closed = models.BooleanField(default=False)
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.OPEN
     )
