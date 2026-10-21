@@ -13,7 +13,14 @@ import { downloadCsv } from '@shared/utils/downloadCsv'
 
 type BayRow = {
   bay: number
-  status: 'AVAILABLE' | 'CHARGING' | 'MAINTENANCE' | 'IN_FIELD' | 'EMPTY' | 'RETIRED'
+  status:
+    | 'AVAILABLE'
+    | 'RESERVED'
+    | 'CHARGING'
+    | 'MAINTENANCE'
+    | 'IN_FIELD'
+    | 'EMPTY'
+    | 'RETIRED'
   battery: BatteryRecord | null
 }
 
@@ -28,6 +35,7 @@ const LIST_HEADERS: TableHeader[] = [
 
 const STATUS_OPTIONS = [
   { value: 'AVAILABLE', label: 'Ready' },
+  { value: 'RESERVED', label: 'Held' },
   { value: 'CHARGING', label: 'Charging' },
   { value: 'MAINTENANCE', label: 'Fault' },
   { value: 'IN_FIELD', label: 'In field' },
@@ -36,6 +44,7 @@ const STATUS_OPTIONS = [
 
 function batteryTone(status: BayRow['status']) {
   if (status === 'AVAILABLE') return 'success' as const
+  if (status === 'RESERVED') return 'warning' as const
   if (status === 'MAINTENANCE') return 'danger' as const
   if (status === 'CHARGING') return 'info' as const
   if (status === 'EMPTY') return 'neutral' as const
@@ -164,7 +173,7 @@ export function HubBayInventory({
           r.battery?.type ?? '—',
           <TableStatusBadge
             key="s"
-            label={r.status === 'AVAILABLE' ? 'Ready' : r.status.replace('_', ' ')}
+            label={r.status === 'AVAILABLE' ? 'Ready' : r.status === 'RESERVED' ? 'Held' : r.status.replace('_', ' ')}
             tone={batteryTone(r.status)}
           />,
           r.battery ? <ChargeBar key="c" pct={r.battery.chargePct} /> : '—',
@@ -186,7 +195,7 @@ export function HubBayInventory({
                   {
                     label: 'Status',
                     value:
-                      peek.status === 'AVAILABLE' ? 'Ready' : peek.status.replace('_', ' '),
+                      peek.status === 'AVAILABLE' ? 'Ready' : peek.status === 'RESERVED' ? 'Held' : peek.status.replace('_', ' '),
                   },
                   { label: 'Charge', value: `${peek.battery.chargePct}%` },
                   { label: 'Health', value: `${peek.battery.healthPct}%` },

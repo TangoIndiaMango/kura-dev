@@ -133,7 +133,7 @@ export function FleetSpendScreen({ active = true }: { active?: boolean }) {
     [days],
   )
   const { spend, isPending, isError, refetch } = useFleetSpend(range, active)
-  const focus = spend?.daily.find((d) => d.date === selected) ?? spend?.daily.at(-1) ?? null
+  const focus = spend?.daily.find((d) => d.date === selected) ?? spend?.daily[spend.daily.length - 1] ?? null
 
   return (
     <div className="flex flex-col gap-4">
