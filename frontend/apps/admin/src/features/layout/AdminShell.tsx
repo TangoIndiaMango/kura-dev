@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useMantineColorScheme } from '@mantine/core'
 import { AdminConfirmModal } from '@shared/components'
 import { RouteLoadingFallback } from '@shared/components/loading'
@@ -12,6 +12,26 @@ import { AdminSidebar } from './AdminSidebar'
 import { AdminTopNav } from './AdminTopNav'
 import { isFullscreenFormRoute } from './isFullscreenFormRoute'
 import { metaForModule, moduleFromPath } from './modulePaths'
+import { canSeeModule } from './navConfig'
+import { useCapabilities } from '../auth/useCapabilities'
+import { staffHomePath } from '../auth/staffHomePath'
+
+function NoModuleAccess({ title, home }: { title: string; home: string }) {
+  return (
+    <div className="mx-auto mt-16 max-w-md rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-6 text-center shadow-[var(--sh)]">
+      <h2 className="text-[16px] font-bold text-[var(--tx)]">{title}</h2>
+      <p className="mt-2 text-[13px] text-[var(--mu)]">
+        Your role does not include this module. Ask a super admin if you need access.
+      </p>
+      <Link
+        to={home}
+        className="mt-4 inline-block text-[13px] font-semibold text-[var(--pr)] underline"
+      >
+        Go to your home page
+      </Link>
+    </div>
+  )
+}
 
 /**
  * RR7 wraps navigations in startTransition. Nested lazy+Suspense per route then
@@ -48,10 +68,20 @@ export const AdminShell: React.FC = () => {
     navigate('/login', { replace: true })
   }
 
-  const outlet = (
+  // Same rule as the sidebar: a page the menu hides must not open by URL either.
+  const { can, me } = useCapabilities()
+  const moduleId = moduleFromPath(location.pathname)
+  const allowed = !me || canSeeModule(moduleId, can)
+  if (!allowed && moduleId === 'dashboard') {
+    return <Navigate to={staffHomePath(me)} replace />
+  }
+
+  const outlet = allowed ? (
     <Suspense key={location.key} fallback={<RouteLoadingFallback />}>
       <Outlet />
     </Suspense>
+  ) : (
+    <NoModuleAccess title={meta.title} home={staffHomePath(me)} />
   )
 
   if (fullscreenForm) {

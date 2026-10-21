@@ -5,6 +5,9 @@ const ROLE_LABELS: Record<string, string> = {
   COMMERCIAL_ADMIN: 'Commercial Admin',
   GOVERNMENT_VIEWER: 'Government Viewer',
   PARTNER_VIEWER: 'Partner Viewer',
+  COOPERATIVE_CHAIRMAN: 'Cooperative Chairman',
+  FLEET_OWNER: 'Fleet Owner',
+  DRIVER: 'Driver',
 }
 
 type StaffUserBits = {

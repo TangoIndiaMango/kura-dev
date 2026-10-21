@@ -10,7 +10,7 @@ import { useCapabilities } from '../auth/useCapabilities'
 import { KuraLogo } from '../../shared/components/KuraLogo'
 import { moduleFromPath, pathForModule } from './modulePaths'
 import {
-  NAV_CAPABILITY,
+  canSeeModule,
   SECTIONS,
   childIsActive,
   type NavItem,
@@ -85,17 +85,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   const sections = SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => {
-      if (item.id === 'approvals') {
-        return (
-          can('finance:read') ||
-          can('credit:approve') ||
-          can('offers:manage')
-        )
-      }
-      const need = NAV_CAPABILITY[item.id]
-      return need ? can(need) : true
-    }),
+    items: section.items.filter((item) => canSeeModule(item.id, can)),
   })).filter((section) => section.items.length > 0)
 
   const groupOpen = (item: NavItem, isActive: boolean) => {

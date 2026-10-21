@@ -34,6 +34,7 @@ export function PaymentsPanel() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { can } = useCapabilities()
+  const canCash = can('shifts:manage')
   const [tab, setTab] = useUrlTab('payments', { valid: ['payments', 'cash'] })
   const [cursor, setCursor] = useState<string | undefined>()
   const [page, setPage] = useState(1)
@@ -78,7 +79,7 @@ export function PaymentsPanel() {
   ])
 
   const shiftsQuery = useShifts({
-    enabled: tab === 'cash',
+    enabled: tab === 'cash' && canCash,
     hub: hubScope,
     start_date: dateRange.start_date,
     end_date: dateRange.end_date,
@@ -166,7 +167,8 @@ export function PaymentsPanel() {
         dateRangeSlot={controls.dateRangeSlot}
         tabs={[
           { id: 'payments', label: 'Payments' },
-          { id: 'cash', label: 'Cash Reconciliation' },
+          // Shift cash needs shifts:manage — finance-read roles see payments only.
+          ...(canCash ? [{ id: 'cash', label: 'Cash Reconciliation' }] : []),
         ]}
         activeTab={tab}
         onTabChange={(next) => {

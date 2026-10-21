@@ -223,3 +223,12 @@ export const NAV_CAPABILITY: Partial<Record<AdminModuleId, string>> = {
   audit: 'audit:read',
 }
 
+
+/** One rule for sidebar, landing page and route guard — they must never disagree. */
+export function canSeeModule(id: AdminModuleId, can: (code: string) => boolean): boolean {
+  if (id === 'approvals') {
+    return can('finance:read') || can('credit:approve') || can('offers:manage')
+  }
+  const need = NAV_CAPABILITY[id]
+  return need ? can(need) : true
+}

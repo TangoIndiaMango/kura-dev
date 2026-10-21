@@ -54,7 +54,8 @@ export function AgentsPanel() {
     page_size: controls.pageSize,
   })
 
-  const shiftsQuery = useShifts({ status: 'OPEN', page: 1, enabled: true })
+  // Shift roster needs shifts:manage; other roles still see the staff list.
+  const shiftsQuery = useShifts({ status: 'OPEN', page: 1, enabled: can('shifts:manage') })
   const openByAgent = useMemo(() => {
     const map = new Map<string, string>()
     for (const s of shiftsQuery.data?.results ?? []) {
