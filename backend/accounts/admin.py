@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Account, Driver, StaffMembership
+from .models import User, Account, Consent, Driver, StaffMembership
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -20,3 +20,10 @@ class DriverAdmin(admin.ModelAdmin):
 @admin.register(StaffMembership)
 class StaffMembershipAdmin(admin.ModelAdmin):
     list_display = ['user', 'role', 'hub_id']
+
+@admin.register(Consent)
+class ConsentAdmin(admin.ModelAdmin):
+    list_display = ['account', 'purpose', 'policy_version', 'channel', 'granted_at', 'withdrawn_at']
+    list_filter = ['purpose', 'policy_version', 'channel']
+    search_fields = ['account__kura_id', 'account__display_name']
+    readonly_fields = ['account', 'purpose', 'policy_version', 'channel', 'granted_at', 'withdrawn_at']

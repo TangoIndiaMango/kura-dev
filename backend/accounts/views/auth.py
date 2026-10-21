@@ -12,6 +12,7 @@ from drf_spectacular.utils import extend_schema
 from accounts.selectors import me_payload
 from accounts.selectors_account import account_for_user
 from accounts.serializers import (
+    ConsentUpdateSerializer,
     LoginBeginSerializer,
     LoginSerializer,
     LogoutSerializer,
@@ -29,6 +30,7 @@ from accounts.serializers import (
 )
 from accounts.services import AuthService
 from accounts.services.auth import issue_tokens
+from accounts.services.consent import ConsentService
 from accounts.services.devices import DeviceTrustService
 from accounts.services.invites import consume_password_setup, peek_setup_token
 from accounts.services.profile import change_own_password, update_own_profile
@@ -80,6 +82,7 @@ class AuthViewSet(viewsets.GenericViewSet):
             "me": UserSerializer,
             "update_profile": ProfileUpdateSerializer,
             "change_password": PasswordChangeSerializer,
+            "update_consent": ConsentUpdateSerializer,
         }.get(self.action, UserSerializer)
 
     @extend_schema(request=LoginSerializer)
@@ -262,6 +265,29 @@ class AuthViewSet(viewsets.GenericViewSet):
         ser.is_valid(raise_exception=True)
         update_own_profile(user=request.user, **ser.validated_data)
         return ok(me_payload(request.user))
+
+    @extend_schema(request=ConsentUpdateSerializer, responses={200: dict})
+    @action(detail=False, methods=["post"], url_path="me/consent")
+    def update_consent(self, request):
+        """Owner grants SERVICE / grants or withdraws DATA_SHARING (E1.11)."""
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        account = account_for_user(request.user)
+        if data["granted"]:
+            ConsentService.grant(
+                account=account,
+                purpose=data["purpose"],
+                channel=data["channel"],
+                actor=request.user,
+            )
+        else:
+            ConsentService.withdraw(
+                account=account,
+                purpose=data["purpose"],
+                actor=request.user,
+            )
+        return ok(ConsentService.state(account))
 
     @extend_schema(request=PasswordChangeSerializer, responses={200: dict})
     @action(detail=False, methods=["post"], url_path="password/change")

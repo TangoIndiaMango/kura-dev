@@ -8,6 +8,7 @@ import { KuraIllustrationModal } from '../../../shared/components'
 import { ConfirmDialog } from '../../../shared/components/ConfirmDialog'
 import { OperatorSubtleButton } from '../../../shared/components/operator/OperatorSubtleButton'
 import { notify } from '../../../shared/utils/notify'
+import { DataSharingConsentSection } from './DataSharingConsentSection'
 
 const LANGUAGE_OPTIONS: Array<{
   value: OperatorAccountSettings['language']
@@ -247,6 +248,8 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           ))}
         </select>
       </section>
+
+      <DataSharingConsentSection />
 
       <ConfirmDialog
         opened={changeConfirmOpen}

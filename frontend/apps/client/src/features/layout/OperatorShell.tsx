@@ -7,6 +7,7 @@ import { OperatorSwapScreen } from '../swap/OperatorSwapScreen'
 import { OperatorPlansScreen } from '../plans/OperatorPlansScreen'
 import { OperatorWalletScreen } from '../wallet/OperatorWalletScreen'
 import { OperatorAccountScreen } from '../account/OperatorAccountScreen'
+import { ServiceConsentGate } from '../account/components/ServiceConsentGate'
 import { OperatorHistoryScreen } from '../history/OperatorHistoryScreen'
 import { OperatorNotificationsScreen } from '../notifications/OperatorNotificationsScreen'
 import { OperatorReceiptScreen } from '../receipt/OperatorReceiptScreen'
@@ -165,6 +166,7 @@ export const OperatorShell: React.FC = () => {
         ) : null}
 
         <OperatorPwaChrome holdJustBooked={holdJustBooked} />
+        <ServiceConsentGate />
       </div>
     </div>
   )

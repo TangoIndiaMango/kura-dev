@@ -4,7 +4,7 @@ from __future__ import annotations
 from django.db import transaction
 
 from accounts.helpers.kyc import kyc_payload
-from accounts.models import Account, Driver, IdentityDocument, User
+from accounts.models import Account, Consent, Driver, IdentityDocument, User
 from accounts.services.identity_review import (
     clear_photo_request_fields,
     reject_identity,
@@ -39,6 +39,39 @@ class IdentityService:
         return account
 
     @staticmethod
+    def _record_consent(
+        *,
+        account: Account,
+        user: User,
+        consent_service: bool,
+        consent_data_sharing: bool,
+        channel: str,
+    ) -> None:
+        """F1 step 2 — SERVICE is required before we hold ID data; DATA_SHARING opt-in."""
+        from accounts.services.consent import ConsentService
+
+        if consent_service:
+            ConsentService.grant(
+                account=account,
+                purpose=Consent.Purpose.SERVICE,
+                channel=channel,
+                actor=user,
+            )
+        elif not ConsentService.has_service_consent(account):
+            raise DomainError(
+                "CONSENT_REQUIRED",
+                "Agree to the Kura service terms to submit your ID.",
+                details={"consent_service": ["required"]},
+            )
+        if consent_data_sharing:
+            ConsentService.grant(
+                account=account,
+                purpose=Consent.Purpose.DATA_SHARING,
+                channel=channel,
+                actor=user,
+            )
+
+    @staticmethod
     def kyc_payload(
         account: Account,
         *,
@@ -58,6 +91,9 @@ class IdentityService:
         face_asset_id=None,
         id_front_asset_id=None,
         id_back_asset_id=None,
+        consent_service: bool = False,
+        consent_data_sharing: bool = False,
+        channel: str = "",
     ) -> dict:
         doc_type = (id_type or "").strip().upper()
         number = "".join(ch for ch in (id_number or "") if ch.isalnum())
@@ -80,6 +116,13 @@ class IdentityService:
         AccountService.complete_profile(user=user, display_name=name)
 
         account = IdentityService._own_account(user)
+        IdentityService._record_consent(
+            account=account,
+            user=user,
+            consent_service=consent_service,
+            consent_data_sharing=consent_data_sharing,
+            channel=channel,
+        )
         existing = (
             IdentityDocument.objects.select_for_update()
             .filter(account=account, doc_type=doc_type)

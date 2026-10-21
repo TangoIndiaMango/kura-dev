@@ -88,3 +88,11 @@ class PasswordChangeSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
     new_password_confirmation = serializers.CharField(write_only=True)
+
+
+class ConsentUpdateSerializer(serializers.Serializer):
+    purpose = serializers.ChoiceField(choices=["SERVICE", "DATA_SHARING"])
+    granted = serializers.BooleanField()
+    channel = serializers.ChoiceField(
+        choices=["WEB", "APP", "USSD", "HUB"], required=False, default="WEB"
+    )

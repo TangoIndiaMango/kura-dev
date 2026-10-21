@@ -12,6 +12,26 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
   return ax.response?.data?.error?.message || ax.message || fallback
 }
 
+export type ConsentPurpose = 'SERVICE' | 'DATA_SHARING'
+
+export type ConsentRecord = {
+  granted: boolean
+  granted_at: string | null
+  withdrawn_at: string | null
+  channel: string | null
+  policy_version: string | null
+}
+
+export type ConsentState = {
+  policy_version: string
+  service: ConsentRecord
+  data_sharing: ConsentRecord
+  /** No SERVICE grant at the current policy version. */
+  needs_service_consent: boolean
+  /** Existing rider with ID data on file — confirm before continuing. */
+  prompt_required: boolean
+}
+
 export type MePayload = {
   user: {
     id: string
@@ -48,6 +68,7 @@ export type MePayload = {
     id_front_url?: string | null
     id_back_url?: string | null
   } | null
+  consent?: ConsentState | null
 }
 
 export type OtpRequestResult = {
@@ -154,6 +175,15 @@ export async function fetchMe() {
   const { data } = await axiosInstance.get<MePayload>('/auth/me/', {
     silentError: true,
   })
+  return data
+}
+
+export async function updateConsent(purpose: ConsentPurpose, granted: boolean) {
+  const { data } = await axiosInstance.post<ConsentState>(
+    '/auth/me/consent/',
+    { purpose, granted, channel: 'WEB' },
+    { silentError: true },
+  )
   return data
 }
 

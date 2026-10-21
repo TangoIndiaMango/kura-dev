@@ -296,6 +296,10 @@ MEDIA_MAX_DOCUMENT_BYTES = int(
     env("MEDIA_MAX_DOCUMENT_BYTES", str(10 * 1024 * 1024)) or str(10 * 1024 * 1024)
 )
 
+# NDPA consent copy version. Bump when the rider-facing terms change: riders
+# with an older SERVICE grant are re-prompted on next sign-in.
+CONSENT_POLICY_VERSION = env("CONSENT_POLICY_VERSION", "2026-10") or "2026-10"
+
 # Payment Service Providers (PSP)
 DEFAULT_PSP = env("DEFAULT_PSP", "PAYSTACK")
 PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY", "")

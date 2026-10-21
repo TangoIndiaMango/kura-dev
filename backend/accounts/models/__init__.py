@@ -1,4 +1,5 @@
 from accounts.models.account import Account
+from accounts.models.consent import Consent
 from accounts.models.cooperative import Cooperative
 from accounts.models.devices import TrustedDevice
 from accounts.models.driver import Driver
@@ -10,6 +11,7 @@ from accounts.models.user import User, UserManager
 
 __all__ = [
     "Account",
+    "Consent",
     "Cooperative",
     "Driver",
     "IdentityDocument",
