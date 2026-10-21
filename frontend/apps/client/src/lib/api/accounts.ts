@@ -8,6 +8,10 @@ export type IdentitySubmitPayload = {
   face_asset_id: string
   id_front_asset_id: string
   id_back_asset_id: string
+  /** Required unless SERVICE consent is already on file (me.consent). */
+  consent_service?: boolean
+  consent_data_sharing?: boolean
+  channel?: 'WEB' | 'APP'
 }
 
 export type KycPayload = {

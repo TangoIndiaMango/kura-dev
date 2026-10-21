@@ -33,6 +33,8 @@ export interface KuraIllustrationModalProps {
   /** Outline/secondary style primary (Cancel / Hide on progress cards) */
   primaryOutline?: boolean
   closeOnClickOutside?: boolean
+  /** False hides the close button for sheets the user must answer. */
+  dismissible?: boolean
 }
 
 /**
@@ -53,6 +55,7 @@ export function KuraIllustrationModal({
   secondaryAction,
   primaryOutline = false,
   closeOnClickOutside = true,
+  dismissible = true,
 }: KuraIllustrationModalProps) {
   const { colorScheme } = useMantineColorScheme()
   const isDark = colorScheme !== 'light'
@@ -129,7 +132,7 @@ export function KuraIllustrationModal({
         type="button"
         aria-label="Dismiss"
         className="absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity"
-        onClick={closeOnClickOutside ? onClose : undefined}
+        onClick={closeOnClickOutside && dismissible ? onClose : undefined}
       />
 
       <div
@@ -139,16 +142,18 @@ export function KuraIllustrationModal({
             : 'border-[#E6EEF2] bg-white text-[#003153]'
         }`}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className={`absolute right-3 top-3 rounded-lg p-1.5 ${
-            isDark ? 'text-[var(--kura-text)]/40 hover:text-[var(--kura-text)]' : 'text-[#94A3B8] hover:text-[#003153]'
-          }`}
-        >
-          <Cancel01Icon size={16} />
-        </button>
+        {dismissible ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className={`absolute right-3 top-3 rounded-lg p-1.5 ${
+              isDark ? 'text-[var(--kura-text)]/40 hover:text-[var(--kura-text)]' : 'text-[#94A3B8] hover:text-[#003153]'
+            }`}
+          >
+            <Cancel01Icon size={16} />
+          </button>
+        ) : null}
 
         <div className="flex flex-col items-center gap-4 px-5 pb-5 pt-7">
           {hero}

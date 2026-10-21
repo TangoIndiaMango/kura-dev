@@ -34,6 +34,8 @@ export function useVerifyIdentityController(current: OperatorSession) {
   const [face, setFace] = useState<File | null>(null)
   const [front, setFront] = useState<File | null>(null)
   const [back, setBack] = useState<File | null>(null)
+  const [consentService, setConsentService] = useState(false)
+  const [consentDataSharing, setConsentDataSharing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [forceEdit, setForceEdit] = useState(false)
@@ -83,7 +85,10 @@ export function useVerifyIdentityController(current: OperatorSession) {
   const idLen = ID_DIGIT_LEN[idType] ?? 10
   const numberOk =
     idNumber.length >= idLen || (Boolean(keepLast4) && idNumber.length === 0)
+  // Ask until SERVICE is on file at the current policy version (F1 step 2).
+  const needsConsent = me?.consent?.needs_service_consent ?? true
   const formReady =
+    (!needsConsent || consentService) &&
     fullName.trim().length >= 2 &&
     numberOk &&
     Boolean(face || keepFaceId) &&
@@ -167,6 +172,13 @@ export function useVerifyIdentityController(current: OperatorSession) {
           face_asset_id: ids.faceId,
           id_front_asset_id: ids.frontId,
           id_back_asset_id: ids.backId,
+          ...(needsConsent
+            ? {
+                consent_service: consentService,
+                consent_data_sharing: consentDataSharing,
+                channel: 'WEB' as const,
+              }
+            : {}),
         })
         await applyKyc(kycNext)
         setForceEdit(false)
@@ -203,6 +215,11 @@ export function useVerifyIdentityController(current: OperatorSession) {
     setFront,
     back,
     setBack,
+    needsConsent,
+    consentService,
+    setConsentService,
+    consentDataSharing,
+    setConsentDataSharing,
     error,
     formReady,
     busy,

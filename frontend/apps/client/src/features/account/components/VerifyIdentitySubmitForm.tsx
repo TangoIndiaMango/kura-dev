@@ -4,6 +4,7 @@ import { OperatorPrimaryButton } from '../../../shared/components/operator/Opera
 import { IdPhotoField } from '../../../shared/components/media-upload/IdPhotoField'
 import { IdentityPhotoPair, identityFieldStyles } from './IdentityFormFields'
 import { ID_OPTIONS } from './verifyIdentityLive'
+import { ConsentCheckboxes } from './ConsentCheckboxes'
 
 export function VerifyIdentitySubmitForm({
   title,
@@ -28,6 +29,7 @@ export function VerifyIdentitySubmitForm({
   onBack,
   backUrl,
   highlightPhotos = false,
+  consent,
   error,
   formReady,
   busy,
@@ -56,6 +58,13 @@ export function VerifyIdentitySubmitForm({
   onBack: (f: File | null) => void
   backUrl?: string | null
   highlightPhotos?: boolean
+  /** Shown until SERVICE consent is on file; omit to hide. */
+  consent?: {
+    service: boolean
+    onService: (v: boolean) => void
+    dataSharing: boolean
+    onDataSharing: (v: boolean) => void
+  } | null
   error: string | null
   formReady: boolean
   busy: boolean
@@ -156,6 +165,8 @@ export function VerifyIdentitySubmitForm({
       ) : (
         photoBlock
       )}
+
+      {consent ? <ConsentCheckboxes {...consent} /> : null}
 
       {error ? (
         <p className="text-[12px] font-medium text-[var(--kura-coral)]">{error}</p>

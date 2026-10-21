@@ -1,4 +1,4 @@
-import { Select, TextInput } from '@mantine/core'
+import { Checkbox, Select, TextInput } from '@mantine/core'
 import type { OperatorRecord } from '../types'
 import { OperatorIdPhotoFields } from './OperatorIdPhotoFields'
 
@@ -34,6 +34,11 @@ type Props = {
   onFrontChange: (f: File | null) => void
   onBackChange: (f: File | null) => void
   onFaceChange: (f: File | null) => void
+  /** NDPA: agent confirms the rider agreed — SERVICE is required to submit ID. */
+  consentService: boolean
+  onConsentService: (v: boolean) => void
+  consentDataSharing: boolean
+  onConsentDataSharing: (v: boolean) => void
 }
 
 export function OperatorProfileFields(p: Props) {
@@ -131,6 +136,21 @@ export function OperatorProfileFields(p: Props) {
           onBackChange={p.onBackChange}
           onFaceChange={p.onFaceChange}
         />
+      ) : null}
+      {!p.editing ? (
+        <div className="flex flex-col gap-2 rounded-[10px] border border-[var(--bd)] bg-[var(--in)] p-3">
+          <p className="text-[12px] font-semibold text-[var(--tx)]">Rider consent (read to the rider)</p>
+          <Checkbox
+            checked={p.consentService}
+            onChange={(e) => p.onConsentService(e.currentTarget.checked)}
+            label="Rider agrees to the Kura service terms and to Kura holding their ID for verification (required)"
+          />
+          <Checkbox
+            checked={p.consentDataSharing}
+            onChange={(e) => p.onConsentDataSharing(e.currentTarget.checked)}
+            label="Rider agrees to anonymised data sharing with partners and government (optional)"
+          />
+        </div>
       ) : null}
     </div>
   )

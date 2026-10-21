@@ -96,6 +96,7 @@ def advance_onboarding(user: User, step: str) -> User:
 def me_payload(user: User) -> dict:
     from accounts.models import Driver
     from accounts.serializers import AccountSerializer, UserSerializer
+    from accounts.services.consent import ConsentService
     from accounts.services.identity import IdentityService
     from accounts.services.profile import normalized_notif_prefs
     from core.services.media import delivery_url
@@ -132,4 +133,5 @@ def me_payload(user: User) -> dict:
         "photo_url": photo_url,
         "notification_prefs": normalized_notif_prefs(user.notification_prefs),
         "kyc": kyc,
+        "consent": ConsentService.state(account) if account else None,
     }

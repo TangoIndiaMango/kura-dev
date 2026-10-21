@@ -93,19 +93,31 @@ class OperatorRegistrationTests(TestCase):
                 uploaded_by=self.admin,
             )
 
+        payload = {
+            "display_name": "Photo Rider",
+            "id_type": "NIN",
+            "id_number": "12345678901",
+            "face_asset_id": str(asset("uploads/face/pr1").id),
+            "id_front_asset_id": str(asset("uploads/identity/prf").id),
+            "id_back_asset_id": str(asset("uploads/identity/prb").id),
+        }
+        # Agent-assisted KYC still needs the rider's service consent (NDPA).
+        refused = self.client.post(
+            f"/api/v1/accounts/{account_id}/kyc/submit/", payload, format="json"
+        )
+        self.assertEqual(refused.status_code, 400, refused.content)
+        self.assertEqual(refused.json()["error"]["code"], "CONSENT_REQUIRED")
+
         submit = self.client.post(
             f"/api/v1/accounts/{account_id}/kyc/submit/",
-            {
-                "display_name": "Photo Rider",
-                "id_type": "NIN",
-                "id_number": "12345678901",
-                "face_asset_id": str(asset("uploads/face/pr1").id),
-                "id_front_asset_id": str(asset("uploads/identity/prf").id),
-                "id_back_asset_id": str(asset("uploads/identity/prb").id),
-            },
+            {**payload, "consent_service": True, "channel": "HUB"},
             format="json",
         )
         self.assertEqual(submit.status_code, 201, submit.content)
+        from accounts.models import Consent
+
+        consent = Consent.objects.get(account_id=account_id, purpose=Consent.Purpose.SERVICE)
+        self.assertEqual(consent.channel, Consent.Channel.HUB)
         account = Account.objects.get(pk=account_id)
         self.assertEqual(account.kyc_status, Account.KycStatus.PENDING)
         self.assertTrue(

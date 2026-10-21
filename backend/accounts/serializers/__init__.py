@@ -8,6 +8,7 @@ from .accounts import (
     OperatorRegisterSerializer,
 )
 from .auth import (
+    ConsentUpdateSerializer,
     LoginBeginSerializer,
     LoginSerializer,
     LogoutSerializer,
@@ -45,6 +46,7 @@ from .roles import (
 from .users import StaffInviteSerializer, StaffUpdateSerializer, UserSerializer
 
 __all__ = [
+    "ConsentUpdateSerializer",
     "AccountCooperativeSerializer",
     "AccountCrmDetailSerializer",
     "AccountCrmListSerializer",

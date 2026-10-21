@@ -48,6 +48,8 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
   const [idFrontPhoto, setIdFrontPhoto] = useState<File | null>(null)
   const [idBackPhoto, setIdBackPhoto] = useState<File | null>(null)
   const [facePhoto, setFacePhoto] = useState<File | null>(null)
+  const [consentService, setConsentService] = useState(false)
+  const [consentDataSharing, setConsentDataSharing] = useState(false)
   const [kycSubmitted, setKycSubmitted] = useState(false)
   const [idType, setIdType] = useState<OperatorIdType>('NIN')
   const [cooperativeId, setCooperativeId] = useState<string | null>(null)
@@ -87,6 +89,13 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
         })
         return
       }
+      if (!consentService) {
+        notifications.show({
+          color: 'red',
+          message: 'Confirm the rider agreed to the service terms before continuing.',
+        })
+        return
+      }
     }
     if (!editing && step < lastStep) {
       setStep((s) => s + 1)
@@ -118,14 +127,14 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
             cooperative_id: cooperativeId || null,
           },
           { face: facePhoto, front: idFrontPhoto, back: idBackPhoto },
+          { service: consentService, dataSharing: consentDataSharing },
         )
         setRegisteredKuraId(result.kuraId)
         setKycSubmitted(result.kycSubmitted)
         if (!result.kycSubmitted) {
           notifications.show({
             color: 'yellow',
-            message:
-              'Operator registered — ID photos failed. Retry from the operator KYC tab.',
+            message: `Operator registered — ID not submitted (${result.kycError ?? 'unknown error'}). Retry from the operator KYC tab.`,
           })
         }
       } catch (err) {
@@ -208,6 +217,10 @@ export function OperatorFormPanel({ operatorId }: { operatorId?: string }) {
             onFrontChange={setIdFrontPhoto}
             onBackChange={setIdBackPhoto}
             onFaceChange={setFacePhoto}
+            consentService={consentService}
+            onConsentService={setConsentService}
+            consentDataSharing={consentDataSharing}
+            onConsentDataSharing={setConsentDataSharing}
           />
         )}
 

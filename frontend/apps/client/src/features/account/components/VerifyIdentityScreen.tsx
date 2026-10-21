@@ -119,6 +119,16 @@ export const VerifyIdentityScreen: React.FC<VerifyIdentityScreenProps> = ({
         onBack={c.setBack}
         backUrl={view.idBackUrl}
         highlightPhotos={route.photosRequested}
+        consent={
+          c.needsConsent
+            ? {
+                service: c.consentService,
+                onService: c.setConsentService,
+                dataSharing: c.consentDataSharing,
+                onDataSharing: c.setConsentDataSharing,
+              }
+            : null
+        }
         error={c.error}
         formReady={c.formReady}
         busy={c.busy}

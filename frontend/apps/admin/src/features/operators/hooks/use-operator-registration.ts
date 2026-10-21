@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { axiosInstance } from '@lib/api/client'
 import { uploadMedia } from '@lib/api/media'
+import { apiErrorMessage } from '@lib/api/auth'
 import { ACCOUNTS_ENDPOINTS } from '../constants/operators-api.constants'
 import {
   useRegisterOperator,
@@ -21,9 +22,11 @@ export function useOperatorRegistration() {
   async function registerWithIdentity(
     payload: RegisterOperatorPayload,
     photos: RegistrationPhotos,
-  ): Promise<{ kuraId: string; kycSubmitted: boolean }> {
+    consent: { service: boolean; dataSharing: boolean },
+  ): Promise<{ kuraId: string; kycSubmitted: boolean; kycError: string | null }> {
     const created = await registerOperator.mutateAsync(payload)
     let kycSubmitted = false
+    let kycError: string | null = null
     setSubmittingPhotos(true)
     try {
       const [face, front, back] = await Promise.all([
@@ -38,14 +41,18 @@ export function useOperatorRegistration() {
         face_asset_id: face.id,
         id_front_asset_id: front.id,
         id_back_asset_id: back.id,
+        consent_service: consent.service,
+        consent_data_sharing: consent.dataSharing,
+        channel: 'HUB',
       })
       kycSubmitted = true
-    } catch {
+    } catch (err) {
       kycSubmitted = false
+      kycError = apiErrorMessage(err, 'ID submission failed')
     } finally {
       setSubmittingPhotos(false)
     }
-    return { kuraId: created.kura_id || '', kycSubmitted }
+    return { kuraId: created.kura_id || '', kycSubmitted, kycError }
   }
 
   return {

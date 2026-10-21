@@ -52,6 +52,7 @@ class IdentitySubmitTests(TestCase):
                 "face_asset_id": str(face.id),
                 "id_front_asset_id": str(front.id),
                 "id_back_asset_id": str(back.id),
+                "consent_service": True,
             },
             format="json",
         )
@@ -82,6 +83,7 @@ class IdentitySubmitTests(TestCase):
                 "id_number": "12345678901",
                 "id_front_asset_id": str(front.id),
                 "id_back_asset_id": str(back.id),
+                "consent_service": True,
             },
             format="json",
         )
@@ -116,6 +118,7 @@ class IdentitySubmitTests(TestCase):
                 "face_asset_id": str(stolen.id),
                 "id_front_asset_id": str(front.id),
                 "id_back_asset_id": str(back.id),
+                "consent_service": True,
             },
             format="json",
         )
@@ -135,6 +138,7 @@ class IdentitySubmitTests(TestCase):
             face_asset_id=face.id,
             id_front_asset_id=front.id,
             id_back_asset_id=back.id,
+            consent_service=True,
         )
         me = self.client.get("/api/v1/auth/me/")
         self.assertEqual(me.status_code, 200)
@@ -156,6 +160,7 @@ class IdentitySubmitTests(TestCase):
             face_asset_id=face.id,
             id_front_asset_id=front.id,
             id_back_asset_id=back.id,
+            consent_service=True,
         )
         res = self.client.post("/api/v1/accounts/identity/withdraw/", {}, format="json")
         self.assertEqual(res.status_code, 200)
@@ -177,6 +182,7 @@ class IdentitySubmitTests(TestCase):
             face_asset_id=face.id,
             id_front_asset_id=front.id,
             id_back_asset_id=back.id,
+            consent_service=True,
         )
         res = self.client.post(
             "/api/v1/accounts/identity/",
@@ -187,6 +193,7 @@ class IdentitySubmitTests(TestCase):
                 "face_asset_id": str(face.id),
                 "id_front_asset_id": str(front.id),
                 "id_back_asset_id": str(back.id),
+                "consent_service": True,
             },
             format="json",
         )
@@ -260,6 +267,7 @@ class IdentityOpsReviewTests(TestCase):
                 face_asset_id=face.id,
                 id_front_asset_id=front.id,
                 id_back_asset_id=back.id,
+                consent_service=True,
             )
 
     def test_ops_verify_requires_card_photos(self):
