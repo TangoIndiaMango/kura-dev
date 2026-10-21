@@ -106,12 +106,13 @@ export function PaymentsCashTable({
             : '—'}
         </span>,
         <span key="asOf" className="text-xs text-[var(--mu)]">
-          {new Date(item.asOf).toLocaleString()}
+          {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(item.asOf))}
         </span>,
         <TableStatusBadge
           key="st"
-          label={cashStatusLabel(item.status)}
-          tone={cashStatusTone(item.status)}
+          // A window open for days mixes many days' cash — close and reconcile it.
+          label={item.isStale ? 'Open > 24h · close it' : cashStatusLabel(item.status)}
+          tone={item.isStale ? 'danger' : cashStatusTone(item.status)}
         />,
       ]}
     />

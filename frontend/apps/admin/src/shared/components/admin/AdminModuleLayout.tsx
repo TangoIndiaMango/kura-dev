@@ -15,6 +15,8 @@ export interface AdminModuleLayoutProps {
   kpis?: AdminKpiCardProps[]
   /** Shown top-right on the Overview card (DateRangePicker). */
   dateRangeSlot?: ReactNode
+  /** Full-width filter row under the overview title (wraps on small screens). */
+  filtersSlot?: ReactNode
   overviewTitle?: string
   chartsSlot?: ReactNode
   /** `bare` skips the outer content card (settings pages with their own section cards). */
@@ -30,12 +32,13 @@ export function AdminModuleLayout({
   onTabChange,
   kpis = [],
   dateRangeSlot,
+  filtersSlot,
   overviewTitle = 'Overview',
   chartsSlot,
   contentVariant = 'card',
   children,
 }: AdminModuleLayoutProps) {
-  const showOverviewCard = kpis.length > 0 || Boolean(dateRangeSlot)
+  const showOverviewCard = kpis.length > 0 || Boolean(dateRangeSlot) || Boolean(filtersSlot)
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
@@ -74,6 +77,12 @@ export function AdminModuleLayout({
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="text-[17px] font-bold text-[var(--tx)]">{overviewTitle}</div>
               <div className="shrink-0">{dateRangeSlot}</div>
+            </div>
+          ) : null}
+          {filtersSlot ? (
+            <div className="mb-4 flex flex-col gap-3">
+              <div className="text-[15px] font-bold text-[var(--tx)]">{overviewTitle}</div>
+              <div className="min-w-0">{filtersSlot}</div>
             </div>
           ) : null}
           {kpis.length > 0 ? (

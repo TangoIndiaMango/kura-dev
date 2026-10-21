@@ -13,6 +13,16 @@ import {
   cashStatusTone,
 } from '@features/payments/cashReconHelpers'
 
+const wat = (iso: string) =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Africa/Lagos',
+  }).format(new Date(iso))
+
 export function HubCashLiveTable({
   hubId,
   enabled = true,
@@ -56,15 +66,21 @@ export function HubCashLiveTable({
               </p>
               <p className="mt-0.5 text-[11.5px] text-[var(--mu)]">
                 {r.status === 'ON_DUTY'
-                  ? `Opened ${new Date(r.openedAt).toLocaleString()}`
+                  ? `Opened ${wat(r.openedAt)}`
                   : r.closedAt
-                    ? `Closed ${new Date(r.closedAt).toLocaleString()}`
+                    ? `Closed ${wat(r.closedAt)}`
                     : '—'}
               </p>
+              {r.isStale ? (
+                <p className="mt-1 text-[11.5px] font-semibold text-[#C0392B]">
+                  Open more than 24h — cash from several days is mixed in this window.
+                  Close and reconcile it.
+                </p>
+              ) : null}
             </div>
             <TableStatusBadge
-              label={cashStatusLabel(r.status)}
-              tone={cashStatusTone(r.status)}
+              label={r.isStale ? 'Open > 24h' : cashStatusLabel(r.status)}
+              tone={r.isStale ? 'danger' : cashStatusTone(r.status)}
             />
           </div>
 

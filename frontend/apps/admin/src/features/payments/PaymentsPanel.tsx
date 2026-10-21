@@ -1,3 +1,6 @@
+import { PaymentsFilterBar, channelOptionLabel } from './PaymentsFilterBar'
+import { useHubs } from '@features/hubs/hooks/use-hubs'
+import dayjs from 'dayjs'
 import { formatNaira } from '@shared/utils/currency'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -25,7 +28,6 @@ import {
   cashVarianceBarData,
   channelBarData,
   paymentTabKpis,
-  PaymentsHubScopeChip,
 } from './paymentsPanelMetrics'
 import {
   CASH_STATUS_OPTIONS,
@@ -60,11 +62,31 @@ export function PaymentsPanel() {
     filterTitle: 'Filter cash reconciliation',
     pageSize: ADMIN_LIST_PAGE_SIZE,
   })
-  const controls = tab === 'payments' ? paymentsControls : cashControls
+  // One date range for the whole page (both tabs, KPIs and export) — tabs used
+  // to keep separate ranges, so arriving from a hub showed different days.
+  const controls = paymentsControls
   const dateRange = controls.dateRange
 
-  const statusFilter = readFilter(paymentsControls.filterValues, 'status')
-  const channelFilter = readFilter(paymentsControls.filterValues, 'channel')
+  // Hub / method / status live in the URL so links and refreshes keep scope.
+  const statusFilter =
+    searchParams.get('status')?.trim() || readFilter(paymentsControls.filterValues, 'status')
+  const channelFilter =
+    searchParams.get('channel')?.trim() || readFilter(paymentsControls.filterValues, 'channel')
+  const setParam = (key: string, value: string | null) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
+  const { hubs: hubList } = useHubs({ page_size: 200 })
+  const hubOptions = useMemo(
+    () => hubList.map((h) => ({ value: h.id, label: `${h.name} · ${h.code}` })),
+    [hubList],
+  )
 
   const resetCursor = () => {
     setCursor(undefined)
@@ -90,22 +112,12 @@ export function PaymentsPanel() {
   })
   const liveShifts = shiftsQuery.data?.results ?? []
   const hubScopeLabel =
+    hubOptions.find((o) => o.value === hubScope)?.label ||
     hubLabelParam ||
     liveShifts[0]?.hub_name ||
     liveShifts[0]?.hub_code ||
     (hubScope ? `Hub ${hubScope.slice(0, 8)}…` : null)
 
-  const clearHubScope = () => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('hub')
-        next.delete('hub_label')
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   const {
     payments,
@@ -173,9 +185,21 @@ export function PaymentsPanel() {
   const { pageRows: cashPageRows, pagination: cashPagination } =
     cashControls.paginate(cashRows)
 
+  // Drawer cash = opening float + cash taken on open duty windows.
   const cashOnHand = cashMapped
     .filter((r) => r.status === 'ON_DUTY')
-    .reduce((s, r) => s + Math.max(0, r.collectedNaira ?? r.openingNaira), 0)
+    .reduce((s, r) => s + r.openingNaira + Math.max(0, r.collectedNaira ?? 0), 0)
+
+  const scopeSummary = [
+    hubScope ? hubScopeLabel : 'All hubs',
+    dateRange.start_date && dateRange.end_date
+      ? `${dayjs(dateRange.start_date).format('D MMM')} – ${dayjs(dateRange.end_date).format('D MMM YYYY')}`
+      : 'All dates',
+    ...(tab === 'payments'
+      ? [channelFilter ? channelOptionLabel(channelFilter) : 'All methods']
+      : []),
+    ...(tab === 'payments' && statusFilter ? [statusFilter.toLowerCase()] : []),
+  ].join(' · ')
 
   const { stats: paymentStats } = usePaymentStats(
     {
@@ -198,7 +222,35 @@ export function PaymentsPanel() {
       <AdminModuleLayout
         title="Payments"
         subtitle="Wallet funding, swaps, renewals, and hub cash reconciliation"
-        dateRangeSlot={controls.dateRangeSlot}
+        overviewTitle={`Showing: ${scopeSummary}`}
+        filtersSlot={
+          <PaymentsFilterBar
+            hubId={hubScope}
+            hubOptions={hubOptions}
+            onHubChange={(id, label) =>
+              setSearchParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev)
+                  if (id) {
+                    next.set('hub', id)
+                    if (label) next.set('hub_label', label)
+                  } else {
+                    next.delete('hub')
+                    next.delete('hub_label')
+                  }
+                  return next
+                },
+                { replace: true },
+              )
+            }
+            dateRangeSlot={controls.dateRangeSlot}
+            channel={channelFilter}
+            onChannelChange={(v) => setParam('channel', v || null)}
+            status={statusFilter}
+            onStatusChange={(v) => setParam('status', v || null)}
+            showPaymentFilters={tab === 'payments'}
+          />
+        }
         tabs={[
           { id: 'payments', label: 'Payments' },
           // Shift cash needs shifts:manage — finance-read roles see payments only.
@@ -241,12 +293,6 @@ export function PaymentsPanel() {
           </div>
         }
       >
-        {hubScope && hubScopeLabel ? (
-          <PaymentsHubScopeChip
-            label={hubScopeLabel}
-            onClear={clearHubScope}
-          />
-        ) : null}
         {tab === 'payments' ? (
           <PaymentsLedgerTable
             payments={payments}

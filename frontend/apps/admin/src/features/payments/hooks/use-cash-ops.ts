@@ -16,6 +16,10 @@ export const OPS_ENDPOINTS = {
 
 export type ShiftRow = {
   id: string
+  /** Live successful cash on this window (backend sums deposits). */
+  collected_cash_kobo?: number | null
+  /** Open longer than 24h. */
+  is_stale?: boolean
   agent_id: string
   agent_name: string
   hub_id: string
@@ -140,10 +144,11 @@ export function useCashDeposits(params?: {
 }
 
 export function mapShiftToCashRow(s: ShiftRow) {
+  // Open windows: live cash taken so far; closed windows: expected - float.
   const collectedKobo =
     s.expected_cash_kobo != null
       ? s.expected_cash_kobo - s.opening_cash_kobo
-      : null
+      : (s.collected_cash_kobo ?? null)
   const variance = s.variance_kobo ?? 0
   const status = shiftCashPhase(s)
   const takeCount = s.deposit_ids?.length ?? 0
@@ -161,5 +166,6 @@ export function mapShiftToCashRow(s: ShiftRow) {
     lodged: Boolean(s.lodged_at),
     asOf: s.closed_at || s.opened_at,
     status,
+    isStale: Boolean(s.is_stale),
   }
 }

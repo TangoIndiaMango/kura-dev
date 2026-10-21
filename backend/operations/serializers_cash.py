@@ -10,6 +10,11 @@ class ShiftListSerializer(serializers.ModelSerializer):
     agent_name = serializers.SerializerMethodField()
     hub_code = serializers.CharField(source="hub.code", read_only=True)
     hub_name = serializers.CharField(source="hub.name", read_only=True)
+    # Live: successful cash taken on this window so far (expected_cash_kobo is
+    # only filled at close, so open windows otherwise look empty).
+    collected_cash_kobo = serializers.SerializerMethodField()
+    # Open longer than a duty day — reconcile and close before it spans weeks.
+    is_stale = serializers.SerializerMethodField()
 
     class Meta:
         model = Shift
@@ -31,7 +36,21 @@ class ShiftListSerializer(serializers.ModelSerializer):
             "lodged_at",
             "status",
             "created_at",
+            "collected_cash_kobo",
+            "is_stale",
         ]
+
+    def get_collected_cash_kobo(self, obj: Shift) -> int:
+        from operations.services.cash.deposits import CashDepositService
+
+        return CashDepositService.sum_success_kobo(shift=obj)
+
+    def get_is_stale(self, obj: Shift) -> bool:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        return obj.closed_at is None and obj.opened_at < timezone.now() - timedelta(hours=24)
 
     def get_agent_name(self, obj: Shift) -> str:
         u = obj.agent

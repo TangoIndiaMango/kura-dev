@@ -45,7 +45,7 @@ export function HubCollectionsPanel({
     mapShiftToCashRow,
   )
   const cashOnHand = openRows.reduce(
-    (s, r) => s + Math.max(0, r.collectedNaira ?? r.openingNaira),
+    (s, r) => s + r.openingNaira + Math.max(0, r.collectedNaira ?? 0),
     0,
   )
   const needsReview = periodRows.filter(
@@ -53,11 +53,14 @@ export function HubCollectionsPanel({
   ).length
   const swapFeesKobo = statsQuery.data?.revenue_kobo_total ?? 0
 
-  const paymentsCashHref =
-    `/payments?tab=cash&hub=${encodeURIComponent(hubId)}` +
+  // Payments page shares one date range (payments_*) across its tabs.
+  const scopeQuery =
+    `hub=${encodeURIComponent(hubId)}` +
     `&hub_label=${encodeURIComponent(hubName)}` +
-    `&payments_cash_start_date=${range.start_date}` +
-    `&payments_cash_end_date=${range.end_date}`
+    `&payments_start_date=${range.start_date}` +
+    `&payments_end_date=${range.end_date}`
+  const paymentsHref = `/payments?tab=payments&${scopeQuery}`
+  const paymentsCashHref = `/payments?tab=cash&${scopeQuery}`
 
   const loading =
     enabled &&
@@ -101,10 +104,16 @@ export function HubCollectionsPanel({
             className="scale-95 origin-right"
           />
           <Link
+            to={paymentsHref}
+            className="rounded-lg border border-[var(--bd)] bg-[var(--in)] px-3 py-2 text-[12px] font-bold text-[var(--tx)] no-underline hover:border-[var(--pr)] hover:text-[var(--pr)]"
+          >
+            View payments
+          </Link>
+          <Link
             to={paymentsCashHref}
             className="rounded-lg border border-[var(--bd)] bg-[var(--in)] px-3 py-2 text-[12px] font-bold text-[var(--tx)] no-underline hover:border-[var(--pr)] hover:text-[var(--pr)]"
           >
-            Open in Payments
+            Cash reconciliation
           </Link>
         </div>
       </header>
@@ -134,7 +143,7 @@ export function HubCollectionsPanel({
             Cash reconciliation
           </h3>
           <p className="m-0 text-[12px] text-[var(--mu)]">
-            Duty windows opened in selected dates
+            Duty windows active during the selected dates
           </p>
         </div>
         <HubCashLiveTable

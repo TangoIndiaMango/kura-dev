@@ -9,13 +9,21 @@ from finance.models import Payment
 class PaymentSerializer(serializers.ModelSerializer):
     account_id = serializers.UUIDField(read_only=True)
     hub_id = serializers.UUIDField(read_only=True, allow_null=True)
+    account_kura_id = serializers.CharField(source="account.kura_id", read_only=True)
+    account_name = serializers.CharField(source="account.display_name", read_only=True)
+    hub_code = serializers.CharField(
+        source="hub.code", read_only=True, allow_null=True, default=None
+    )
 
     class Meta:
         model = Payment
         fields = [
             "id",
             "account_id",
+            "account_kura_id",
+            "account_name",
             "hub_id",
+            "hub_code",
             "channel",
             "amount_kobo",
             "vat_kobo",

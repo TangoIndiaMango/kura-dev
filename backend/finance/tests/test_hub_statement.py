@@ -100,3 +100,34 @@ class HubStatementTests(TestCase):
         self.assertEqual(body["by_channel"], [
             {"channel": "WALLET_DEBIT", "count": 3, "amount_kobo": 135_500}
         ])
+
+    def test_long_open_shift_shows_in_later_range_with_live_cash(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from operations.models import Shift
+
+        deposit = CashDepositService.record(
+            agent=self.agent, hub=self.hub, account=self.account, amount_kobo=45_000,
+            actor=self.agent, purpose="SWAP", idempotency_key="stmt-shift-1",
+        )
+        Shift.objects.filter(pk=deposit.shift_id).update(
+            opened_at=timezone.now() - timedelta(days=40)
+        )
+        client = APIClient()
+        client.force_authenticate(self.ops)
+        today = timezone.localdate()
+        res = client.get(
+            "/api/v1/operations/shifts/",
+            {
+                "hub": str(self.hub.id),
+                "start_date": (today - timedelta(days=3)).isoformat(),
+                "end_date": today.isoformat(),
+            },
+        )
+        self.assertEqual(res.status_code, 200, res.content)
+        rows = res.json()["results"]
+        self.assertEqual(len(rows), 1)  # opened 40 days ago, still open → overlaps
+        self.assertEqual(rows[0]["collected_cash_kobo"], 45_000)
+        self.assertTrue(rows[0]["is_stale"])

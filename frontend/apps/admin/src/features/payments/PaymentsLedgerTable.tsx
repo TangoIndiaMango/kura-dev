@@ -14,6 +14,13 @@ import {
 } from './paymentDetailHelpers'
 import { PAYMENT_HEADERS } from './paymentsPanelShared'
 
+const PURPOSE_LABEL: Record<string, string> = {
+  SWAP: 'Swap',
+  PLAN: 'Plan',
+  FUND: 'Wallet top-up',
+  CREDIT_REPAY: 'Credit repayment',
+}
+
 export function PaymentsLedgerTable({
   payments,
   pending,
@@ -64,16 +71,30 @@ export function PaymentsLedgerTable({
           {item.receipt_code}
         </span>,
         <span key="date" className="text-xs text-[var(--mu)]">
-          {new Date(item.created_at).toLocaleString()}
+          {new Intl.DateTimeFormat('en-GB', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Africa/Lagos',
+          }).format(new Date(item.created_at))}
         </span>,
-        <span key="ac" className="font-mono text-xs text-[var(--tx)]">
-          {item.account_id.slice(0, 8)}…
+        <span key="ac" className="flex flex-col text-xs">
+          <span className="font-semibold text-[var(--tx)]">
+            {item.account_name || '—'}
+          </span>
+          <span className="font-mono text-[11px] text-[var(--mu)]">
+            {item.account_kura_id || item.account_id.slice(0, 8)}
+          </span>
+        </span>,
+        <span key="hub" className="font-mono text-xs text-[var(--mu)]">
+          {item.hub_code || 'Remote'}
         </span>,
         <span key="ch" className="text-xs text-[var(--mu)]">
           {paymentChannelLabel(item.channel)}
         </span>,
         <span key="pur" className="text-xs text-[var(--mu)]">
-          {item.purpose}
+          {PURPOSE_LABEL[item.purpose] ?? item.purpose}
         </span>,
         <span
           key="amt"
