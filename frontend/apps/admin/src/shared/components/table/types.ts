@@ -27,6 +27,8 @@ export interface TableToolbarConfig {
   searchQuery?: string
   onSearchChange?: (value: string) => void
   searchPlaceholder?: string
+  /** Inline filter controls, shown right after search. */
+  filters?: ReactNode
   showFilter?: boolean
   showExport?: boolean
   onFilter?: () => void

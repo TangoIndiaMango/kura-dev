@@ -131,3 +131,27 @@ class HubStatementTests(TestCase):
         self.assertEqual(len(rows), 1)  # opened 40 days ago, still open → overlaps
         self.assertEqual(rows[0]["collected_cash_kobo"], 45_000)
         self.assertTrue(rows[0]["is_stale"])
+
+    def test_search_matches_receipt_account_name_and_kura_id(self):
+        day = datetime(2026, 10, 15, 12, tzinfo=LAGOS)
+        self._payment(hub=self.hub, channel=Payment.Channel.WALLET_DEBIT, kobo=45_000, at=day)
+        other_owner = User.objects.create(phone="+2348015556603", role=User.Role.DRIVER)
+        other = Account.objects.create(
+            owner_user=other_owner, display_name="Zed Logistics", status=Account.Status.ACTIVE
+        )
+        Payment.objects.create(
+            account=other, hub=self.hub, channel=Payment.Channel.AGENT_CASH,
+            amount_kobo=40_500, purpose="SWAP",
+        )
+        client = APIClient()
+        client.force_authenticate(self.ops)
+
+        def ids(term):
+            res = client.get("/api/v1/finance/payments/", {"search": term})
+            self.assertEqual(res.status_code, 200, res.content)
+            return {row["account_name"] for row in res.json()["results"]}
+
+        self.assertEqual(ids("zed log"), {"Zed Logistics"})
+        self.assertEqual(ids(other.kura_id.lower()), {"Zed Logistics"})
+        receipt = Payment.objects.get(account=self.account).receipt_code
+        self.assertEqual(ids(receipt), {"Stmt Rider"})

@@ -1,7 +1,7 @@
+import type { ReactNode } from 'react'
 import type { TableExportFormat } from '@shared/components/table/types'
 import {
   DynamicTableSection,
-  LoadingState,
   TableStatusBadge,
   type TablePaginationConfig,
 } from '@shared/components'
@@ -21,13 +21,21 @@ const PURPOSE_LABEL: Record<string, string> = {
   CREDIT_REPAY: 'Credit repayment',
 }
 
+const WHEN = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Africa/Lagos',
+})
+
 export function PaymentsLedgerTable({
   payments,
   pending,
   pagination,
   searchQuery,
   onSearchChange,
-  onFilter,
+  filters,
   onRowClick,
   onExport,
 }: {
@@ -36,51 +44,49 @@ export function PaymentsLedgerTable({
   pagination: TablePaginationConfig
   searchQuery: string
   onSearchChange: (v: string) => void
-  onFilter: () => void
+  /** Method / status selects shown in the toolbar. */
+  filters: ReactNode
   onRowClick: (item: PaymentApi) => void
   /** Full server statement for the current filters (not just this page). */
   onExport: (format: TableExportFormat) => void
 }) {
-  if (pending) return <LoadingState variant="inline" cols={7} rows={8} />
+  const toolbar = {
+    title: 'Payments',
+    searchQuery,
+    onSearchChange,
+    searchPlaceholder: 'Search receipt or account…',
+    showFilter: false,
+    showExport: true,
+    onExportFormat: onExport,
+    filters,
+  }
 
   return (
     <DynamicTableSection<PaymentApi>
       variant="embedded"
       headers={PAYMENT_HEADERS}
       data={payments}
+      loading={pending}
       pagination={pagination}
       getRowKey={(item) => item.id}
-      toolbar={{
-        title: 'All payments',
-        searchQuery,
-        onSearchChange,
-        searchPlaceholder: 'Search receipt or purpose…',
-        onFilter,
-        showFilter: true,
-        showExport: true,
-        onExportFormat: onExport,
-      }}
+      toolbar={toolbar}
       onRowClick={onRowClick}
       emptyTitle="No payments"
-      emptyMessage="No rows for this scope and date range."
+      emptyMessage="Nothing matches this hub, date range and filters."
       renderItems={(item) => [
-        <span
-          key="ref"
-          className="font-mono text-xs font-bold text-[var(--pr)]"
-        >
-          {item.receipt_code}
+        <span key="ref" className="flex flex-col gap-0.5">
+          <span className="font-mono text-xs font-bold text-[var(--pr)]">
+            {item.receipt_code}
+          </span>
+          <span className="text-[11.5px] text-[var(--mu)]">
+            {WHEN.format(new Date(item.created_at))}
+          </span>
         </span>,
-        <span key="date" className="text-xs text-[var(--mu)]">
-          {new Intl.DateTimeFormat('en-GB', {
-            day: 'numeric',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Africa/Lagos',
-          }).format(new Date(item.created_at))}
-        </span>,
-        <span key="ac" className="flex flex-col text-xs">
-          <span className="font-semibold text-[var(--tx)]">
+        <span key="ac" className="flex max-w-[260px] flex-col gap-0.5">
+          <span
+            className="truncate text-[13px] font-semibold text-[var(--tx)]"
+            title={item.account_name || undefined}
+          >
             {item.account_name || '—'}
           </span>
           <span className="font-mono text-[11px] text-[var(--mu)]">
@@ -88,17 +94,19 @@ export function PaymentsLedgerTable({
           </span>
         </span>,
         <span key="hub" className="font-mono text-xs text-[var(--mu)]">
-          {item.hub_code || 'Remote'}
+          {item.hub_code || 'Online'}
         </span>,
-        <span key="ch" className="text-xs text-[var(--mu)]">
-          {paymentChannelLabel(item.channel)}
-        </span>,
-        <span key="pur" className="text-xs text-[var(--mu)]">
-          {PURPOSE_LABEL[item.purpose] ?? item.purpose}
+        <span key="method" className="flex flex-col gap-0.5">
+          <span className="text-[13px] text-[var(--tx)]">
+            {paymentChannelLabel(item.channel)}
+          </span>
+          <span className="text-[11.5px] text-[var(--mu)]">
+            {PURPOSE_LABEL[item.purpose] ?? item.purpose}
+          </span>
         </span>,
         <span
           key="amt"
-          className="font-mono text-xs font-extrabold text-[var(--tx)]"
+          className="font-mono text-[13px] font-bold tabular-nums text-[var(--tx)]"
         >
           {formatNaira(item.amount_kobo, { fromKobo: true })}
         </span>,

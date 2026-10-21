@@ -7,6 +7,7 @@ export function TableToolbar({
   searchQuery,
   onSearchChange,
   searchPlaceholder = 'Search',
+  filters,
   showFilter = true,
   showExport = false,
   onFilter,
@@ -47,6 +48,8 @@ export function TableToolbar({
             }}
           />
         )}
+
+        {filters}
 
         {showFilter && (
           <Button

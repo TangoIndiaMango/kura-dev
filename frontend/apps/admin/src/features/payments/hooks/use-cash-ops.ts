@@ -162,6 +162,10 @@ export function mapShiftToCashRow(s: ShiftRow) {
     closedAt: s.closed_at ?? null,
     openingNaira: s.opening_cash_kobo / 100,
     collectedNaira: collectedKobo != null ? collectedKobo / 100 : null,
+    /** What should be in the drawer: float + cash taken. */
+    expectedNaira: (s.opening_cash_kobo + Math.max(0, collectedKobo ?? 0)) / 100,
+    /** Ops/agent drawer count; null until counted. */
+    countedNaira: s.closing_cash_kobo != null ? s.closing_cash_kobo / 100 : null,
     depositedNaira: (s.lodged_amount_kobo ?? s.closing_cash_kobo ?? 0) / 100,
     varianceNaira: s.variance_kobo != null ? variance / 100 : null,
     takeCount,

@@ -13,6 +13,14 @@ import {
 } from './paymentDetailHelpers'
 import { CASH_HEADERS, type CashTableRow } from './paymentsPanelShared'
 
+const WHEN = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Africa/Lagos',
+})
+
 export function PaymentsCashTable({
   pageRows,
   allRows,
@@ -62,51 +70,63 @@ export function PaymentsCashTable({
             [
               'hub',
               'agent',
-              'collected',
-              'deposited',
+              'opening_float',
+              'cash_taken',
+              'expected',
+              'counted',
               'variance',
-              'asOf',
+              'opened_at',
+              'closed_at',
               'status',
             ],
             allRows.map((r) => [
               r.hub,
               r.agent,
+              r.openingNaira,
               r.collectedNaira,
-              r.depositedNaira,
+              r.expectedNaira,
+              r.countedNaira,
               r.varianceNaira,
-              r.asOf,
+              r.openedAt,
+              r.closedAt,
               r.status,
             ]),
           ),
       }}
       onRowClick={onRowClick}
       renderItems={(item) => [
-        <span key="hub" className="text-xs font-bold text-[var(--tx)]">
+        <span key="hub" className="font-mono text-xs font-bold text-[var(--tx)]">
           {item.hub}
         </span>,
-        <span key="agent" className="text-xs text-[var(--mu)]">
+        <span key="agent" className="text-[13px] text-[var(--tx)]">
           {item.agent}
         </span>,
-        <span key="col" className="font-mono text-xs text-[var(--tx)]">
-          {item.collectedNaira != null
-            ? formatNaira(item.collectedNaira)
-            : '—'}
+        <span key="exp" className="flex flex-col gap-0.5">
+          <span className="font-mono text-[13px] font-bold tabular-nums text-[var(--tx)]">
+            {formatNaira(item.expectedNaira)}
+          </span>
+          <span className="text-[11.5px] text-[var(--mu)]">
+            {formatNaira(item.openingNaira)} float + {formatNaira(Math.max(0, item.collectedNaira ?? 0))} taken
+          </span>
         </span>,
-        <span key="dep" className="font-mono text-xs text-[var(--tx)]">
-          {formatNaira(item.depositedNaira)}
+        <span key="cnt" className="font-mono text-[13px] tabular-nums text-[var(--tx)]">
+          {item.countedNaira != null ? (
+            formatNaira(item.countedNaira)
+          ) : (
+            <span className="font-sans text-[var(--mu)]">Not counted</span>
+          )}
         </span>,
         <span
           key="var"
-          className={`font-mono text-xs font-bold ${
+          className={`font-mono text-[13px] font-bold tabular-nums ${
             !item.varianceNaira ? 'text-[var(--mu)]' : 'text-[#C0392B]'
           }`}
         >
-          {item.varianceNaira != null
-            ? formatNaira(item.varianceNaira)
-            : '—'}
+          {item.varianceNaira != null ? formatNaira(item.varianceNaira) : '—'}
         </span>,
-        <span key="asOf" className="text-xs text-[var(--mu)]">
-          {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(item.asOf))}
+        <span key="asOf" className="flex flex-col gap-0.5 text-[11.5px] text-[var(--mu)]">
+          <span>Opened {WHEN.format(new Date(item.openedAt))}</span>
+          <span>{item.closedAt ? `Closed ${WHEN.format(new Date(item.closedAt))}` : 'Still open'}</span>
         </span>,
         <TableStatusBadge
           key="st"

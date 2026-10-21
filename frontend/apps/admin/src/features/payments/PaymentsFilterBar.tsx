@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Select } from '@mantine/core'
+import { Group, Select } from '@mantine/core'
 
 const CHANNEL_OPTIONS = [
   { value: '', label: 'All methods' },
@@ -18,81 +18,89 @@ const STATUS_OPTIONS = [
   { value: 'REVERSED', label: 'Reversed' },
 ]
 
-export function channelOptionLabel(value: string | undefined) {
-  return CHANNEL_OPTIONS.find((o) => o.value === (value ?? ''))?.label ?? value ?? ''
+const fieldStyles = {
+  input: {
+    backgroundColor: 'var(--sf)',
+    borderColor: 'var(--bd)',
+    color: 'var(--tx)',
+    fontWeight: 500,
+  },
 }
 
 /**
- * Always-visible scope for the Payments page: which hub, which days, which
- * method. The same filters drive the list, the KPIs and the statement export.
+ * Page scope (top-right of Overview): which hub and which days. Drives the
+ * KPIs, the method breakdown, both tables and the statement export.
  */
-export function PaymentsFilterBar({
+export function PaymentsScopeControls({
   hubId,
   hubOptions,
   onHubChange,
   dateRangeSlot,
-  channel,
-  onChannelChange,
-  status,
-  onStatusChange,
-  showPaymentFilters,
 }: {
   hubId: string | undefined
   hubOptions: { value: string; label: string }[]
   onHubChange: (hubId: string | null, label: string | null) => void
   dateRangeSlot: ReactNode
+}) {
+  return (
+    <Group gap="sm" wrap="wrap" justify="flex-end">
+      <Select
+        aria-label="Hub"
+        placeholder="All hubs"
+        w={220}
+        radius="md"
+        data={hubOptions}
+        value={hubId ?? null}
+        searchable
+        clearable
+        nothingFoundMessage="No hub matches"
+        styles={fieldStyles}
+        onChange={(v) =>
+          onHubChange(v, v ? (hubOptions.find((o) => o.value === v)?.label ?? null) : null)
+        }
+        comboboxProps={{ withinPortal: true }}
+      />
+      {dateRangeSlot}
+    </Group>
+  )
+}
+
+/** List filters that sit in the payments table toolbar. */
+export function PaymentsListFilters({
+  channel,
+  onChannelChange,
+  status,
+  onStatusChange,
+}: {
   channel: string | undefined
   onChannelChange: (value: string) => void
   status: string | undefined
   onStatusChange: (value: string) => void
-  /** Method/status apply to the payments list only, not cash duty windows. */
-  showPaymentFilters: boolean
 }) {
-  const options = [{ value: '', label: 'All hubs' }, ...hubOptions]
   return (
-    <div className="flex flex-wrap items-end gap-2">
+    <>
       <Select
-        label="Hub"
-        size="sm"
-        w={220}
-        data={options}
-        value={hubId ?? ''}
-        searchable
+        aria-label="Payment method"
+        w={160}
+        radius="md"
+        data={CHANNEL_OPTIONS}
+        value={channel ?? ''}
         allowDeselect={false}
-        onChange={(v) => {
-          const next = v || null
-          onHubChange(next, next ? (options.find((o) => o.value === v)?.label ?? null) : null)
-        }}
+        styles={fieldStyles}
+        onChange={(v) => onChannelChange(v ?? '')}
         comboboxProps={{ withinPortal: true }}
       />
-      {showPaymentFilters ? (
-        <>
-          <Select
-            label="Paid by"
-            size="sm"
-            w={160}
-            data={CHANNEL_OPTIONS}
-            value={channel ?? ''}
-            allowDeselect={false}
-            onChange={(v) => onChannelChange(v ?? '')}
-            comboboxProps={{ withinPortal: true }}
-          />
-          <Select
-            label="Status"
-            size="sm"
-            w={150}
-            data={STATUS_OPTIONS}
-            value={status ?? ''}
-            allowDeselect={false}
-            onChange={(v) => onStatusChange(v ?? '')}
-            comboboxProps={{ withinPortal: true }}
-          />
-        </>
-      ) : null}
-      <div className="flex flex-col gap-1">
-        <span className="text-[12px] font-medium text-[var(--tx)]">Dates (WAT)</span>
-        {dateRangeSlot}
-      </div>
-    </div>
+      <Select
+        aria-label="Status"
+        w={150}
+        radius="md"
+        data={STATUS_OPTIONS}
+        value={status ?? ''}
+        allowDeselect={false}
+        styles={fieldStyles}
+        onChange={(v) => onStatusChange(v ?? '')}
+        comboboxProps={{ withinPortal: true }}
+      />
+    </>
   )
 }

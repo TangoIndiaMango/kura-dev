@@ -1,120 +1,127 @@
 import type { PaymentStatsApi } from '@features/finance/hooks/use-finance'
-import { Cancel01Icon } from 'hugeicons-react'
 import { formatNaira } from '@shared/utils/currency'
-import type { PaymentApi } from '@features/finance'
 import { paymentChannelLabel } from './paymentDetailHelpers'
 import type { CashTableRow } from './paymentsPanelShared'
 
-export function PaymentsHubScopeChip({
-  label,
-  onClear,
-}: {
-  label: string
-  onClear: () => void
-}) {
-  return (
-    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-[12px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5">
-      <span className="text-[12.5px] text-[var(--mu)]">Scope</span>
-      <span className="rounded-lg bg-[var(--sf)] px-2.5 py-1 text-[12.5px] font-bold text-[var(--tx)]">
-        {label}
-      </span>
-      <button
-        type="button"
-        onClick={onClear}
-        className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-[var(--mu)] hover:bg-[var(--sf)] hover:text-[var(--tx)]"
-      >
-        <Cancel01Icon size={14} />
-        All hubs
-      </button>
-    </div>
-  )
-}
+const naira = (kobo: number) => formatNaira(kobo, { fromKobo: true })
 
-export function paymentTabKpis(stats: PaymentStatsApi | null, cashOnHand: number) {
-  const dash = (n: number | undefined) => (stats ? n : '—')
+/** Payments tab — period totals for hub + dates (status filter is list-only). */
+export function paymentTabKpis(stats: PaymentStatsApi | null) {
+  const count = stats?.success_count ?? 0
+  const avg = count > 0 ? Math.round((stats?.success_kobo ?? 0) / count) : 0
   return [
     {
       title: 'Collected',
-      value: stats ? formatNaira(stats.success_kobo, { fromKobo: true }) : '—',
-      sub: `${dash(stats?.success_count)} successful · selected period`,
+      value: stats ? naira(stats.success_kobo) : '—',
+      sub: 'Successful payments',
       tone: 'success' as const,
+    },
+    {
+      title: 'Payments',
+      value: stats ? count.toLocaleString('en-NG') : '—',
+      sub: count > 0 ? `Average ${naira(avg)}` : 'Successful',
     },
     {
       title: 'Pending',
-      value: dash(stats?.pending_count),
-      sub: 'Awaiting confirm',
-      tone: 'warning' as const,
+      value: stats ? stats.pending_count : '—',
+      sub: 'Awaiting confirmation',
+      tone: ((stats?.pending_count ?? 0) > 0 ? 'warning' : 'default') as
+        | 'warning'
+        | 'default',
     },
     {
       title: 'Failed',
-      value: dash(stats?.failed_count),
-      sub: 'Selected period',
-      tone: ((stats?.failed_count ?? 0) > 0 ? 'danger' : 'default') as 'danger' | 'default',
-    },
-    {
-      title: 'Cash on hand',
-      value: formatNaira(cashOnHand),
-      sub: 'From open duty windows',
-      tone: (cashOnHand > 0 ? 'warning' : 'default') as 'warning' | 'default',
+      value: stats ? stats.failed_count : '—',
+      sub: 'Not collected',
+      tone: ((stats?.failed_count ?? 0) > 0 ? 'danger' : 'default') as
+        | 'danger'
+        | 'default',
     },
   ]
 }
 
-export function cashTabKpis(
-  cashMapped: CashTableRow[],
-  cashOnHand: number,
-  hubScoped: boolean,
-) {
-  const varianceHubs = cashMapped.filter(
+export function cashTabKpis(cashMapped: CashTableRow[], hubScoped: boolean) {
+  const drawer = (r: CashTableRow) => r.openingNaira + Math.max(0, r.collectedNaira ?? 0)
+  const onDuty = cashMapped.filter((r) => r.status === 'ON_DUTY')
+  const countPending = cashMapped.filter((r) => r.status === 'COUNT_PENDING')
+  const needsAction = cashMapped.filter(
     (r) => r.status === 'VARIANCE' || r.status === 'COUNT_PENDING',
   ).length
-  // Cash not yet lodged: open drawers + auto-closed windows awaiting count.
-  const countPendingNaira = cashMapped
-    .filter((r) => r.status === 'COUNT_PENDING')
-    .reduce((s, r) => s + r.openingNaira + Math.max(0, r.collectedNaira ?? 0), 0)
-  const closedCount = cashMapped.filter(
-    (r) =>
-      r.status === 'SETTLED' ||
-      r.status === 'SHORT' ||
-      r.status === 'AWAITING_LODGE',
+  const closed = cashMapped.filter(
+    (r) => r.status === 'SETTLED' || r.status === 'SHORT' || r.status === 'AWAITING_LODGE',
   ).length
+  const outstanding = [...onDuty, ...countPending].reduce((s, r) => s + drawer(r), 0)
   return [
     {
-      title: 'Hubs reporting',
+      title: 'Duty windows',
       value: cashMapped.length,
-      sub: hubScoped ? 'Duty windows for scoped hub' : 'In date range',
+      sub: hubScoped ? 'For this hub' : 'All hubs, in range',
     },
     {
-      title: 'Closed',
-      value: closedCount,
-      sub: 'Reconciled windows',
+      title: 'Reconciled',
+      value: closed,
+      sub: 'Counted and closed',
       tone: 'success' as const,
     },
     {
-      title: 'Needs ops action',
-      value: varianceHubs,
-      sub: 'Variance or count pending',
-      tone: (varianceHubs > 0 ? 'danger' : 'default') as 'danger' | 'default',
+      title: 'Needs action',
+      value: needsAction,
+      sub: 'Count pending or variance',
+      tone: (needsAction > 0 ? 'danger' : 'default') as 'danger' | 'default',
     },
     {
-      title: 'Outstanding',
-      value: formatNaira(cashOnHand + countPendingNaira),
-      sub: 'On duty + awaiting count',
-      tone: 'warning' as const,
+      title: 'Cash not yet counted',
+      value: formatNaira(outstanding),
+      sub: `${onDuty.length} on duty · ${countPending.length} awaiting count`,
+      tone: (outstanding > 0 ? 'warning' : 'default') as 'warning' | 'default',
     },
   ]
 }
 
-export function channelBarData(stats: PaymentStatsApi | null) {
-  return (stats?.by_channel ?? []).map(({ channel, amount_kobo: kobo }) => ({
-    label: paymentChannelLabel(channel).split(' ')[0] ?? channel,
-    amount: Math.round(kobo / 100),
-  }))
-}
+/** Successful collections split by how they were paid, for the current scope. */
+export function PaymentsMethodBreakdown({ stats }: { stats: PaymentStatsApi | null }) {
+  const rows = stats?.by_channel ?? []
+  const total = stats?.success_kobo ?? 0
 
-export function cashVarianceBarData(cashMapped: CashTableRow[]) {
-  return cashMapped.slice(0, 8).map((r) => ({
-    label: r.hub.split('-')[1] || r.hub.slice(0, 4),
-    variance: Math.abs(r.varianceNaira ?? 0) / 1000,
-  }))
+  return (
+    <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-5 shadow-[var(--sh)]">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h3 className="text-[15px] font-bold text-[var(--tx)]">By payment method</h3>
+        <span className="text-[12px] text-[var(--mu)]">Share of collected</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-[13px] text-[var(--mu)]">
+          {stats ? 'No successful payments in this range.' : 'Loading…'}
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {rows.map((row) => {
+            const pct = total > 0 ? Math.round((row.amount_kobo / total) * 100) : 0
+            return (
+              <li
+                key={row.channel}
+                className="grid grid-cols-[minmax(110px,160px)_minmax(0,1fr)_auto] items-center gap-4"
+              >
+                <span className="text-[13px] font-semibold text-[var(--tx)]">
+                  {paymentChannelLabel(row.channel)}
+                </span>
+                <span className="h-2 overflow-hidden rounded-full bg-[var(--tn)]">
+                  <span
+                    className="block h-full rounded-full bg-[var(--pr)]"
+                    style={{ width: `${Math.max(pct, 2)}%` }}
+                  />
+                </span>
+                <span className="whitespace-nowrap text-right text-[13px] tabular-nums">
+                  <span className="font-bold text-[var(--tx)]">{naira(row.amount_kobo)}</span>
+                  <span className="ml-2 text-[var(--mu)]">
+                    {row.count} · {pct}%
+                  </span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
 }

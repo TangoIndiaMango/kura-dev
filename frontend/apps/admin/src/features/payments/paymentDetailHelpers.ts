@@ -39,11 +39,11 @@ export function paymentStatusLabel(status: string) {
 }
 
 export function paymentChannelLabel(channel: string) {
-  if (channel === 'NUBAN_TRANSFER') return 'Bank transfer (NUBAN)'
+  if (channel === 'NUBAN_TRANSFER') return 'Bank transfer'
   if (channel === 'WALLET_DEBIT') return 'Wallet'
   if (channel === 'AGENT_CASH') return 'Cash at hub'
   if (channel === 'CARD') return 'Card'
-  if (channel === 'CREDIT') return 'Credit'
+  if (channel === 'CREDIT') return 'Swap credit'
   return channel
 }
 

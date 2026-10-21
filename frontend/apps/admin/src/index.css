@@ -6,6 +6,9 @@
 @import '@mantine/dropzone/styles.css';
 @import '@mantine/spotlight/styles.css';
 
+/* `dark:` follows the app's theme toggle, not the OS setting. */
+@custom-variant dark (&:where([data-mantine-color-scheme='dark'], [data-mantine-color-scheme='dark'] *, .dark, .dark *));
+
 :root,
 [data-theme='light'],
 [data-mantine-color-scheme='light'] {
