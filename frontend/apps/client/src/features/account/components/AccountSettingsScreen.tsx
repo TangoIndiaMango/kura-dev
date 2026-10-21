@@ -117,7 +117,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[12px] leading-relaxed text-[var(--kura-muted)]">
-        Alert toggles save on this device. Sign-in codes always use SMS.
+        Alert settings save to your Kura account. Turning one off stops its SMS; you still see it in your inbox. Sign-in, PIN and security codes always send.
       </p>
       <section className="overflow-hidden rounded-2xl border border-[var(--kura-border)] bg-[var(--kura-bg-elevated)]">
         <SettingToggle

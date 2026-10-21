@@ -91,6 +91,16 @@ export const DEFAULT_OPERATOR_SETTINGS: OperatorAccountSettings = {
   language: 'en',
 }
 
+/** Alert toggles stored server-side (`notification_prefs` on `/auth/me/`). */
+export const SERVER_ALERT_SETTING_KEYS = {
+  smsAfterSwap: 'swap_sms',
+  paymentReceiptAlerts: 'payment_alerts',
+  planExpiryReminders: 'plan_expiry',
+  loanUpdates: 'loan_updates',
+} as const
+
+export type ServerAlertSettingKey = keyof typeof SERVER_ALERT_SETTING_KEYS
+
 /** Auth-derived rider profile + local prefs. Server domains use TanStack Query. */
 export interface OperatorProfile {
   phone: string

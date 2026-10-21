@@ -16,6 +16,7 @@ from audit.models import AuditEvent
 from audit.services import AuditService
 from core.helpers.client_ip import current_client_ip, current_request_id
 from notifications.models import Notification
+from notifications.preferences import allowed_channels
 from notifications.services import NotificationService
 
 
@@ -96,9 +97,15 @@ def emit_event(
         if spec.user is None:
             continue
         channels = spec.channels or (Notification.Channel.IN_APP,)
+        # Dedupe suffix follows the requested channels so a pref flip never
+        # collides with rows written before it.
+        multi = len(channels) > 1
+        channels = allowed_channels(
+            user=spec.user, template_code=spec.template_code, channels=channels
+        )
         for channel in channels:
             dedupe = spec.dedupe_key
-            if dedupe and len(channels) > 1:
+            if dedupe and multi:
                 dedupe = f"{dedupe}:{channel}"
             notes.append(
                 NotificationService.notify(

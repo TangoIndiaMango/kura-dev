@@ -8,18 +8,10 @@ from accounts.services.invites import validate_password_strength
 from core.exceptions import DomainError
 from core.services.events import emit_event
 from core.services.media import resolve_owned_asset
-
-DEFAULT_NOTIF_PREFS = {"email": True, "push": True}
-
-
-def normalized_notif_prefs(raw: dict | None) -> dict[str, bool]:
-    base = dict(DEFAULT_NOTIF_PREFS)
-    if isinstance(raw, dict):
-        if "email" in raw:
-            base["email"] = bool(raw["email"])
-        if "push" in raw:
-            base["push"] = bool(raw["push"])
-    return base
+from notifications.preferences import (  # noqa: F401 — re-exported
+    DEFAULT_NOTIF_PREFS,
+    normalized_notif_prefs,
+)
 
 
 @transaction.atomic

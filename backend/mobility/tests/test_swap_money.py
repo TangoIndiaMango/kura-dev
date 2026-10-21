@@ -263,6 +263,46 @@ class SwapMoneyPathTests(TestCase):
             ).exists()
         )
 
+    def _complete_first_swap(self):
+        self.vehicle.current_battery = None
+        self.vehicle.save(update_fields=["current_battery", "updated_at"])
+        reservation = ReservationService.create_reservation(
+            account=self.account,
+            vehicle=self.vehicle,
+            driver=self.driver,
+            hub=self.hub,
+            payment_mode=Reservation.PaymentMode.WALLET,
+        )
+        return SwapService.complete_swap(
+            reservation_id=reservation.id,
+            hub_id=self.hub.id,
+            vehicle_id=self.vehicle.id,
+            driver_id=self.driver.id,
+            account_id=self.account.id,
+            returned_battery_serial="",
+            issued_battery_serial="BAT-M-READY",
+        )
+
+    def _swap_channels(self):
+        from notifications.models import Notification
+
+        return set(
+            Notification.objects.filter(
+                user=self.user, template_code="swap.completed"
+            ).values_list("channel", flat=True)
+        )
+
+    def test_swap_completed_sends_sms_by_default(self):
+        self._complete_first_swap()
+        self.assertEqual(self._swap_channels(), {"IN_APP", "SMS"})
+
+    def test_swap_sms_pref_off_suppresses_sms_keeps_in_app(self):
+        from accounts.services.profile import update_own_profile
+
+        update_own_profile(user=self.user, notification_prefs={"swap_sms": False})
+        self._complete_first_swap()
+        self.assertEqual(self._swap_channels(), {"IN_APP"})
+
     def test_return_required_when_vehicle_has_pack(self):
         with self.assertRaises(DomainError) as ctx:
             SwapService.complete_swap(

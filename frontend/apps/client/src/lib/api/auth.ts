@@ -12,6 +12,16 @@ export function apiErrorMessage(err: unknown, fallback = 'Something went wrong')
   return ax.response?.data?.error?.message || ax.message || fallback
 }
 
+/** Server notification prefs; rider categories gate SMS (in-app always sends). */
+export type NotificationPrefs = {
+  email: boolean
+  push: boolean
+  swap_sms: boolean
+  payment_alerts: boolean
+  plan_expiry: boolean
+  loan_updates: boolean
+}
+
 export type MePayload = {
   user: {
     id: string
@@ -35,6 +45,7 @@ export type MePayload = {
   onboarding_step: string
   has_pin: boolean
   photo_url?: string | null
+  notification_prefs?: Partial<NotificationPrefs>
   kyc?: {
     status?: string
     id_type?: string | null
@@ -157,6 +168,17 @@ export async function fetchMe() {
   const { data } = await axiosInstance.get<MePayload>('/auth/me/', {
     silentError: true,
   })
+  return data
+}
+
+export async function updateNotificationPrefs(
+  patch: Partial<NotificationPrefs>,
+) {
+  const { data } = await axiosInstance.patch<MePayload>(
+    '/auth/me/profile/',
+    { notification_prefs: patch },
+    { silentError: true },
+  )
   return data
 }
 

@@ -7,8 +7,17 @@ import {
   type ReactNode,
 } from 'react'
 import { useAtom } from 'jotai'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../features/auth/AuthProvider'
 import { axiosInstance } from '@lib/api/client'
+import {
+  AUTH_ME_QUERY_KEY,
+  apiErrorMessage,
+  updateNotificationPrefs,
+  type MePayload,
+  type NotificationPrefs,
+} from '@lib/api/auth'
+import { notify } from '../utils/notify'
 import { getOrCreateDeviceId } from '@lib/deviceId'
 import { buildProfile } from './buildProfile'
 import {
@@ -20,6 +29,7 @@ import {
 } from './clientPrefs'
 import {
   DEFAULT_OPERATOR_SETTINGS,
+  SERVER_ALERT_SETTING_KEYS,
   type OperatorAccountSettings,
   type OperatorNotification,
   type OperatorProfile,
@@ -46,6 +56,7 @@ export function OperatorSessionProvider({ children }: { children: ReactNode }) {
   const { me, isAuthenticated, logout: logoutAuth } = useAuth()
   const [prefs, setPrefs] = useAtom(prefsAtom)
   const [pwaUpdate, setPwaUpdate] = useAtom(pwaUpdateNotificationAtom)
+  const queryClient = useQueryClient()
 
   const session = useMemo(() => buildProfile(me, prefs), [me, prefs])
 
@@ -65,14 +76,51 @@ export function OperatorSessionProvider({ children }: { children: ReactNode }) {
     markEnteredApp()
   }, [])
 
+  const saveServerAlerts = useCallback(
+    async (patch: Partial<NotificationPrefs>) => {
+      const previous = queryClient.getQueryData<MePayload>(AUTH_ME_QUERY_KEY)
+      queryClient.setQueryData<MePayload>(AUTH_ME_QUERY_KEY, (old) =>
+        old
+          ? {
+              ...old,
+              notification_prefs: { ...old.notification_prefs, ...patch },
+            }
+          : old,
+      )
+      try {
+        const next = await updateNotificationPrefs(patch)
+        queryClient.setQueryData(AUTH_ME_QUERY_KEY, next)
+      } catch (err) {
+        queryClient.setQueryData(AUTH_ME_QUERY_KEY, previous)
+        notify({
+          title: 'Could not save alert setting',
+          message: apiErrorMessage(err, 'Check your connection and try again.'),
+          tone: 'error',
+        })
+      }
+    },
+    [queryClient],
+  )
+
   const updateSettings = useCallback(
     (patch: Partial<OperatorAccountSettings>) => {
-      setPrefs((prev) => ({
-        ...prev,
-        settings: { ...prev.settings, ...patch },
-      }))
+      const local: Partial<OperatorAccountSettings> = { ...patch }
+      const server: Partial<NotificationPrefs> = {}
+      for (const [key, serverKey] of Object.entries(SERVER_ALERT_SETTING_KEYS)) {
+        const value = patch[key as keyof typeof SERVER_ALERT_SETTING_KEYS]
+        if (typeof value !== 'boolean') continue
+        server[serverKey] = value
+        delete local[key as keyof typeof SERVER_ALERT_SETTING_KEYS]
+      }
+      if (Object.keys(local).length > 0) {
+        setPrefs((prev) => ({
+          ...prev,
+          settings: { ...prev.settings, ...local },
+        }))
+      }
+      if (Object.keys(server).length > 0) void saveServerAlerts(server)
     },
-    [setPrefs],
+    [setPrefs, saveServerAlerts],
   )
 
   const setEmail = useCallback(

@@ -2,6 +2,8 @@ import type { MePayload } from '@lib/api/auth'
 import {
   DEFAULT_OPERATOR_SETTINGS,
   initialsFromName,
+  SERVER_ALERT_SETTING_KEYS,
+  type ServerAlertSettingKey,
   type OperatorAccountSettings,
   type OperatorProfile,
 } from './operatorTypes'
@@ -57,6 +59,21 @@ function verifiedLabel(me: MePayload, kycStatus: OperatorProfile['kycStatus']) {
   return 'Not verified yet'
 }
 
+/** Local settings with alert toggles overridden by the server copy. */
+function mergeServerAlertSettings(
+  me: MePayload,
+  local: OperatorAccountSettings,
+): OperatorAccountSettings {
+  const server = me.notification_prefs
+  const next = { ...DEFAULT_OPERATOR_SETTINGS, ...local }
+  if (!server) return next
+  for (const key of Object.keys(SERVER_ALERT_SETTING_KEYS) as ServerAlertSettingKey[]) {
+    const value = server[SERVER_ALERT_SETTING_KEYS[key]]
+    if (typeof value === 'boolean') next[key] = value
+  }
+  return next
+}
+
 /** Profile from `/auth/me/` + local prefs. No wallet/vehicles/plans. */
 export function buildProfile(
   me: MePayload | null,
@@ -93,6 +110,9 @@ export function buildProfile(
     hasPin: me.has_pin,
     email: prefs.email ?? me.user.email ?? null,
     emailVerified: prefs.emailVerified || Boolean(me.user.email),
-    settings: prefs.settings ?? DEFAULT_OPERATOR_SETTINGS,
+    settings: mergeServerAlertSettings(
+      me,
+      prefs.settings ?? DEFAULT_OPERATOR_SETTINGS,
+    ),
   }
 }
