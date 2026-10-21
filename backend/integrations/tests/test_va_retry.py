@@ -135,3 +135,75 @@ class VirtualAccountRetryTests(TestCase):
         self.assertEqual(
             psp.provision_virtual_account.call_args.kwargs["bvn_or_nin"], "12345678901"
         )
+
+
+class _FeatureOffPsp:
+    """What Paystack returns when Dedicated NUBAN is not enabled for the business."""
+
+    def provision_virtual_account(self, **kwargs):
+        raise DomainError(
+            "INTEGRATION_ERROR",
+            "paystack POST failed (403).",
+            details={
+                "body": '{"status":false,"message":"Dedicated NUBAN is not available '
+                'for your business","type":"api_error","code":"feature_unavailable"}'
+            },
+            http=502,
+        )
+
+
+@override_settings(DEBUG=False, PSP_ALLOW_DEV_VA=False)
+class PspAccountProblemTests(TestCase):
+    def setUp(self):
+        self.ops = User.objects.create(
+            email="ops.psp@test.eco", role=User.Role.OPS_MANAGER, is_staff=True
+        )
+
+    def _rider(self, n):
+        user = User.objects.create(phone=f"+234801555890{n}", role=User.Role.DRIVER)
+        return Account.objects.create(
+            owner_user=user, display_name=f"Rider {n}", kind=Account.Kind.INDIVIDUAL
+        )
+
+    def test_reason_is_stored_and_ops_told_once_for_all_riders(self):
+        with mock.patch("integrations.services.va.get_psp", return_value=_FeatureOffPsp()):
+            for n in (1, 2, 3):
+                with self.assertRaises(DomainError):
+                    provision_virtual_account_for(self._rider(n))
+        va = VirtualAccount.objects.first()
+        self.assertEqual(
+            va.last_error,
+            "Dedicated NUBAN is not available for your business [feature_unavailable]",
+        )
+        self.assertIsNotNone(va.next_attempt_at)  # still retried once fixed
+        alerts = Notification.objects.filter(
+            user=self.ops, title="Paystack cannot issue transfer accounts"
+        )
+        self.assertEqual(alerts.count(), 1)
+        self.assertIn("Dedicated NUBAN is not available", alerts.first().body)
+
+    def test_sweep_stops_when_psp_rate_limits(self):
+        class _RateLimited:
+            calls = 0
+
+            def provision_virtual_account(self, **kwargs):
+                type(self).calls += 1
+                raise DomainError(
+                    "INTEGRATION_ERROR",
+                    "paystack POST failed (429).",
+                    details={"body": '{"message":"Rate limit exceeded!","code":"rate_limited"}'},
+                )
+
+        for n in (4, 5, 6):
+            acct = self._rider(n)
+            VirtualAccount.objects.create(
+                account=acct, next_attempt_at=timezone.now() - timedelta(seconds=1)
+            )
+        with mock.patch("integrations.services.va.get_psp", return_value=_RateLimited()):
+            out = retry_pending_virtual_accounts()
+        self.assertEqual(_RateLimited.calls, 1)
+        self.assertEqual(out["retried"], 1)
+        # The others are still due for the next sweep.
+        self.assertEqual(
+            VirtualAccount.objects.filter(next_attempt_at__lte=timezone.now()).count(), 2
+        )

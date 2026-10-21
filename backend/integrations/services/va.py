@@ -55,6 +55,27 @@ def schedule_va_provision(
 RETRY_DELAYS = (timedelta(minutes=5), timedelta(minutes=15)) + (timedelta(hours=1),) * 24
 
 
+# PSP errors that are about our merchant account, not the rider: every rider
+# fails the same way, so ops hear about it at once (not 24 h later per rider).
+PSP_ACCOUNT_ERROR_CODES = {"feature_unavailable", "invalid_key", "unauthorized"}
+
+
+def _psp_error(exc: Exception) -> tuple[str, str]:
+    """(readable message, PSP error code) from a failed provider call."""
+    import json
+
+    details = getattr(exc, "details", None) or {}
+    body = details.get("body") if isinstance(details, dict) else None
+    if isinstance(body, str):
+        try:
+            payload = json.loads(body)
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and payload.get("message"):
+            return str(payload["message"]), str(payload.get("code") or "")
+    return str(exc), ""
+
+
 def _record_attempt(account: Account, *, error: str = "") -> None:
     """Count this try and schedule the next one (None once the schedule is spent)."""
     va = VirtualAccount.objects.filter(account=account).first()
@@ -95,6 +116,21 @@ def _identity_number(account: Account) -> str | None:
         return None
 
 
+def _alert_psp_account_problem(psp_code: str, message: str, code: str) -> None:
+    from risk.services.notify_staff import notify_risk_reviewers
+
+    day = timezone.localdate().isoformat()
+    notify_risk_reviewers(
+        title=f"{psp_code.title()} cannot issue transfer accounts",
+        body=(
+            f"{psp_code.title()} refused NUBAN requests for every rider: {message}. "
+            "Riders stay on 'pending' and are retried automatically once this is fixed."
+        ),
+        link_path="/operators",
+        dedupe_key=f"va.psp_account:{psp_code}:{code}:{day}",
+    )
+
+
 def retry_pending_virtual_accounts(*, limit: int = 50) -> dict:
     """Worker sweep: re-request NUBANs still PENDING once their retry is due.
 
@@ -122,6 +158,9 @@ def retry_pending_virtual_accounts(*, limit: int = 50) -> dict:
         except Exception:
             pass  # provision_virtual_account_for logged and recorded the error
         va.refresh_from_db()
+        if va.last_error.endswith("[rate_limited]"):
+            # The PSP asked us to slow down: leave the rest for the next sweep.
+            break
         if va.status == VirtualAccount.Status.ACTIVE:
             assigned += 1
         elif va.next_attempt_at is None:
@@ -243,7 +282,10 @@ def provision_virtual_account_for(account: Account, *, bvn_or_nin: str | None = 
             )
         account.kyc_status = Account.KycStatus.PENDING_PSP
         account.save(update_fields=["kyc_status", "updated_at"])
-        _record_attempt(account, error=str(exc))
+        message, code = _psp_error(exc)
+        _record_attempt(account, error=f"{message} [{code}]" if code else message)
+        if code in PSP_ACCOUNT_ERROR_CODES or "(401)" in str(exc):
+            _alert_psp_account_problem(psp_code, message, code or "unauthorized")
         logger.exception(
             "va_provision_failed",
             extra={"account_id": str(account.id), "psp": psp_code},
