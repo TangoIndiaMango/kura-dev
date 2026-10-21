@@ -31,7 +31,7 @@ export const AdminTopNav: React.FC<AdminTopNavProps> = ({
 }) => {
   return (
     <header className="h-16 flex-shrink-0 border-b border-[var(--bd)] bg-[var(--sf)] px-4 sm:px-6 flex items-center justify-between gap-4 transition-colors">
-      <div className="flex items-center gap-3.5 min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-3.5">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -41,17 +41,20 @@ export const AdminTopNav: React.FC<AdminTopNavProps> = ({
           <Menu01Icon size={18} />
         </button>
 
-        <div className="text-[21px] font-bold tracking-tight text-[var(--tx)] whitespace-nowrap">
+        <div
+          className="min-w-0 truncate text-[21px] font-bold tracking-tight text-[var(--tx)]"
+          title={title}
+        >
           {title}
         </div>
 
-        <div className="hidden sm:block text-[12.5px] text-[var(--su)] whitespace-nowrap overflow-hidden text-ellipsis">
+        <div className="hidden min-w-0 truncate text-[12.5px] text-[var(--su)] xl:block">
           {crumb}
         </div>
       </div>
 
       <div className="flex items-center gap-2.5 flex-shrink-0">
-        <div className="hidden md:flex items-center gap-2 px-3 py-2 border border-[var(--bd)] rounded-[8px] bg-[var(--in)] text-[12.5px] text-[var(--su)] w-[280px]">
+        <div className="hidden lg:flex items-center gap-2 px-3 py-2 border border-[var(--bd)] rounded-[8px] bg-[var(--in)] text-[12.5px] text-[var(--su)] w-[clamp(180px,24vw,280px)]">
           <Search01Icon size={14} className="flex-shrink-0 opacity-70" />
           <input
             type="text"
@@ -63,17 +66,18 @@ export const AdminTopNav: React.FC<AdminTopNavProps> = ({
         <button
           type="button"
           onClick={onToggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           className="h-9 px-3 border border-[var(--bd)] rounded-[8px] bg-[var(--in)] text-[var(--tx)] text-[12px] font-bold cursor-pointer flex items-center gap-2 font-sans hover:bg-[var(--hv)] transition-colors"
         >
           {theme === 'dark' ? (
             <>
               <MoonIcon size={15} />
-              <span>Dark</span>
+              <span className="hidden sm:inline">Dark</span>
             </>
           ) : (
             <>
               <Sun01Icon size={15} />
-              <span>Light</span>
+              <span className="hidden sm:inline">Light</span>
             </>
           )}
         </button>
