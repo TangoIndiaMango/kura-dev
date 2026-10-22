@@ -191,24 +191,24 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## credit (18)
 
-- [ ] `GET    /api/v1/credit/applications/`
-- [ ] `POST   /api/v1/credit/applications/`
-- [ ] `GET    /api/v1/credit/applications/{id}/`
-- [ ] `POST   /api/v1/credit/applications/{id}/approve/`
-- [ ] `POST   /api/v1/credit/applications/{id}/decline/`
-- [ ] `GET    /api/v1/credit/eligibility/`
-- [ ] `GET    /api/v1/credit/loans/`
-- [ ] `GET    /api/v1/credit/loans/{id}/`
-- [ ] `POST   /api/v1/credit/loans/{id}/repay/`
-- [ ] `POST   /api/v1/credit/offer-assignments/{id}/accept/`
-- [ ] `GET    /api/v1/credit/offers/`
-- [ ] `POST   /api/v1/credit/offers/`
-- [ ] `GET    /api/v1/credit/offers/mine/`
-- [ ] `GET    /api/v1/credit/offers/{id}/`
-- [ ] `PATCH  /api/v1/credit/offers/{id}/`
-- [ ] `POST   /api/v1/credit/offers/{id}/assign/`
-- [ ] `GET    /api/v1/credit/scores/`
-- [ ] `POST   /api/v1/credit/scores/{account_id}/override/`
+- [x] `GET    /api/v1/credit/applications/`
+- [x] `POST   /api/v1/credit/applications/`
+- [x] `GET    /api/v1/credit/applications/{id}/`
+- [x] `POST   /api/v1/credit/applications/{id}/approve/`
+- [x] `POST   /api/v1/credit/applications/{id}/decline/`
+- [x] `GET    /api/v1/credit/eligibility/`
+- [x] `GET    /api/v1/credit/loans/`
+- [x] `GET    /api/v1/credit/loans/{id}/`
+- [x] `POST   /api/v1/credit/loans/{id}/repay/`
+- [x] `POST   /api/v1/credit/offer-assignments/{id}/accept/`
+- [x] `GET    /api/v1/credit/offers/`
+- [x] `POST   /api/v1/credit/offers/`
+- [x] `GET    /api/v1/credit/offers/mine/`
+- [x] `GET    /api/v1/credit/offers/{id}/`
+- [x] `PATCH  /api/v1/credit/offers/{id}/`
+- [x] `POST   /api/v1/credit/offers/{id}/assign/`
+- [x] `GET    /api/v1/credit/scores/`
+- [x] `POST   /api/v1/credit/scores/{account_id}/override/`
 
 ## auth (17)
 
@@ -308,23 +308,23 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## offers (7)
 
-- [ ] `GET    /api/v1/offers/`
-- [ ] `POST   /api/v1/offers/`
-- [ ] `POST   /api/v1/offers/assignments/{id}/accept/`
-- [ ] `GET    /api/v1/offers/mine/`
-- [ ] `GET    /api/v1/offers/{id}/`
-- [ ] `PATCH  /api/v1/offers/{id}/`
-- [ ] `POST   /api/v1/offers/{id}/assign/`
+- [x] `GET    /api/v1/offers/`
+- [x] `POST   /api/v1/offers/`
+- [x] `POST   /api/v1/offers/assignments/{id}/accept/`
+- [x] `GET    /api/v1/offers/mine/`
+- [x] `GET    /api/v1/offers/{id}/`
+- [x] `PATCH  /api/v1/offers/{id}/`
+- [x] `POST   /api/v1/offers/{id}/assign/`
 
 ## segments (7)
 
-- [ ] `GET    /api/v1/segments/`
-- [ ] `POST   /api/v1/segments/`
-- [ ] `POST   /api/v1/segments/preview/`
-- [ ] `GET    /api/v1/segments/{id}/`
-- [ ] `PATCH  /api/v1/segments/{id}/`
-- [ ] `GET    /api/v1/segments/{id}/members/`
-- [ ] `POST   /api/v1/segments/{id}/refresh/`
+- [x] `GET    /api/v1/segments/`
+- [x] `POST   /api/v1/segments/`
+- [x] `POST   /api/v1/segments/preview/`
+- [x] `GET    /api/v1/segments/{id}/`
+- [x] `PATCH  /api/v1/segments/{id}/`
+- [x] `GET    /api/v1/segments/{id}/members/`
+- [x] `POST   /api/v1/segments/{id}/refresh/`
 
 ## config (5)
 

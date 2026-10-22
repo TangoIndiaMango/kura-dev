@@ -241,12 +241,24 @@ translated to the envelope in exactly one place (`respond.Error`).
   identical; `run_all.sh` runs all 19 suites (all identical).
   Unique-violation 409s now name the column from the Postgres detail, like
   Django's `_UNIQUE_RE`.
+- 2026-10-22 — Config (5) + credit / offers / segments (32) → 243/317.
+  Platform config with maker-checker; credit eligibility (blockers,
+  behavioural score, device trust), score override, apply / approve /
+  decline with SWAP_CREDIT loans, repay (interest-first wallet debit +
+  ledger split), offers on both mounts (/credit/offers, /offers), saved
+  segments (criteria validation, preview, members). `ConsumeSwapCredit`,
+  `ActiveSwapCredit`, `CheckBustout` exported for swap settlement.
+  config.py 50 + credit.py 82 identical.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
   after swaps.
 
 ### Django bugs found while porting (fixed on main too)
+- Re-assigning an offer to an account that already has it → 500: the
+  IntegrityError was caught inside `transaction.atomic`, so the follow-up
+  `.get()` hit a broken transaction. Now `get_or_create`
+  (`credit/services/offers.py`).
 - **Data exposure:** `CashDepositViewSet` treated `finance:read` as "see
   everything", but DRIVER / FLEET_OWNER hold `finance:read` for their own
   rows — any rider could list every operator's cash deposits and open their
@@ -283,6 +295,10 @@ translated to the envelope in exactly one place (`respond.Error`).
   Go answers 400 for that parameter.
 
 ### Django quirks kept for parity (fix in both later)
+- Config namespaces and versions are readable with `finance:read`, which
+  rider roles hold (only the admin app calls these endpoints).
+- `POST /credit/scores/{unknown}/override/`, offer assign with an unknown
+  account id → 500 in Django (`.get()`); Go answers 404.
 - Buying a plan whose vehicle_type differs from the vehicle's (e.g. a BOAT
   plan on a motorcycle) is allowed; the charge uses the vehicle's tariff.
 - Immediate plan switch cancels the old subscription in one transaction and

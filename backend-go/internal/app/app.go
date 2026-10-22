@@ -10,6 +10,7 @@ import (
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/accounts"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/credit"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/finance"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
@@ -69,6 +70,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		risk.NewModule(pool, limiter),
 		support.NewModule(pool, cdn, limiter),
 		platformcfg.NewModule(pool, limiter),
+		credit.NewModule(pool, tokens, limiter),
 		operations.NewModule(pool, mailer, tokens, receiptKey, cfg.FrontendClientURL, cfg.CashFloatLimit, limiter),
 	)
 }

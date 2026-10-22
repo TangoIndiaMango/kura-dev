@@ -1,7 +1,7 @@
 """Product offers catalogue + assignments."""
 from __future__ import annotations
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 
 from accounts.models import Account
 from accounts.services.auth import assert_pin_grant
@@ -88,15 +88,16 @@ class OfferService:
         with transaction.atomic():
             for account_id in ids:
                 account = Account.objects.get(pk=account_id)
-                try:
-                    row = OfferAssignment.objects.create(
-                        account=account,
-                        offer=offer,
-                        status=OfferAssignment.Status.OFFERED,
-                        channel=channel,
-                    )
-                except IntegrityError:
-                    row = OfferAssignment.objects.get(account=account, offer=offer)
+                # get_or_create: catching IntegrityError inside this atomic block
+                # left the transaction broken (re-assigning returned a 500).
+                row, _ = OfferAssignment.objects.get_or_create(
+                    account=account,
+                    offer=offer,
+                    defaults={
+                        "status": OfferAssignment.Status.OFFERED,
+                        "channel": channel,
+                    },
+                )
                 created.append(row)
                 emit_event(
                     action="offer.assigned",
