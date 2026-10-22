@@ -161,7 +161,9 @@ def purge_phones(phones):
       CREATE TEMP TABLE pu AS SELECT id FROM accounts_user WHERE phone IN ({ph});
       CREATE TEMP TABLE pa AS SELECT id FROM accounts_account WHERE owner_user_id IN (SELECT id FROM pu);
       UPDATE audit_auditevent SET actor_id = NULL WHERE actor_id IN (SELECT id FROM pu);
-      DELETE FROM notifications_notification WHERE user_id IN (SELECT id FROM pu);
+      DELETE FROM notifications_notification WHERE user_id IN (SELECT id FROM pu)
+        OR EXISTS (SELECT 1 FROM pa WHERE notifications_notification.link_path LIKE '%' || pa.id || '%');
+      DELETE FROM accounts_passwordsetuptoken WHERE user_id IN (SELECT id FROM pu);
       DELETE FROM token_blacklist_blacklistedtoken WHERE token_id IN
         (SELECT id FROM token_blacklist_outstandingtoken WHERE user_id IN (SELECT id FROM pu));
       DELETE FROM token_blacklist_outstandingtoken WHERE user_id IN (SELECT id FROM pu);

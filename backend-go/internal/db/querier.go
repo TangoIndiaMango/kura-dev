@@ -43,6 +43,7 @@ type Querier interface {
 	// Consume this token and every other open one for the same user + purpose.
 	ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokensParams) error
 	CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid.UUID) ([]uuid.UUID, error)
+	CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
 	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
@@ -106,6 +107,8 @@ type Querier interface {
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)
 	InsertOTP(ctx context.Context, arg InsertOTPParams) error
 	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
+	// register_operator: a rider created by staff (no PIN yet, invite emailed).
+	InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
 	InsertRole(ctx context.Context, arg InsertRoleParams) error
 	InsertSetupToken(ctx context.Context, arg InsertSetupTokenParams) error
@@ -140,6 +143,7 @@ type Querier interface {
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
+	PhoneTaken(ctx context.Context, phone *string) (bool, error)
 	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
 	PlanFeesByVehicle(ctx context.Context, arg PlanFeesByVehicleParams) ([]PlanFeesByVehicleRow, error)
 	PlanFeesDaily(ctx context.Context, arg PlanFeesDailyParams) ([]PlanFeesDailyRow, error)
@@ -159,9 +163,11 @@ type Querier interface {
 	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
+	SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error
 	SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error
 	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error
 	SetAccountKycStatus(ctx context.Context, arg SetAccountKycStatusParams) error
+	SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
 	SetDriverLimits(ctx context.Context, arg SetDriverLimitsParams) error
 	SetDriverPhoto(ctx context.Context, arg SetDriverPhotoParams) error

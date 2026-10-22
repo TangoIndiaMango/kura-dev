@@ -198,6 +198,10 @@ translated to the envelope in exactly one place (`respond.Error`).
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().
 
+- `PATCH /accounts/{id}/` with a non-string `display_name` (e.g. 42) → 500
+  (`.strip()` on int; the view reads request.data without a serializer).
+  Go returns the 400 "display_name is required.".
+
 ### Django quirks kept for parity (fix in both later)
 - `GET /accounts/stats/` is network-wide and open to any signed-in user
   (HasCapabilityOrReadOwn lets safe methods through, the stats aren't
@@ -205,6 +209,11 @@ translated to the envelope in exactly one place (`respond.Error`).
   accounts:read.
 - CRM `active_plan_name` shows the newest subscription of any status
   (prefetch ignores status=ACTIVE), so an expired plan still shows.
+- `account.suspended` / `account.reinstated` notifications use a fixed
+  dedupe key per account, so the second suspension of the same operator
+  never notifies the actor again.
+- Operator invites (register) link to the admin console's create-password
+  page, same as staff invites.
 - Account detail stats default window ends on the UTC date, fleet spend on
   the Lagos date (00:00–01:00 WAT they differ by a day).
 - List `end_date` filters (django-filters DateFilter on a datetime) stop at

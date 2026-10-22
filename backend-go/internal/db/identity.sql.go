@@ -12,6 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const cooperativeExists = `-- name: CooperativeExists :one
+SELECT EXISTS (SELECT 1 FROM accounts_cooperative WHERE id = $1)
+`
+
+func (q *Queries) CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, cooperativeExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const deleteIdentityDocs = `-- name: DeleteIdentityDocs :execrows
 DELETE FROM accounts_identitydocument WHERE account_id = $1
 `
@@ -267,6 +278,37 @@ func (q *Queries) InsertIdentityDoc(ctx context.Context, arg InsertIdentityDocPa
 	return err
 }
 
+const insertRegisteredOperator = `-- name: InsertRegisteredOperator :exec
+INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, email, phone, first_name,
+    last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts, onboarding_step, public_id,
+    notification_prefs, session_version)
+VALUES ($1, now(), now(), $2, false, $3, $4, $5, $6, 'DRIVER', '', true, false, 0, 'home', $7, '{}'::jsonb, 0)
+`
+
+type InsertRegisteredOperatorParams struct {
+	ID        uuid.UUID
+	Password  string
+	Email     *string
+	Phone     *string
+	FirstName string
+	LastName  string
+	PublicID  *string
+}
+
+// register_operator: a rider created by staff (no PIN yet, invite emailed).
+func (q *Queries) InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error {
+	_, err := q.db.Exec(ctx, insertRegisteredOperator,
+		arg.ID,
+		arg.Password,
+		arg.Email,
+		arg.Phone,
+		arg.FirstName,
+		arg.LastName,
+		arg.PublicID,
+	)
+	return err
+}
+
 const latestIdentityDocForUpdate = `-- name: LatestIdentityDocForUpdate :one
 SELECT id, created_at, updated_at, doc_type, number_encrypted, number_last4, status, verified_via, verified_at, reject_reason, account_id, back_image_id, front_image_id, photos_requested, request_note FROM accounts_identitydocument WHERE account_id = $1
 ORDER BY created_at DESC LIMIT 1 FOR UPDATE
@@ -293,6 +335,17 @@ func (q *Queries) LatestIdentityDocForUpdate(ctx context.Context, accountID uuid
 		&i.RequestNote,
 	)
 	return i, err
+}
+
+const phoneTaken = `-- name: PhoneTaken :one
+SELECT EXISTS (SELECT 1 FROM accounts_user WHERE phone = $1)
+`
+
+func (q *Queries) PhoneTaken(ctx context.Context, phone *string) (bool, error) {
+	row := q.db.QueryRow(ctx, phoneTaken, phone)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const resubmitIdentityDoc = `-- name: ResubmitIdentityDoc :exec
@@ -324,6 +377,20 @@ func (q *Queries) ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityD
 	return err
 }
 
+const setAccountCooperative = `-- name: SetAccountCooperative :exec
+UPDATE accounts_account SET cooperative_id = $2, updated_at = now() WHERE id = $1
+`
+
+type SetAccountCooperativeParams struct {
+	ID            uuid.UUID
+	CooperativeID *uuid.UUID
+}
+
+func (q *Queries) SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error {
+	_, err := q.db.Exec(ctx, setAccountCooperative, arg.ID, arg.CooperativeID)
+	return err
+}
+
 const setAccountDisplayName = `-- name: SetAccountDisplayName :exec
 UPDATE accounts_account SET display_name = $2, updated_at = now() WHERE id = $1
 `
@@ -335,6 +402,20 @@ type SetAccountDisplayNameParams struct {
 
 func (q *Queries) SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error {
 	_, err := q.db.Exec(ctx, setAccountDisplayName, arg.ID, arg.DisplayName)
+	return err
+}
+
+const setAccountStatus = `-- name: SetAccountStatus :exec
+UPDATE accounts_account SET status = $2, updated_at = now() WHERE id = $1
+`
+
+type SetAccountStatusParams struct {
+	ID     uuid.UUID
+	Status string
+}
+
+func (q *Queries) SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) error {
+	_, err := q.db.Exec(ctx, setAccountStatus, arg.ID, arg.Status)
 	return err
 }
 

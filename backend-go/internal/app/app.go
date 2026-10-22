@@ -54,7 +54,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), accounts.NewStaffHandler(staffSvc),
 			accounts.NewCoopHandler(pool), accounts.NewDriverHandler(pool),
 			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
-				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity), limiter),
+				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity, staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 	)
 }

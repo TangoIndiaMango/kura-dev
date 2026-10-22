@@ -78,3 +78,22 @@ UPDATE accounts_user SET onboarding_step = $2, updated_at = now() WHERE id = $1;
 
 -- name: IdentityDocByID :one
 SELECT * FROM accounts_identitydocument WHERE id = $1;
+
+-- name: InsertRegisteredOperator :exec
+-- register_operator: a rider created by staff (no PIN yet, invite emailed).
+INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, email, phone, first_name,
+    last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts, onboarding_step, public_id,
+    notification_prefs, session_version)
+VALUES ($1, now(), now(), $2, false, $3, $4, $5, $6, 'DRIVER', '', true, false, 0, 'home', $7, '{}'::jsonb, 0);
+
+-- name: PhoneTaken :one
+SELECT EXISTS (SELECT 1 FROM accounts_user WHERE phone = $1);
+
+-- name: SetAccountStatus :exec
+UPDATE accounts_account SET status = $2, updated_at = now() WHERE id = $1;
+
+-- name: SetAccountCooperative :exec
+UPDATE accounts_account SET cooperative_id = $2, updated_at = now() WHERE id = $1;
+
+-- name: CooperativeExists :one
+SELECT EXISTS (SELECT 1 FROM accounts_cooperative WHERE id = $1);

@@ -141,17 +141,17 @@ func (h *AccountHandler) submitKYC(w http.ResponseWriter, r *http.Request) {
 	respond.Created(w, k)
 }
 
-// reviewAction wires the staff review endpoints: object scope, body, then
-// the review itself.
+// reviewAction wires the staff review endpoints: body, object scope, then
+// the review itself (DRF order: serializer, then get_object).
 func reviewAction[T any](h *AccountHandler, run func(r *http.Request, staff db.AccountsUser, id uuid.UUID, b T) (KYC, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		row, err := h.object(r)
-		if err != nil {
+		var b T // the serializer runs before get_object in these actions
+		if err := decode.JSON(r, &b); err != nil {
 			respond.Error(w, r, err)
 			return
 		}
-		var b T
-		if err := decode.JSON(r, &b); err != nil {
+		row, err := h.object(r)
+		if err != nil {
 			respond.Error(w, r, err)
 			return
 		}

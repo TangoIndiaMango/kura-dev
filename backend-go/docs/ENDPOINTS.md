@@ -167,27 +167,27 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 ## accounts (22)
 
 - [x] `GET    /api/v1/accounts/`
-- [ ] `POST   /api/v1/accounts/`
+- [x] `POST   /api/v1/accounts/`
 - [x] `GET    /api/v1/accounts/export/`
 - [x] `POST   /api/v1/accounts/identity/`
 - [x] `POST   /api/v1/accounts/identity/photos/`
 - [x] `POST   /api/v1/accounts/identity/withdraw/`
 - [x] `GET    /api/v1/accounts/me/fleet-spend/`
 - [x] `GET    /api/v1/accounts/me/impact/`
-- [ ] `POST   /api/v1/accounts/register/`
+- [x] `POST   /api/v1/accounts/register/`
 - [x] `GET    /api/v1/accounts/stats/`
 - [x] `GET    /api/v1/accounts/{id}/`
-- [ ] `PATCH  /api/v1/accounts/{id}/`
+- [x] `PATCH  /api/v1/accounts/{id}/`
 - [x] `GET    /api/v1/accounts/{id}/kyc/`
 - [x] `POST   /api/v1/accounts/{id}/kyc/reject/`
 - [x] `POST   /api/v1/accounts/{id}/kyc/request-photos/`
 - [x] `POST   /api/v1/accounts/{id}/kyc/submit/`
 - [x] `POST   /api/v1/accounts/{id}/kyc/verify/`
-- [ ] `POST   /api/v1/accounts/{id}/notify/`
-- [ ] `POST   /api/v1/accounts/{id}/reinstate/`
-- [ ] `POST   /api/v1/accounts/{id}/set-cooperative/`
+- [x] `POST   /api/v1/accounts/{id}/notify/`
+- [x] `POST   /api/v1/accounts/{id}/reinstate/`
+- [x] `POST   /api/v1/accounts/{id}/set-cooperative/`
 - [x] `GET    /api/v1/accounts/{id}/stats/`
-- [ ] `POST   /api/v1/accounts/{id}/suspend/`
+- [x] `POST   /api/v1/accounts/{id}/suspend/`
 
 ## credit (18)
 

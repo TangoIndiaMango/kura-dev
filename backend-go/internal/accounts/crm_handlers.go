@@ -29,10 +29,13 @@ type AccountHandler struct {
 	cdn    media.Cloudinary
 	petrol spend.Petrol
 	ids    *IdentityService
+	staff  *StaffService // operator registration reuses the staff invite
 }
 
-func NewAccountHandler(pool *pgxpool.Pool, cdn media.Cloudinary, petrol spend.Petrol, ids *IdentityService) *AccountHandler {
-	return &AccountHandler{pool: pool, q: db.New(pool), cdn: cdn, petrol: petrol.WithDefaults(), ids: ids}
+func NewAccountHandler(pool *pgxpool.Pool, cdn media.Cloudinary, petrol spend.Petrol, ids *IdentityService,
+	staff *StaffService) *AccountHandler {
+	return &AccountHandler{pool: pool, q: db.New(pool), cdn: cdn, petrol: petrol.WithDefaults(), ids: ids,
+		staff: staff}
 }
 
 // accountFilters reads AccountFilter + ?q= + ?ordering= into list params,

@@ -3,6 +3,7 @@
 package decode
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -222,4 +223,23 @@ func blankFields(present map[string]json.RawMessage, dst any) apperr.Details {
 		}
 	}
 	return out
+}
+
+// Keys returns the top-level keys of a JSON object body and restores the
+// body for a later decode — for fields that must be present but may be
+// null (DRF required + allow_null), which a nil pointer can't express.
+func Keys(r *http.Request) map[string]bool {
+	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxBody))
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	keys := map[string]bool{}
+	if err != nil {
+		return keys
+	}
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) == nil {
+		for k := range obj {
+			keys[k] = true
+		}
+	}
+	return keys
 }
