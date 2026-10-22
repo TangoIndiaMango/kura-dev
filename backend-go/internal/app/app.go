@@ -18,6 +18,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mobility"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/operations"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
@@ -53,6 +54,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		panic(err) // invalid URL is a deploy config bug; fail at boot
 	}
 
+	receiptKey := firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper, "kura-dev-receipt-secret")
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
@@ -61,11 +63,11 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
 				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity, staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
-		finance.NewModule(finance.NewHandler(pool, firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper,
-			"kura-dev-receipt-secret"), cfg.AllowDevVA()), limiter),
+		finance.NewModule(finance.NewHandler(pool, receiptKey, cfg.AllowDevVA()), limiter),
 		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens, limiter),
 		risk.NewModule(pool, limiter),
 		support.NewModule(pool, cdn, limiter),
+		operations.NewModule(pool, mailer, tokens, receiptKey, cfg.FrontendClientURL, cfg.CashFloatLimit, limiter),
 	)
 }
 

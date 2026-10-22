@@ -3,7 +3,6 @@ package mobility
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -30,24 +29,7 @@ type Billing struct {
 
 // assertPinGrant is accounts.services.auth.assert_pin_grant.
 func (b *Billing) assertPinGrant(token string, owner uuid.UUID) error {
-	raw := strings.TrimSpace(token)
-	if raw == "" {
-		return apperr.New("PIN_GRANT_REQUIRED", "Rider PIN confirmation is required for this wallet debit.").WithStatus(403)
-	}
-	bad := func(msg string) error {
-		return apperr.New("PIN_GRANT_INVALID", msg).WithStatus(http.StatusUnauthorized)
-	}
-	c, err := b.tokens.Parse(raw, auth.TypeAccess)
-	if err != nil {
-		return bad("PIN confirmation expired or invalid. Ask the rider to enter PIN again.")
-	}
-	if c.Scope != auth.ScopePin {
-		return bad("Invalid PIN confirmation.")
-	}
-	if c.UserID != owner.String() {
-		return bad("PIN confirmation does not match this rider.")
-	}
-	return nil
+	return b.tokens.AssertPinGrant(token, owner)
 }
 
 // planDays is helpers.duration_days.

@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -73,11 +75,18 @@ func InTx(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) error) (er
 	return tx.Commit(ctx)
 }
 
+var uniqueKey = regexp.MustCompile(`(?i)Key \(([^)]+)\)=\([^)]+\) already exists`)
+
 // IsUniqueViolation reports a 23505 and the offending column, for the
 // "already exists" 409 envelope Django returns.
 func IsUniqueViolation(err error) (column string, ok bool) {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		// Like core.exceptions._UNIQUE_RE: the column comes from the detail.
+		if m := uniqueKey.FindStringSubmatch(pgErr.Detail); m != nil {
+			parts := strings.Split(m[1], ".")
+			return strings.Trim(parts[len(parts)-1], `"`), true
+		}
 		return pgErr.ColumnName, true
 	}
 	return "", false

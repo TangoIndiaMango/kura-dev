@@ -231,12 +231,26 @@ translated to the envelope in exactly one place (`respond.Error`).
   `OpenCase` is exported for the bay identity-mismatch flow.
   `scripts/contract/support.py`: identical incl. case events,
   notifications and audit. `scope.OwnAccounts` shared.
+- 2026-10-22 — Operations (30 → 206/317): shifts (open / close with
+  variance → risk + alert + notice / lodge into psp_clearing), cash deposits
+  (float limit, SWAP + FUND ledger, receipt JSON/PDF + emailed PDF, dispute
+  flag → support case), overrides (agent PIN grant, daily-limit alert),
+  alerts (triage, stats, export), alert rules, inventory counts, command
+  centre (30 s cache) and activity. `Service.Record` / `RecordOverride` are
+  exported for swap settlement. `scripts/contract/operations.py`: 155
+  identical; `run_all.sh` runs all 19 suites (all identical).
+  Unique-violation 409s now name the column from the Postgres detail, like
+  Django's `_UNIQUE_RE`.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
   after swaps.
 
 ### Django bugs found while porting (fixed on main too)
+- **Data exposure:** `CashDepositViewSet` treated `finance:read` as "see
+  everything", but DRIVER / FLEET_OWNER hold `finance:read` for their own
+  rows — any rider could list every operator's cash deposits and open their
+  receipts. Now uses `_can_read_all_finance` (staff only), like payments.
 - **Security:** `ReservationViewSet` (ModelViewSet) exposed PUT / PATCH /
   DELETE with a fully writable ReservationSerializer and no capability for
   those actions, so any signed-in rider could edit their hold (status,

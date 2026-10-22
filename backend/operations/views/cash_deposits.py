@@ -13,6 +13,7 @@ from accounts.selectors.scope import hub_ids_for
 from core.exceptions import DomainError
 from core.pagination import KuraCursorPagination
 from core.responses import created, ok
+from finance.selectors import _can_read_all_finance
 from finance.services.receipts import (
     build_cash_receipt_document,
     render_receipt_pdf,
@@ -59,9 +60,9 @@ class CashDepositViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by("-created_at")
         )
         user = self.request.user
-        if user_has_capability(user, "finance:read") or user_has_capability(
-            user, "shifts:manage"
-        ):
+        # finance:read alone also sits on rider roles; only staff readers see
+        # every deposit (same rule as payments_for).
+        if _can_read_all_finance(user) or user_has_capability(user, "shifts:manage"):
             return qs
         return qs.filter(account__owner_user=user)
 
@@ -81,7 +82,7 @@ class CashDepositViewSet(viewsets.ReadOnlyModelViewSet):
             return [IsAuthenticated(), HasCapability()]
         return super().get_permissions()
     def _assert_can_access(self, request, deposit: CashDeposit) -> None:
-        if user_has_capability(request.user, "finance:read"):
+        if _can_read_all_finance(request.user):
             return
         if user_has_capability(request.user, "shifts:manage"):
             return

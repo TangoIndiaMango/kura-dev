@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/apperr"
+	"github.com/google/uuid"
 )
 
 // Search returns the escaped ?q= term for `ILIKE '%' || $q || '%'`, or nil
@@ -65,4 +66,39 @@ func Merge(errs ...error) error {
 		return nil
 	}
 	return apperr.Validation(d)
+}
+
+// Model is django-filter's ModelChoiceFilter: absent means no filter; the
+// value must parse and exist, else the form's "Select a valid choice" error.
+func Model(r *http.Request, name string, exists func(uuid.UUID) (bool, error)) (*uuid.UUID, error) {
+	raw := r.URL.Query().Get(name)
+	if raw == "" {
+		return nil, nil
+	}
+	bad := apperr.Field(name, "Select a valid choice. That choice is not one of the available choices.")
+	id, err := uuid.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return nil, bad
+	}
+	ok, err := exists(id)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, bad
+	}
+	return &id, nil
+}
+
+// NullBool is django-filter's BooleanFilter (NullBooleanSelect): only
+// true/false/True/False filter; anything else is ignored.
+func NullBool(r *http.Request, name string) *bool {
+	t, f := true, false
+	switch r.URL.Query().Get(name) {
+	case "true", "True":
+		return &t
+	case "false", "False":
+		return &f
+	}
+	return nil
 }

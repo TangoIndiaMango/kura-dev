@@ -39,7 +39,21 @@ type Querier interface {
 	ActiveMatrixExists(ctx context.Context, vehicleType string) (bool, error)
 	ActiveSubscriptionForVehicle(ctx context.Context, vehicleID uuid.UUID) (MobilitySubscription, error)
 	ActiveUser(ctx context.Context, id uuid.UUID) (ActiveUserRow, error)
+	ActivityAlerts(ctx context.Context, limit int32) ([]ActivityAlertsRow, error)
+	ActivitySwaps(ctx context.Context, limit int32) ([]ActivitySwapsRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
+	AgentFloatOutstanding(ctx context.Context, agentID uuid.UUID) (int64, error)
+	AgentOverridesSince(ctx context.Context, arg AgentOverridesSinceParams) (int32, error)
+	AlertForUpdate(ctx context.Context, id uuid.UUID) (OperationsAlert, error)
+	// TruncDate in TIME_ZONE (Africa/Lagos).
+	AlertPeriodByDay(ctx context.Context, arg AlertPeriodByDayParams) ([]AlertPeriodByDayRow, error)
+	AlertPeriodBySeverity(ctx context.Context, arg AlertPeriodBySeverityParams) ([]AlertPeriodBySeverityRow, error)
+	AlertPeriodStats(ctx context.Context, arg AlertPeriodStatsParams) (AlertPeriodStatsRow, error)
+	AlertQueueStats(ctx context.Context, arg AlertQueueStatsParams) (AlertQueueStatsRow, error)
+	AlertRows(ctx context.Context, ids []uuid.UUID) ([]AlertRowsRow, error)
+	AlertRuleByID(ctx context.Context, id uuid.UUID) (OperationsAlertrule, error)
+	// Alerts, alert rules, overrides, inventory counts, command centre.
+	AlertsPage(ctx context.Context, arg AlertsPageParams) ([]uuid.UUID, error)
 	AllBatteryTypes(ctx context.Context) ([]MobilityBatterytype, error)
 	// Pricing: tariff matrices, hold policy, catalogue plans (PricingService).
 	AnyHoldPolicy(ctx context.Context) (bool, error)
@@ -68,11 +82,15 @@ type Querier interface {
 	// Support cases (SupportCaseViewSet / SupportCaseService).
 	// cases_for scope + SupportCaseFilter + ?q= (code, subject, account name / kura id); keyset newest first.
 	CasesPage(ctx context.Context, arg CasesPageParams) ([]uuid.UUID, error)
+	CashDepositByID(ctx context.Context, id uuid.UUID) (OperationsCashdeposit, error)
+	CashDepositReceipt(ctx context.Context, id uuid.UUID) (CashDepositReceiptRow, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	ClearSlotOfBattery(ctx context.Context, batteryID *uuid.UUID) error
 	CloseOpenAssignments(ctx context.Context, arg CloseOpenAssignmentsParams) error
+	CommandCentreHubs(ctx context.Context) ([]CommandCentreHubsRow, error)
+	CommandCentreKPIs(ctx context.Context, arg CommandCentreKPIsParams) (CommandCentreKPIsRow, error)
 	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
 	ConsumableGrantForUpdate(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
@@ -83,17 +101,21 @@ type Querier interface {
 	CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
 	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
+	CountAlertRules(ctx context.Context) (int64, error)
 	CountBatteries(ctx context.Context, arg CountBatteriesParams) (int64, error)
 	CountBatteryTypes(ctx context.Context, arg CountBatteryTypesParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
 	CountDiscounts(ctx context.Context, arg CountDiscountsParams) (int64, error)
 	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
 	CountHubs(ctx context.Context, arg CountHubsParams) (int64, error)
+	CountInventoryCounts(ctx context.Context, hub *uuid.UUID) (int64, error)
 	CountMatrices(ctx context.Context, arg CountMatricesParams) (int64, error)
+	CountOverrides(ctx context.Context, agent *uuid.UUID) (int64, error)
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountPlans(ctx context.Context, arg CountPlansParams) (int64, error)
 	CountRiskRules(ctx context.Context) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
+	CountShifts(ctx context.Context, arg CountShiftsParams) (int64, error)
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
 	CountSubscriptions(ctx context.Context, arg CountSubscriptionsParams) (int64, error)
 	CountVehicleModels(ctx context.Context, arg CountVehicleModelsParams) (int64, error)
@@ -102,6 +124,10 @@ type Querier interface {
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
 	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
+	DepositByIdempotency(ctx context.Context, idempotencyKey *string) (OperationsCashdeposit, error)
+	DepositRows(ctx context.Context, ids []uuid.UUID) ([]DepositRowsRow, error)
+	// CashDepositViewSet: finance:read / shifts:manage see all, others their owned accounts; keyset newest first.
+	DepositsPage(ctx context.Context, arg DepositsPageParams) ([]uuid.UUID, error)
 	DiscountByCode(ctx context.Context, code string) (MobilityDiscountcampaign, error)
 	DiscountByCodeForUpdate(ctx context.Context, code string) (MobilityDiscountcampaign, error)
 	DiscountByID(ctx context.Context, id uuid.UUID) (MobilityDiscountcampaign, error)
@@ -147,6 +173,7 @@ type Querier interface {
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
 	HardwareTaken(ctx context.Context, arg HardwareTakenParams) (bool, error)
+	HourlyCompletedSwaps(ctx context.Context, arg HourlyCompletedSwapsParams) ([]HourlyCompletedSwapsRow, error)
 	// Pack types physically at the hub now (sorted, distinct).
 	HubBatteryTypeNames(ctx context.Context, hubID uuid.UUID) ([]string, error)
 	HubCodeExists(ctx context.Context, code string) (bool, error)
@@ -154,11 +181,13 @@ type Querier interface {
 	HubForUpdate(ctx context.Context, id uuid.UUID) (HubForUpdateRow, error)
 	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
 	HubInventory(ctx context.Context, arg HubInventoryParams) (HubInventoryRow, error)
+	HubRow(ctx context.Context, id uuid.UUID) (MobilityHub, error)
 	// Hub columns plus slot state counts (hubs_with_slot_counts annotations).
 	HubRows(ctx context.Context, ids []uuid.UUID) ([]HubRowsRow, error)
 	HubSlotNumbers(ctx context.Context, hubID uuid.UUID) ([]int32, error)
 	HubSlotRows(ctx context.Context, hubID uuid.UUID) ([]HubSlotRowsRow, error)
 	HubSlotStateCounts(ctx context.Context, hubID uuid.UUID) (HubSlotStateCountsRow, error)
+	HubSlotStates(ctx context.Context, hubID uuid.UUID) ([]HubSlotStatesRow, error)
 	HubStatusCounts(ctx context.Context, arg HubStatusCountsParams) ([]HubStatusCountsRow, error)
 	// Energy = charge handed over × the issued pack's rated capacity.
 	HubSwapDaily(ctx context.Context, arg HubSwapDailyParams) ([]HubSwapDailyRow, error)
@@ -168,6 +197,8 @@ type Querier interface {
 	// and AccountService.complete_profile.
 	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) (AccountsAccount, error)
+	InsertAlert(ctx context.Context, arg InsertAlertParams) error
+	InsertAlertRule(ctx context.Context, arg InsertAlertRuleParams) error
 	InsertAssignment(ctx context.Context, arg InsertAssignmentParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertBattery(ctx context.Context, arg InsertBatteryParams) error
@@ -178,6 +209,7 @@ type Querier interface {
 	InsertCataloguePlan(ctx context.Context, arg InsertCataloguePlanParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
+	InsertDeposit(ctx context.Context, arg InsertDepositParams) error
 	InsertDiscount(ctx context.Context, arg InsertDiscountParams) error
 	InsertDriver(ctx context.Context, arg InsertDriverParams) error
 	InsertDriverRow(ctx context.Context, arg InsertDriverRowParams) (AccountsDriver, error)
@@ -188,6 +220,7 @@ type Querier interface {
 	InsertHubSlot(ctx context.Context, arg InsertHubSlotParams) error
 	InsertIdentityDoc(ctx context.Context, arg InsertIdentityDocParams) error
 	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
+	InsertInventoryCount(ctx context.Context, arg InsertInventoryCountParams) error
 	InsertLedgerEntry(ctx context.Context, arg InsertLedgerEntryParams) error
 	InsertLedgerTransaction(ctx context.Context, arg InsertLedgerTransactionParams) error
 	InsertMatrix(ctx context.Context, arg InsertMatrixParams) (MobilityPricematrix, error)
@@ -196,6 +229,7 @@ type Querier interface {
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)
 	InsertOTP(ctx context.Context, arg InsertOTPParams) error
 	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
+	InsertOverride(ctx context.Context, arg InsertOverrideParams) error
 	InsertPayment(ctx context.Context, arg InsertPaymentParams) (FinancePayment, error)
 	InsertPlan(ctx context.Context, arg InsertPlanParams) error
 	InsertRedemption(ctx context.Context, arg InsertRedemptionParams) error
@@ -204,6 +238,7 @@ type Querier interface {
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
 	InsertRole(ctx context.Context, arg InsertRoleParams) error
 	InsertSetupToken(ctx context.Context, arg InsertSetupTokenParams) error
+	InsertShift(ctx context.Context, arg InsertShiftParams) error
 	InsertStaffUser(ctx context.Context, arg InsertStaffUserParams) error
 	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
 	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
@@ -211,6 +246,7 @@ type Querier interface {
 	InsertVehicleCommand(ctx context.Context, arg InsertVehicleCommandParams) error
 	InsertVehicleModel(ctx context.Context, arg InsertVehicleModelParams) error
 	InsertVelocityGrant(ctx context.Context, arg InsertVelocityGrantParams) error
+	InventoryCountByID(ctx context.Context, id uuid.UUID) (InventoryCountByIDRow, error)
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
 	LastCompletedSwapAt(ctx context.Context, vehicleID uuid.UUID) (*time.Time, error)
 	// Newest ACTIVE matrix for a type (no date bound) — ensure_defaults' sync.
@@ -220,6 +256,7 @@ type Querier interface {
 	LatestIdentityDocForUpdate(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
+	LatestOpenShift(ctx context.Context, arg LatestOpenShiftParams) (OperationsShift, error)
 	LedgerAccountForUpdate(ctx context.Context, code string) (FinanceLedgeraccount, error)
 	// LedgerEntry inherits BaseModel ordering (-created_at).
 	LedgerEntriesFor(ctx context.Context, ids []uuid.UUID) ([]LedgerEntriesForRow, error)
@@ -228,6 +265,7 @@ type Querier interface {
 	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
 	// ?ordering= (OrderingFilter over created_at / display_name); default newest first.
 	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
+	ListAlertRules(ctx context.Context, arg ListAlertRulesParams) ([]OperationsAlertrule, error)
 	// Batteries (BatteryViewSet, BatteryService, custody verbs, QR).
 	ListBatteryIDs(ctx context.Context, arg ListBatteryIDsParams) ([]uuid.UUID, error)
 	// Battery types (BatteryTypeViewSet).
@@ -238,7 +276,9 @@ type Querier interface {
 	// Hubs (HubViewSet + hub selectors). Scope: all_rows or ids (hub_ids_for).
 	// hubs_with_slot_counts orders by code; ?ordering= over code / name / created_at.
 	ListHubIDs(ctx context.Context, arg ListHubIDsParams) ([]uuid.UUID, error)
+	ListInventoryCounts(ctx context.Context, arg ListInventoryCountsParams) ([]ListInventoryCountsRow, error)
 	ListMatrices(ctx context.Context, arg ListMatricesParams) ([]MobilityPricematrix, error)
+	ListOverrides(ctx context.Context, arg ListOverridesParams) ([]ListOverridesRow, error)
 	ListPermissions(ctx context.Context, arg ListPermissionsParams) ([]ListPermissionsRow, error)
 	// PlanViewSet: active subscriber counts; default order vehicle_type, price.
 	ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPlansRow, error)
@@ -268,10 +308,16 @@ type Querier interface {
 	NewestOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
 	NubanTaken(ctx context.Context, arg NubanTakenParams) (bool, error)
+	// _open_alert dedupe: same hub + kind, still live, message starting with the prefix.
+	OpenAlertWithPrefix(ctx context.Context, arg OpenAlertWithPrefixParams) (OperationsAlert, error)
+	OpenCashLimitAlertExists(ctx context.Context, prefix string) (bool, error)
+	OpenShiftByIDForUpdate(ctx context.Context, id uuid.UUID) (OperationsShift, error)
+	OpenShiftForUpdate(ctx context.Context, arg OpenShiftForUpdateParams) (OperationsShift, error)
 	OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uuid.UUID, error)
 	OpenVelocityEvent(ctx context.Context, subjectID string) (RiskRiskevent, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
+	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
 	PaymentByID(ctx context.Context, id uuid.UUID) (PaymentByIDRow, error)
@@ -322,6 +368,8 @@ type Querier interface {
 	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
+	SaveAlert(ctx context.Context, arg SaveAlertParams) error
+	SaveAlertRule(ctx context.Context, arg SaveAlertRuleParams) error
 	// Full save (Django model.save()): every mutable column.
 	SaveBattery(ctx context.Context, arg SaveBatteryParams) error
 	SaveCaseAssignee(ctx context.Context, arg SaveCaseAssigneeParams) error
@@ -333,6 +381,8 @@ type Querier interface {
 	SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error
 	SaveRiskEventReview(ctx context.Context, arg SaveRiskEventReviewParams) error
 	SaveRiskRule(ctx context.Context, arg SaveRiskRuleParams) error
+	SaveShiftClose(ctx context.Context, arg SaveShiftCloseParams) error
+	SaveShiftLodge(ctx context.Context, arg SaveShiftLodgeParams) error
 	SaveSubscription(ctx context.Context, arg SaveSubscriptionParams) error
 	SaveVehicle(ctx context.Context, arg SaveVehicleParams) error
 	SaveVehicleModel(ctx context.Context, arg SaveVehicleModelParams) error
@@ -362,6 +412,15 @@ type Querier interface {
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
+	ShiftByID(ctx context.Context, id uuid.UUID) (OperationsShift, error)
+	ShiftDepositIDs(ctx context.Context, shiftID uuid.UUID) ([]uuid.UUID, error)
+	ShiftDepositTotal(ctx context.Context, shiftID uuid.UUID) (int64, error)
+	ShiftExists(ctx context.Context, id uuid.UUID) (bool, error)
+	ShiftForUpdate(ctx context.Context, id uuid.UUID) (OperationsShift, error)
+	// Shifts + cash deposits (ShiftViewSet, CashDepositViewSet, ShiftService, CashDepositService).
+	// ShiftViewSet: hub scope, ShiftFilter (a window belongs to every day it overlaps), ordering -opened_at.
+	ShiftIDs(ctx context.Context, arg ShiftIDsParams) ([]uuid.UUID, error)
+	ShiftRows(ctx context.Context, ids []uuid.UUID) ([]ShiftRowsRow, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
 	// statement_rows: the same joins as Django's select_related so rows tied on
 	// created_at come back in the same order; swaps are fetched separately.
@@ -380,6 +439,7 @@ type Querier interface {
 	SwapByVehicleTop(ctx context.Context, arg SwapByVehicleTopParams) ([]SwapByVehicleTopRow, error)
 	// Lagos-local days (TruncDate in Django's TIME_ZONE); energy is 3.24 kWh per pack.
 	SwapDaily(ctx context.Context, arg SwapDailyParams) ([]SwapDailyRow, error)
+	SwapHub(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	SwapImpact(ctx context.Context, accountID uuid.UUID) (SwapImpactRow, error)
 	// Account spend (accounts.selectors.spend + account_detail_stats).
 	// Every query reads COMPLETED swaps of one account with completed_at in [from, to).
@@ -389,6 +449,7 @@ type Querier interface {
 	// Owners of vehicles of this type (distinct), for the customer notice.
 	TariffNoticeOwners(ctx context.Context, vehicleType string) ([]TariffNoticeOwnersRow, error)
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
+	TouchOverride(ctx context.Context, id uuid.UUID) error
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
 	UpdateCooperative(ctx context.Context, arg UpdateCooperativeParams) error
@@ -397,6 +458,7 @@ type Querier interface {
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) error
 	UpdateStaffUser(ctx context.Context, arg UpdateStaffUserParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
+	UserExists(ctx context.Context, id uuid.UUID) (bool, error)
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 	UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)

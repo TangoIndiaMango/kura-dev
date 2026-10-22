@@ -46,7 +46,10 @@ func FormatNaira(kobo int64) string {
 }
 
 // seal is seal_receipt_payload: HMAC-SHA256 over the canonical document.
-func (h *Handler) seal(doc map[string]any) string {
+func (h *Handler) seal(doc map[string]any) string { return Seal(h.receiptKey, doc) }
+
+// Seal is seal_receipt_payload with an explicit key.
+func Seal(key []byte, doc map[string]any) string {
 	body := map[string]any{}
 	for k, v := range doc {
 		if k != "integrity_hash" && k != "signature" {
@@ -54,7 +57,7 @@ func (h *Handler) seal(doc map[string]any) string {
 		}
 	}
 	canon, _ := canonjson.Marshal(body)
-	m := hmac.New(sha256.New, h.receiptKey)
+	m := hmac.New(sha256.New, key)
 	m.Write(canon)
 	return hex.EncodeToString(m.Sum(nil))
 }

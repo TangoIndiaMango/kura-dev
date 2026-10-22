@@ -133,36 +133,36 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## operations (30)
 
-- [ ] `GET    /api/v1/operations/activity/`
-- [ ] `GET    /api/v1/operations/alert-rules/`
-- [ ] `POST   /api/v1/operations/alert-rules/`
-- [ ] `GET    /api/v1/operations/alert-rules/{id}/`
-- [ ] `PATCH  /api/v1/operations/alert-rules/{id}/`
-- [ ] `GET    /api/v1/operations/alerts/`
-- [ ] `GET    /api/v1/operations/alerts/export/`
-- [ ] `GET    /api/v1/operations/alerts/stats/`
-- [ ] `GET    /api/v1/operations/alerts/{id}/`
-- [ ] `POST   /api/v1/operations/alerts/{id}/ack/`
-- [ ] `POST   /api/v1/operations/alerts/{id}/escalate/`
-- [ ] `POST   /api/v1/operations/alerts/{id}/resolve/`
-- [ ] `GET    /api/v1/operations/cash-deposits/`
-- [ ] `POST   /api/v1/operations/cash-deposits/`
-- [ ] `GET    /api/v1/operations/cash-deposits/{id}/`
-- [ ] `POST   /api/v1/operations/cash-deposits/{id}/flag/`
-- [ ] `GET    /api/v1/operations/cash-deposits/{id}/receipt/`
-- [ ] `GET    /api/v1/operations/command-centre/`
-- [ ] `GET    /api/v1/operations/inventory-counts/`
-- [ ] `POST   /api/v1/operations/inventory-counts/`
-- [ ] `GET    /api/v1/operations/overrides/`
-- [ ] `POST   /api/v1/operations/overrides/`
-- [ ] `GET    /api/v1/operations/overrides/{id}/`
-- [ ] `PATCH  /api/v1/operations/overrides/{id}/`
-- [ ] `GET    /api/v1/operations/shifts/`
-- [ ] `POST   /api/v1/operations/shifts/`
-- [ ] `POST   /api/v1/operations/shifts/open/`
-- [ ] `GET    /api/v1/operations/shifts/{id}/`
-- [ ] `POST   /api/v1/operations/shifts/{id}/close/`
-- [ ] `POST   /api/v1/operations/shifts/{id}/lodge/`
+- [x] `GET    /api/v1/operations/activity/`
+- [x] `GET    /api/v1/operations/alert-rules/`
+- [x] `POST   /api/v1/operations/alert-rules/`
+- [x] `GET    /api/v1/operations/alert-rules/{id}/`
+- [x] `PATCH  /api/v1/operations/alert-rules/{id}/`
+- [x] `GET    /api/v1/operations/alerts/`
+- [x] `GET    /api/v1/operations/alerts/export/`
+- [x] `GET    /api/v1/operations/alerts/stats/`
+- [x] `GET    /api/v1/operations/alerts/{id}/`
+- [x] `POST   /api/v1/operations/alerts/{id}/ack/`
+- [x] `POST   /api/v1/operations/alerts/{id}/escalate/`
+- [x] `POST   /api/v1/operations/alerts/{id}/resolve/`
+- [x] `GET    /api/v1/operations/cash-deposits/`
+- [x] `POST   /api/v1/operations/cash-deposits/`
+- [x] `GET    /api/v1/operations/cash-deposits/{id}/`
+- [x] `POST   /api/v1/operations/cash-deposits/{id}/flag/`
+- [x] `GET    /api/v1/operations/cash-deposits/{id}/receipt/`
+- [x] `GET    /api/v1/operations/command-centre/`
+- [x] `GET    /api/v1/operations/inventory-counts/`
+- [x] `POST   /api/v1/operations/inventory-counts/`
+- [x] `GET    /api/v1/operations/overrides/`
+- [x] `POST   /api/v1/operations/overrides/`
+- [x] `GET    /api/v1/operations/overrides/{id}/`
+- [x] `PATCH  /api/v1/operations/overrides/{id}/`
+- [x] `GET    /api/v1/operations/shifts/`
+- [x] `POST   /api/v1/operations/shifts/`
+- [x] `POST   /api/v1/operations/shifts/open/`
+- [x] `GET    /api/v1/operations/shifts/{id}/`
+- [x] `POST   /api/v1/operations/shifts/{id}/close/`
+- [x] `POST   /api/v1/operations/shifts/{id}/lodge/`
 
 ## accounts (22)
 

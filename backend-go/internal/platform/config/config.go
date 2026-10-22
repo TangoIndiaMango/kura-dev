@@ -73,6 +73,7 @@ type Config struct {
 	SupportEmail      string `env:"KURA_SUPPORT_EMAIL"`
 	FrontendAdminURL  string `env:"FRONTEND_ADMIN_URL" envDefault:"http://localhost:5176"`
 	FrontendClientURL string `env:"FRONTEND_CLIENT_URL" envDefault:"http://localhost:5175"`
+	CashFloatLimit    int64  `env:"CASH_FLOAT_LIMIT_KOBO" envDefault:"50000000"`
 
 	// DjangoUpstreamURL forwards not-yet-ported routes to Django during the
 	// migration (e.g. http://localhost:8001). Empty = Go answers everything.

@@ -87,3 +87,19 @@ func trunc100(s string) string {
 	}
 	return s
 }
+
+// CreditWallet is the agent-cash FUND path: get_or_create the wallet, lock it
+// and add to the balance (no status check, like the Django service).
+func CreditWallet(ctx context.Context, q *db.Queries, account uuid.UUID, amount int64) error {
+	w, err := q.WalletForUpdate(ctx, account)
+	if database.IsNoRows(err) {
+		if err = q.EnsureWallet(ctx, db.EnsureWalletParams{ID: ids.New(), AccountID: account}); err == nil {
+			w, err = q.WalletForUpdate(ctx, account)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	w.BalanceKobo += amount
+	return saveWallet(ctx, q, w)
+}

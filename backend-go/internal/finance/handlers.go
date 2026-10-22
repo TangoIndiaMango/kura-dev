@@ -43,11 +43,17 @@ func NewHandler(pool *pgxpool.Pool, receiptKey string, demoFund bool) *Handler {
 	return &Handler{pool: pool, q: db.New(pool), receiptKey: []byte(receiptKey), demoFund: demoFund}
 }
 
+// CanReadAll is _can_read_all_finance: wallets:manage, or finance:read held
+// by staff (rider roles carry finance:read for their own rows only).
+func CanReadAll(p *reqctx.Principal) bool {
+	return p.Can("wallets:manage") || (p.Can("finance:read") && (p.IsStaff || staffRoles[p.Role]))
+}
+
 // scope is payments_for / wallets_for: everything for finance staff, else
 // the caller's own accounts.
 func (h *Handler) scope(ctx context.Context) (bool, []uuid.UUID, error) {
 	p := reqctx.User(ctx)
-	if p.Can("wallets:manage") || (p.Can("finance:read") && (p.IsStaff || staffRoles[p.Role])) {
+	if CanReadAll(p) {
 		return true, nil, nil
 	}
 	uid, _ := uuid.Parse(p.UserID)

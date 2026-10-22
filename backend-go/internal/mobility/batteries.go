@@ -129,23 +129,7 @@ func batteryOrdering(raw string) string {
 
 // modelChoice is django-filter's ModelChoiceFilter: the id must exist.
 func modelChoice(r *http.Request, name string, exists func(uuid.UUID) (bool, error)) (*uuid.UUID, error) {
-	raw := r.URL.Query().Get(name)
-	if raw == "" {
-		return nil, nil
-	}
-	bad := apperr.Field(name, "Select a valid choice. That choice is not one of the available choices.")
-	id, err := uuid.Parse(strings.TrimSpace(raw))
-	if err != nil {
-		return nil, bad
-	}
-	ok, err := exists(id)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, bad
-	}
-	return &id, nil
+	return listq.Model(r, name, exists)
 }
 
 func (h *BatteryHandler) filters(r *http.Request) (db.ListBatteryIDsParams, error) {
