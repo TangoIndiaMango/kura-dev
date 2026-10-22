@@ -32,15 +32,15 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `PATCH  /api/v1/mobility/discounts/{id}/`
 - [x] `POST   /api/v1/mobility/discounts/{id}/activate/`
 - [x] `GET    /api/v1/mobility/discounts/{id}/redemptions/`
-- [ ] `GET    /api/v1/mobility/eboarders/`
-- [ ] `POST   /api/v1/mobility/eboarders/`
-- [ ] `GET    /api/v1/mobility/eboarders/stats/`
-- [ ] `GET    /api/v1/mobility/eboarders/{id}/`
-- [ ] `PATCH  /api/v1/mobility/eboarders/{id}/`
-- [ ] `GET    /api/v1/mobility/engines/`
-- [ ] `GET    /api/v1/mobility/engines/{id}/`
-- [ ] `POST   /api/v1/mobility/engines/{id}/release-request/`
-- [ ] `POST   /api/v1/mobility/engines/{id}/release/`
+- [x] `GET    /api/v1/mobility/eboarders/`
+- [x] `POST   /api/v1/mobility/eboarders/`
+- [x] `GET    /api/v1/mobility/eboarders/stats/`
+- [x] `GET    /api/v1/mobility/eboarders/{id}/`
+- [x] `PATCH  /api/v1/mobility/eboarders/{id}/`
+- [x] `GET    /api/v1/mobility/engines/`
+- [x] `GET    /api/v1/mobility/engines/{id}/`
+- [x] `POST   /api/v1/mobility/engines/{id}/release-request/`
+- [x] `POST   /api/v1/mobility/engines/{id}/release/`
 - [x] `GET    /api/v1/mobility/hubs/`
 - [x] `POST   /api/v1/mobility/hubs/`
 - [x] `GET    /api/v1/mobility/hubs/discover/`
@@ -74,13 +74,13 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `DELETE /api/v1/mobility/reservations/{id}/` — closed (405 in both; was an unauthenticated-write hole)
 - [x] `POST   /api/v1/mobility/reservations/{id}/cancel/`
 - [x] `POST   /api/v1/mobility/reservations/{id}/extend/`
-- [ ] `GET    /api/v1/mobility/retrofits/`
-- [ ] `POST   /api/v1/mobility/retrofits/`
-- [ ] `GET    /api/v1/mobility/retrofits/{id}/`
-- [ ] `POST   /api/v1/mobility/retrofits/{id}/activate/`
-- [ ] `POST   /api/v1/mobility/retrofits/{id}/checklist/`
-- [ ] `POST   /api/v1/mobility/retrofits/{id}/engine-intake/`
-- [ ] `POST   /api/v1/mobility/retrofits/{id}/install/`
+- [x] `GET    /api/v1/mobility/retrofits/`
+- [x] `POST   /api/v1/mobility/retrofits/`
+- [x] `GET    /api/v1/mobility/retrofits/{id}/`
+- [x] `POST   /api/v1/mobility/retrofits/{id}/activate/`
+- [x] `POST   /api/v1/mobility/retrofits/{id}/checklist/`
+- [x] `POST   /api/v1/mobility/retrofits/{id}/engine-intake/`
+- [x] `POST   /api/v1/mobility/retrofits/{id}/install/`
 - [x] `GET    /api/v1/mobility/subscriptions/`
 - [x] `POST   /api/v1/mobility/subscriptions/`
 - [x] `GET    /api/v1/mobility/subscriptions/{id}/`

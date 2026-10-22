@@ -16,6 +16,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/credit"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/engines"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/finance"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/inbox"
@@ -94,6 +95,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		webhooks.NewModule(pool, pspSettings, cfg.NombaWebhook, log, limiter),
 		auditlog.NewModule(pool, limiter),
 		telemetry.NewModule(pool, limiter),
+		engines.NewModule(pool, cdn, limiter),
 	)
 }
 

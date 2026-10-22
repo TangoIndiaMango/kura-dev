@@ -270,6 +270,13 @@ translated to the envelope in exactly one place (`respond.Error`).
   write-through (older readings never overwrite newer), audit.
   `scripts/contract/telemetry.py`: 50 identical incl. nested batch errors
   (DRF reports failing items keyed by index), battery state and audit.
+- Path B (`internal/engines`): petrol engines (owner-scoped reads with the
+  HasCapabilityOrReadOwn object check, release request → ENGINE_RELEASE
+  support case + owner notice, release with photos / signature), retrofit
+  wizard (create → engine intake → install → checklist → activate, every
+  guard) and e-boarders (filters, stats, create / patch, issue on install).
+  Media refs resolve like `resolve_media_ref` (`media.ResolveRef`).
+  `scripts/contract/engines.py`: identical.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
@@ -316,6 +323,12 @@ translated to the envelope in exactly one place (`respond.Error`).
   Go answers 400 for that parameter.
 
 ### Django quirks kept for parity (fix in both later)
+- Retrofit state errors print the TextChoices repr: "Retrofit must be in
+  [Retrofit.Status.CHECKED]; is FAILED." (should be plain values).
+- Retrofit create / engine intake / install with an unknown account,
+  vehicle, storage hub or e-boarder id → 500 (`.get()`); Go answers 404.
+- Engine detail needs `accounts:read` (or ownership) on top of
+  `engines:manage` — HasCapabilityOrReadOwn's object check.
 - PSP webhook responses report `status: RECEIVED` for a new event even after
   it was processed / ignored (the view returns the pre-processing object).
 - Swap completion response shows the reservation's pre-save status

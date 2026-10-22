@@ -180,9 +180,21 @@ type Querier interface {
 	DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error)
 	// retry_pending_virtual_accounts: PENDING NUBANs whose retry is due.
 	DueVirtualAccounts(ctx context.Context, arg DueVirtualAccountsParams) ([]uuid.UUID, error)
+	EBoarderBySerialForUpdate(ctx context.Context, upper interface{}) (MobilityEboarder, error)
+	EBoarderCount(ctx context.Context, arg EBoarderCountParams) (int64, error)
+	EBoarderForUpdate(ctx context.Context, id uuid.UUID) (MobilityEboarder, error)
+	EBoarderPage(ctx context.Context, arg EBoarderPageParams) ([]uuid.UUID, error)
+	EBoarderRows(ctx context.Context, ids []uuid.UUID) ([]EBoarderRowsRow, error)
+	EBoarderStats(ctx context.Context) ([]EBoarderStatsRow, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
 	EmptySlot(ctx context.Context, hubID uuid.UUID) (MobilityHubslot, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
+	EngineCount(ctx context.Context, arg EngineCountParams) (int64, error)
+	EngineForUpdate(ctx context.Context, id uuid.UUID) (MobilityPetrolengine, error)
+	// Path B: petrol engine custody, retrofit wizard, e-boarder fleet.
+	EnginePage(ctx context.Context, arg EnginePageParams) ([]uuid.UUID, error)
+	EngineRows(ctx context.Context, ids []uuid.UUID) ([]EngineRowsRow, error)
+	EngineTagTaken(ctx context.Context, tag string) (bool, error)
 	EnsureCreditLine(ctx context.Context, arg EnsureCreditLineParams) error
 	EnsureLedgerAccount(ctx context.Context, arg EnsureLedgerAccountParams) error
 	// WalletService.ensure_pending_virtual_account.
@@ -261,6 +273,8 @@ type Querier interface {
 	InsertDiscount(ctx context.Context, arg InsertDiscountParams) error
 	InsertDriver(ctx context.Context, arg InsertDriverParams) error
 	InsertDriverRow(ctx context.Context, arg InsertDriverRowParams) (AccountsDriver, error)
+	InsertEBoarder(ctx context.Context, arg InsertEBoarderParams) error
+	InsertEngine(ctx context.Context, arg InsertEngineParams) error
 	InsertFleetDriver(ctx context.Context, arg InsertFleetDriverParams) error
 	InsertFleetDriverUser(ctx context.Context, arg InsertFleetDriverUserParams) error
 	InsertHoldPolicy(ctx context.Context, arg InsertHoldPolicyParams) (MobilityBayholdpolicy, error)
@@ -290,6 +304,7 @@ type Querier interface {
 	InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error
 	InsertRepayment(ctx context.Context, arg InsertRepaymentParams) error
 	InsertReservation(ctx context.Context, arg InsertReservationParams) error
+	InsertRetrofit(ctx context.Context, arg InsertRetrofitParams) error
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
 	InsertRole(ctx context.Context, arg InsertRoleParams) error
 	InsertSegment(ctx context.Context, arg InsertSegmentParams) error
@@ -430,6 +445,7 @@ type Querier interface {
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
 	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
+	ReleaseEngine(ctx context.Context, arg ReleaseEngineParams) error
 	ReleaseRedemptionForReservation(ctx context.Context, idempotencyKey *string) (uuid.UUID, error)
 	ReleaseReservedBattery(ctx context.Context, id uuid.UUID) error
 	RepaymentByKey(ctx context.Context, idempotencyKey string) (CreditLoanrepayment, error)
@@ -445,6 +461,10 @@ type Querier interface {
 	RestrictLoan(ctx context.Context, id uuid.UUID) error
 	// A resubmit resets review state: PENDING, no verification, no requests.
 	ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityDocParams) error
+	RetrofitCount(ctx context.Context, arg RetrofitCountParams) (int64, error)
+	RetrofitForUpdate(ctx context.Context, id uuid.UUID) (MobilityRetrofit, error)
+	RetrofitPage(ctx context.Context, arg RetrofitPageParams) ([]uuid.UUID, error)
+	RetrofitRows(ctx context.Context, ids []uuid.UUID) ([]RetrofitRowsRow, error)
 	RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error
 	RiskEventForUpdate(ctx context.Context, id uuid.UUID) (RiskEventForUpdateRow, error)
 	RiskEventRows(ctx context.Context, ids []uuid.UUID) ([]RiskEventRowsRow, error)
@@ -477,6 +497,7 @@ type Querier interface {
 	SaveCataloguePlan(ctx context.Context, arg SaveCataloguePlanParams) error
 	SaveCreditLineScore(ctx context.Context, arg SaveCreditLineScoreParams) error
 	SaveDiscount(ctx context.Context, arg SaveDiscountParams) error
+	SaveEBoarder(ctx context.Context, arg SaveEBoarderParams) error
 	SaveGrantUse(ctx context.Context, arg SaveGrantUseParams) error
 	SaveLoanCredit(ctx context.Context, arg SaveLoanCreditParams) error
 	SaveLoanRepaid(ctx context.Context, arg SaveLoanRepaidParams) error
@@ -484,6 +505,7 @@ type Querier interface {
 	SavePlan(ctx context.Context, arg SavePlanParams) error
 	SaveRepayment(ctx context.Context, arg SaveRepaymentParams) error
 	SaveReservation(ctx context.Context, arg SaveReservationParams) error
+	SaveRetrofit(ctx context.Context, arg SaveRetrofitParams) error
 	SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error
 	SaveRiskEventReview(ctx context.Context, arg SaveRiskEventReviewParams) error
 	SaveRiskRule(ctx context.Context, arg SaveRiskRuleParams) error
@@ -513,6 +535,7 @@ type Querier interface {
 	SetDriverLimits(ctx context.Context, arg SetDriverLimitsParams) error
 	SetDriverPhoto(ctx context.Context, arg SetDriverPhotoParams) error
 	SetDriverPhotoAccount(ctx context.Context, arg SetDriverPhotoAccountParams) error
+	SetEngineReleaseRequested(ctx context.Context, arg SetEngineReleaseRequestedParams) error
 	SetHubStatus(ctx context.Context, arg SetHubStatusParams) error
 	SetIdentityDocPhotoRequest(ctx context.Context, arg SetIdentityDocPhotoRequestParams) error
 	SetIdentityDocPhotos(ctx context.Context, arg SetIdentityDocPhotosParams) error
@@ -530,6 +553,7 @@ type Querier interface {
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetVehicleBattery(ctx context.Context, arg SetVehicleBatteryParams) error
+	SetVehicleEngineSwap(ctx context.Context, arg SetVehicleEngineSwapParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	ShiftByID(ctx context.Context, id uuid.UUID) (OperationsShift, error)
@@ -610,6 +634,7 @@ type Querier interface {
 	VehicleByIDPlain(ctx context.Context, id uuid.UUID) (MobilityVehicle, error)
 	VehicleCommands(ctx context.Context, vehicleID uuid.UUID) ([]VehicleCommandsRow, error)
 	VehicleForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehicle, error)
+	VehicleHasOtherEBoarder(ctx context.Context, arg VehicleHasOtherEBoarderParams) (bool, error)
 	VehicleModelByID(ctx context.Context, id uuid.UUID) (VehicleModelByIDRow, error)
 	VehicleModelForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehiclemodel, error)
 	VehicleModelTypeCounts(ctx context.Context) ([]VehicleModelTypeCountsRow, error)
