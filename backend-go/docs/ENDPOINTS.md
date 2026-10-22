@@ -232,18 +232,18 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## analytics (12)
 
-- [ ] `GET    /api/v1/analytics/cooperative/me/`
-- [ ] `GET    /api/v1/analytics/cooperative/{cooperative_id}/`
-- [ ] `GET    /api/v1/analytics/dashboard/`
-- [ ] `GET    /api/v1/analytics/demand/hubs/`
-- [ ] `GET    /api/v1/analytics/impact/`
-- [ ] `GET    /api/v1/analytics/revenue/overview/`
-- [ ] `GET    /api/v1/analytics/revenue/streams/`
-- [ ] `GET    /api/v1/analytics/stories/`
-- [ ] `POST   /api/v1/analytics/stories/`
-- [ ] `GET    /api/v1/analytics/stories/{id}/`
-- [ ] `PATCH  /api/v1/analytics/stories/{id}/`
-- [ ] `POST   /api/v1/analytics/stories/{id}/publish/`
+- [x] `GET    /api/v1/analytics/cooperative/me/`
+- [x] `GET    /api/v1/analytics/cooperative/{cooperative_id}/`
+- [x] `GET    /api/v1/analytics/dashboard/`
+- [x] `GET    /api/v1/analytics/demand/hubs/`
+- [x] `GET    /api/v1/analytics/impact/`
+- [x] `GET    /api/v1/analytics/revenue/overview/`
+- [x] `GET    /api/v1/analytics/revenue/streams/`
+- [x] `GET    /api/v1/analytics/stories/`
+- [x] `POST   /api/v1/analytics/stories/`
+- [x] `GET    /api/v1/analytics/stories/{id}/`
+- [x] `PATCH  /api/v1/analytics/stories/{id}/`
+- [x] `POST   /api/v1/analytics/stories/{id}/publish/`
 
 ## finance (11)
 

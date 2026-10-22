@@ -277,6 +277,12 @@ translated to the envelope in exactly one place (`respond.Error`).
   guard) and e-boarders (filters, stats, create / patch, issue on install).
   Media refs resolve like `resolve_media_ref` (`media.ResolveRef`).
   `scripts/contract/engines.py`: identical.
+- Analytics (`internal/analytics`): dashboard tiles (Lagos midnight),
+  hub demand forecast (hub-scoped, peak hour in Lagos time despite the
+  `peak_hour_utc` name — mirrored), revenue overview / streams (inclusive
+  Lagos-day windows), government impact snapshot + series, cooperative
+  rollups (chairman or cooperative / account managers) and the impact story
+  CMS. `scripts/contract/analytics.py`: identical.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
@@ -323,6 +329,10 @@ translated to the envelope in exactly one place (`respond.Error`).
   Go answers 400 for that parameter.
 
 ### Django quirks kept for parity (fix in both later)
+- `GET /analytics/demand/hubs/` labels the peak hour `peak_hour_utc` but
+  ExtractHour runs in Africa/Lagos. Go mirrors the Lagos hour.
+- Revenue `start_date` / `end_date` that match YYYY-MM-DD but aren't real
+  dates (2026-02-30) → 500 (parse_date raises); Go answers the 400.
 - Retrofit state errors print the TextChoices repr: "Retrofit must be in
   [Retrofit.Status.CHECKED]; is FAILED." (should be plain values).
 - Retrofit create / engine intake / install with an unknown account,

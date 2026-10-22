@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/accounts"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/analytics"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auditlog"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/credit"
@@ -96,6 +97,8 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		auditlog.NewModule(pool, limiter),
 		telemetry.NewModule(pool, limiter),
 		engines.NewModule(pool, cdn, limiter),
+		analytics.NewModule(pool, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
+			KoboPerLitre: cfg.PetrolKoboPerLitre}, limiter),
 	)
 }
 

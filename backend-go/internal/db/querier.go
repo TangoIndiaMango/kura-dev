@@ -125,8 +125,12 @@ type Querier interface {
 	// Consume this token and every other open one for the same user + purpose.
 	ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokensParams) error
 	CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid.UUID) ([]uuid.UUID, error)
+	CooperativeByID(ctx context.Context, id uuid.UUID) (AccountsCooperative, error)
 	CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error)
+	CooperativeFleet(ctx context.Context, ids []uuid.UUID) (CooperativeFleetRow, error)
+	CooperativeForChairman(ctx context.Context, chairmanUserID *uuid.UUID) (AccountsCooperative, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
+	CooperativeMembers(ctx context.Context, cooperativeID *uuid.UUID) ([]CooperativeMembersRow, error)
 	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
 	CountAlertRules(ctx context.Context) (int64, error)
 	CountBatteries(ctx context.Context, arg CountBatteriesParams) (int64, error)
@@ -156,8 +160,14 @@ type Querier interface {
 	CreditLineForUpdate(ctx context.Context, accountID uuid.UUID) (CreditCreditline, error)
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
+	// Analytics: dashboard tiles, hub demand, revenue, impact, stories, cooperatives.
+	DashboardCounts(ctx context.Context, since time.Time) (DashboardCountsRow, error)
 	DecrementRedemptions(ctx context.Context, id uuid.UUID) error
 	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
+	DemandHubs(ctx context.Context, arg DemandHubsParams) ([]DemandHubsRow, error)
+	// ExtractHour runs in the current (Lagos) zone; first row per hub wins.
+	DemandPeakHours(ctx context.Context, arg DemandPeakHoursParams) ([]DemandPeakHoursRow, error)
+	DemandTotals(ctx context.Context, arg DemandTotalsParams) ([]DemandTotalsRow, error)
 	DepositByIdempotency(ctx context.Context, idempotencyKey *string) (OperationsCashdeposit, error)
 	DepositRows(ctx context.Context, ids []uuid.UUID) ([]DepositRowsRow, error)
 	// CashDepositViewSet: finance:read / shifts:manage see all, others their owned accounts; keyset newest first.
@@ -208,6 +218,7 @@ type Querier interface {
 	ExpirePPSSubscriptions(ctx context.Context, planID uuid.UUID) error
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
+	FirstCooperative(ctx context.Context) (AccountsCooperative, error)
 	FirstDriverForAccount(ctx context.Context, accountID uuid.UUID) (FirstDriverForAccountRow, error)
 	FirstDriverRow(ctx context.Context, accountID uuid.UUID) (AccountsDriver, error)
 	FirstHoldPolicy(ctx context.Context) (MobilityBayholdpolicy, error)
@@ -249,6 +260,8 @@ type Querier interface {
 	// Identity / KYC writes (IdentityService, identity_review, identity_withdraw)
 	// and AccountService.complete_profile.
 	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
+	ImpactMetric(ctx context.Context, period string) (ImpactMetricRow, error)
+	ImpactSeries(ctx context.Context) ([]ImpactSeriesRow, error)
 	InboxItem(ctx context.Context, arg InboxItemParams) (NotificationsNotification, error)
 	// notifications_for: the user's IN_APP rows, newest first (keyset).
 	InboxPage(ctx context.Context, arg InboxPageParams) ([]NotificationsNotification, error)
@@ -311,6 +324,7 @@ type Querier interface {
 	InsertSetupToken(ctx context.Context, arg InsertSetupTokenParams) error
 	InsertShift(ctx context.Context, arg InsertShiftParams) error
 	InsertStaffUser(ctx context.Context, arg InsertStaffUserParams) error
+	InsertStory(ctx context.Context, arg InsertStoryParams) error
 	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
 	InsertSwap(ctx context.Context, arg InsertSwapParams) error
 	InsertTelemetryEvent(ctx context.Context, arg InsertTelemetryEventParams) error
@@ -465,6 +479,10 @@ type Querier interface {
 	RetrofitForUpdate(ctx context.Context, id uuid.UUID) (MobilityRetrofit, error)
 	RetrofitPage(ctx context.Context, arg RetrofitPageParams) ([]uuid.UUID, error)
 	RetrofitRows(ctx context.Context, ids []uuid.UUID) ([]RetrofitRowsRow, error)
+	RevenueByChannel(ctx context.Context, arg RevenueByChannelParams) ([]RevenueByChannelRow, error)
+	RevenueByPurpose(ctx context.Context, arg RevenueByPurposeParams) ([]RevenueByPurposeRow, error)
+	RevenueDaily(ctx context.Context, arg RevenueDailyParams) ([]RevenueDailyRow, error)
+	RevenueTotals(ctx context.Context, arg RevenueTotalsParams) (RevenueTotalsRow, error)
 	RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error
 	RiskEventForUpdate(ctx context.Context, id uuid.UUID) (RiskEventForUpdateRow, error)
 	RiskEventRows(ctx context.Context, ids []uuid.UUID) ([]RiskEventRowsRow, error)
@@ -512,6 +530,7 @@ type Querier interface {
 	SaveSegment(ctx context.Context, arg SaveSegmentParams) error
 	SaveShiftClose(ctx context.Context, arg SaveShiftCloseParams) error
 	SaveShiftLodge(ctx context.Context, arg SaveShiftLodgeParams) error
+	SaveStory(ctx context.Context, arg SaveStoryParams) error
 	SaveSubscription(ctx context.Context, arg SaveSubscriptionParams) error
 	SaveSwap(ctx context.Context, arg SaveSwapParams) error
 	SaveVehicle(ctx context.Context, arg SaveVehicleParams) error
@@ -566,13 +585,19 @@ type Querier interface {
 	ShiftIDs(ctx context.Context, arg ShiftIDsParams) ([]uuid.UUID, error)
 	ShiftRows(ctx context.Context, ids []uuid.UUID) ([]ShiftRowsRow, error)
 	SlotAtHubWithBattery(ctx context.Context, arg SlotAtHubWithBatteryParams) (MobilityHubslot, error)
+	SlotStateCounts(ctx context.Context) ([]SlotStateCountsRow, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
 	// statement_rows: the same joins as Django's select_related so rows tied on
 	// created_at come back in the same order; swaps are fetched separately.
 	StatementRows(ctx context.Context, arg StatementRowsParams) ([]StatementRowsRow, error)
+	StoriesByIDs(ctx context.Context, ids []uuid.UUID) ([]AnalyticsImpactstory, error)
+	StoryCount(ctx context.Context, arg StoryCountParams) (int64, error)
+	StoryForUpdate(ctx context.Context, id uuid.UUID) (AnalyticsImpactstory, error)
+	StoryPage(ctx context.Context, arg StoryPageParams) ([]uuid.UUID, error)
 	SubscriptionByKey(ctx context.Context, idempotencyKey *string) (MobilitySubscription, error)
 	SubscriptionForUpdate(ctx context.Context, id uuid.UUID) (MobilitySubscription, error)
 	SubscriptionRows(ctx context.Context, ids []uuid.UUID) ([]SubscriptionRowsRow, error)
+	SubscriptionStatusCounts(ctx context.Context) (SubscriptionStatusCountsRow, error)
 	SupersedeConfig(ctx context.Context, arg SupersedeConfigParams) error
 	SupersedeMatrices(ctx context.Context, arg SupersedeMatricesParams) error
 	SwapByClientEvent(ctx context.Context, clientEventID string) (MobilitySwap, error)
