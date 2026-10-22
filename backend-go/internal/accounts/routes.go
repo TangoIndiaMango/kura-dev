@@ -16,11 +16,14 @@ import (
 type Module struct {
 	auth    *AuthHandler
 	staff   *StaffHandler
+	coops   *CoopHandler
+	drivers *DriverHandler
 	limiter *throttle.Limiter
 }
 
-func NewModule(auth *AuthHandler, staff *StaffHandler, limiter *throttle.Limiter) *Module {
-	return &Module{auth: auth, staff: staff, limiter: limiter}
+func NewModule(auth *AuthHandler, staff *StaffHandler, coops *CoopHandler, drivers *DriverHandler,
+	limiter *throttle.Limiter) *Module {
+	return &Module{auth: auth, staff: staff, coops: coops, drivers: drivers, limiter: limiter}
 }
 
 // Register mounts /api/v1/auth/* with AuthViewSet's permissions and throttles.
@@ -57,6 +60,19 @@ func (m *Module) Register(mux *http.ServeMux) {
 	u.Cap("POST", "/{id}/activate/", "users:manage", st.setActive(true))
 	u.Cap("POST", "/{id}/deactivate/", "users:manage", st.setActive(false))
 	u.Cap("POST", "/{id}/resend-invite/", "users:manage", st.resendInvite)
+
+	c := router.New(mux, "/api/v1/cooperatives", m.limiter)
+	c.Cap("GET", "/", "cooperatives:read", m.coops.list)
+	c.Cap("POST", "/", "cooperatives:manage", m.coops.create)
+	c.Cap("GET", "/{id}/", "cooperatives:read", m.coops.get)
+	c.Cap("PATCH", "/{id}/", "cooperatives:manage", m.coops.patch)
+
+	// HasCapabilityOrReadOwn: reads need only sign-in (scoped); writes are any-of.
+	d := router.New(mux, "/api/v1/drivers", m.limiter)
+	d.User("GET", "/", m.drivers.list)
+	d.User("GET", "/{id}/", m.drivers.get)
+	d.AnyCap("POST", "/attach/", []string{"accounts:manage", "accounts:write_own"}, m.drivers.attach)
+	d.AnyCap("PATCH", "/{id}/", []string{"accounts:manage", "accounts:write_own"}, m.drivers.patch)
 }
 
 // otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).

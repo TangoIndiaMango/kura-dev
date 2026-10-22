@@ -90,6 +90,20 @@ func RequireCap(code string, h http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
+// RequireAnyCap passes when the caller holds at least one of caps.
+func RequireAnyCap(caps []string, h http.HandlerFunc) http.HandlerFunc {
+	return RequireUser(func(w http.ResponseWriter, r *http.Request) {
+		p := reqctx.User(r.Context())
+		for _, c := range caps {
+			if p.Can(c) {
+				h(w, r)
+				return
+			}
+		}
+		respond.Error(w, r, apperr.Forbidden(""))
+	})
+}
+
 func bearer(r *http.Request) (string, bool) {
 	h := r.Header.Get("Authorization")
 	scheme, token, ok := strings.Cut(h, " ")

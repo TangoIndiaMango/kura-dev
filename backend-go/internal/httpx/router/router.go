@@ -61,6 +61,12 @@ func (g *Group) Cap(method, path, capability string, h http.HandlerFunc) {
 	g.mux.HandleFunc(method+" "+g.pattern(path), auth.RequireCap(capability, g.throttled(h)))
 }
 
+// AnyCap mounts a handler allowed for any of several capabilities
+// (capability_map entries given as a list).
+func (g *Group) AnyCap(method, path string, caps []string, h http.HandlerFunc) {
+	g.mux.HandleFunc(method+" "+g.pattern(path), auth.RequireAnyCap(caps, g.throttled(h)))
+}
+
 func (g *Group) throttled(h http.HandlerFunc) http.HandlerFunc {
 	if g.limiter == nil || len(g.rules) == 0 {
 		return h

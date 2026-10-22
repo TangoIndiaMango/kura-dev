@@ -44,7 +44,8 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
-		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), accounts.NewStaffHandler(staffSvc), limiter),
+		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), accounts.NewStaffHandler(staffSvc),
+			accounts.NewCoopHandler(pool), accounts.NewDriverHandler(pool), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 	)
 }

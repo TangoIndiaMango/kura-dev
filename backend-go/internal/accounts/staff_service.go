@@ -149,7 +149,7 @@ func (s *StaffService) sendInvite(ctx context.Context, userID uuid.UUID, raw, ba
 	}
 	s.mailer.Send(ctx, mail.Message{To: []string{*u.Email}, Subject: "Set up your Kura console password",
 		Template: "staff_invite", Context: map[string]any{"first_name": u.FirstName, "role_label": label,
-			"setup_url": setupURL(firstNonEmpty(baseURL, s.cfg.FrontendAdminURL), raw, *u.Email),
+			"setup_url":     setupURL(firstNonEmpty(baseURL, s.cfg.FrontendAdminURL), raw, *u.Email),
 			"expires_hours": int(inviteTTL.Hours())}})
 }
 

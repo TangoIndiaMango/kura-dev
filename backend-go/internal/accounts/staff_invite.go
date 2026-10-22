@@ -19,9 +19,9 @@ import (
 // InviteInput is StaffInviteSerializer's validated data.
 type InviteInput struct {
 	Email, Role, FirstName, LastName, Phone string
-	CooperativeID                            *uuid.UUID
-	HubIDs                                   []uuid.UUID
-	BaseURL                                  string
+	CooperativeID                           *uuid.UUID
+	HubIDs                                  []uuid.UUID
+	BaseURL                                 string
 }
 
 // Invite mirrors invite_staff; returns the new user id and invite meta.

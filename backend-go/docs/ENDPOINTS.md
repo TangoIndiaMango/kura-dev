@@ -344,17 +344,17 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## cooperatives (4)
 
-- [ ] `GET    /api/v1/cooperatives/`
-- [ ] `POST   /api/v1/cooperatives/`
-- [ ] `GET    /api/v1/cooperatives/{id}/`
-- [ ] `PATCH  /api/v1/cooperatives/{id}/`
+- [x] `GET    /api/v1/cooperatives/`
+- [x] `POST   /api/v1/cooperatives/`
+- [x] `GET    /api/v1/cooperatives/{id}/`
+- [x] `PATCH  /api/v1/cooperatives/{id}/`
 
 ## drivers (4)
 
-- [ ] `GET    /api/v1/drivers/`
-- [ ] `POST   /api/v1/drivers/attach/`
-- [ ] `GET    /api/v1/drivers/{id}/`
-- [ ] `PATCH  /api/v1/drivers/{id}/`
+- [x] `GET    /api/v1/drivers/`
+- [x] `POST   /api/v1/drivers/attach/`
+- [x] `GET    /api/v1/drivers/{id}/`
+- [x] `PATCH  /api/v1/drivers/{id}/`
 
 ## webhooks (4)
 

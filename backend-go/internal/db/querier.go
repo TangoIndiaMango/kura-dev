@@ -13,6 +13,10 @@ import (
 
 type Querier interface {
 	AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
+	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
+	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
+	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
+	AccountVehicleCount(ctx context.Context, accountID uuid.UUID) (int64, error)
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AuditChainTip(ctx context.Context) (string, error)
@@ -26,10 +30,14 @@ type Querier interface {
 	ConsumeOpenSetupTokens(ctx context.Context, arg ConsumeOpenSetupTokensParams) error
 	// Consume this token and every other open one for the same user + purpose.
 	ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokensParams) error
+	CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid.UUID) ([]uuid.UUID, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
+	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
+	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
+	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
@@ -41,6 +49,8 @@ type Querier interface {
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
 	FirstDriverForAccount(ctx context.Context, accountID uuid.UUID) (FirstDriverForAccountRow, error)
 	FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
+	GetCooperative(ctx context.Context, id uuid.UUID) (GetCooperativeRow, error)
+	GetDriverRow(ctx context.Context, id uuid.UUID) (GetDriverRowRow, error)
 	GetPermission(ctx context.Context, id uuid.UUID) (GetPermissionRow, error)
 	// Live auth state for a token's user_id (role, flags, session version).
 	GetPrincipalUser(ctx context.Context, id uuid.UUID) (GetPrincipalUserRow, error)
@@ -53,7 +63,10 @@ type Querier interface {
 	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
+	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
 	InsertDriver(ctx context.Context, arg InsertDriverParams) error
+	InsertFleetDriver(ctx context.Context, arg InsertFleetDriverParams) error
+	InsertFleetDriverUser(ctx context.Context, arg InsertFleetDriverUserParams) error
 	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
 	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
@@ -69,6 +82,8 @@ type Querier interface {
 	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
+	ListCooperatives(ctx context.Context, arg ListCooperativesParams) ([]ListCooperativesRow, error)
+	ListDrivers(ctx context.Context, arg ListDriversParams) ([]ListDriversRow, error)
 	ListPermissions(ctx context.Context, arg ListPermissionsParams) ([]ListPermissionsRow, error)
 	// roles_qs: user_count = users assigned to the role, or legacy role=code rows.
 	ListRoles(ctx context.Context, arg ListRolesParams) ([]ListRolesRow, error)
@@ -79,10 +94,14 @@ type Querier interface {
 	LockAuditChain(ctx context.Context) error
 	MediaAssetByID(ctx context.Context, id uuid.UUID) (MediaAssetByIDRow, error)
 	MediaAssetOwner(ctx context.Context, id uuid.UUID) (MediaAssetOwnerRow, error)
+	MembershipHubIDs(ctx context.Context, userID uuid.UUID) ([]string, error)
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
+	OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uuid.UUID, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
+	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
+	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
 	// notify_risk_reviewers: active SUPER_ADMIN / OPS_MANAGER, max 25.
 	RiskReviewers(ctx context.Context) ([]uuid.UUID, error)
@@ -92,7 +111,9 @@ type Querier interface {
 	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
+	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
+	SetDriverLimits(ctx context.Context, arg SetDriverLimitsParams) error
 	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
@@ -103,6 +124,7 @@ type Querier interface {
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
+	UpdateCooperative(ctx context.Context, arg UpdateCooperativeParams) error
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) error
 	UpdateStaffUser(ctx context.Context, arg UpdateStaffUserParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error

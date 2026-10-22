@@ -34,7 +34,7 @@ func (q *Query) UUID(name string) *uuid.UUID {
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		q.fail(name, "Must be a valid UUID.")
+		q.fail(name, "Enter a valid UUID.")
 		return nil
 	}
 	return &id

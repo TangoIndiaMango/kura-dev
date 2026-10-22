@@ -159,6 +159,14 @@ translated to the envelope in exactly one place (`respond.Error`).
   tested identical), brand CIDs, SMTP SSL/STARTTLS or console, sent after
   commit. Contract `scripts/contract/users.py` 29/29 incl. cross-reads.
 
+- 2026-10-22 — **Cooperatives (4) + drivers (4) done → 44/317.** New
+  `scope` package (hub_ids_for / account_ids_touching_hubs) used by every
+  scoped list from here on. Decoder now matches DRF: strings trimmed,
+  present-but-blank → "This field may not be blank.", query UUIDs say
+  "Enter a valid UUID.". All 6 contract suites identical (coops_drivers,
+  rbac, users, profile, auth, me). Note: running all suites back-to-back
+  hits the real 20/min anon throttle on both backends — run auth.py alone.
+
 ### Django bugs found while porting (fixed on main too)
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().
