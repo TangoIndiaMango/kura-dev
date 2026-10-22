@@ -146,6 +146,16 @@ translated to the envelope in exactly one place (`respond.Error`).
   zero failed requests; Go served auth/me/consent/heartbeat, Django the rest.
   Run: `CORS_ORIGINS=... scripts/dev.sh` and
   `VITE_API_BASE_URL=http://localhost:8091/api/v1 npx vite --port 5185|5187`.
+- 2026-10-22 — **Roles + permissions (10) done → 27/317.** New shared kit:
+  `listq` (q search with LIKE escaping, exact filters), `export` (CSV/PDF,
+  same caps + X-Export-* headers, exposed via CORS), `actor`. Contract
+  `scripts/contract/rbac.py` 34/34 incl. cross-reads (each backend reads back
+  what the other wrote). Fixed in Go: path values on {id} routes, DRF's
+  page=1 omission in `previous`, "Not found." for malformed ids.
+
+### Django bugs found while porting (fixed on main too)
+- Role update/activate/deactivate → 500: audit JSON got raw UUIDs
+  (`accounts/services/roles.py`). Fixed with str().
 
 ### How to run
 ```

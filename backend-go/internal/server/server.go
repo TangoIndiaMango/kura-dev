@@ -35,8 +35,7 @@ func New(d Deps, modules ...Module) http.Handler {
 		m.Register(mux)
 	}
 	root := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h, pattern := mux.Handler(r)
-		if pattern == "" {
+		if _, pattern := mux.Handler(r); pattern == "" {
 			if d.Upstream != nil {
 				d.Upstream.ServeHTTP(w, r)
 				return
@@ -45,7 +44,8 @@ func New(d Deps, modules ...Module) http.Handler {
 			return
 		}
 		w.Header().Set("X-Kura-Served-By", "go")
-		h.ServeHTTP(w, r)
+		// mux.ServeHTTP (not the looked-up handler) fills r.PathValue("id").
+		mux.ServeHTTP(w, r)
 	})
 	return middleware.Chain(root,
 		middleware.RequestID(d.Log),

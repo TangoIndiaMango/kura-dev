@@ -14,24 +14,31 @@ import (
 type Querier interface {
 	AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
+	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AuditChainTip(ctx context.Context) (string, error)
 	BlacklistToken(ctx context.Context, tokenID int64) error
 	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
+	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
 	// Consume this token and every other open one for the same user + purpose.
 	ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokensParams) error
+	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
+	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
 	// RiskService.ensure_rules: get_or_create by code.
 	EnsureRiskRule(ctx context.Context, arg EnsureRiskRuleParams) error
+	ExistingPermissionIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
 	FirstDriverForAccount(ctx context.Context, accountID uuid.UUID) (FirstDriverForAccountRow, error)
 	FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
+	GetPermission(ctx context.Context, id uuid.UUID) (GetPermissionRow, error)
 	// Live auth state for a token's user_id (role, flags, session version).
 	GetPrincipalUser(ctx context.Context, id uuid.UUID) (GetPrincipalUserRow, error)
+	GetRole(ctx context.Context, id uuid.UUID) (GetRoleRow, error)
 	// Django email__iexact.
 	GetUserByEmail(ctx context.Context, email string) (AccountsUser, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
@@ -47,11 +54,15 @@ type Querier interface {
 	InsertOTP(ctx context.Context, arg InsertOTPParams) error
 	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
+	InsertRole(ctx context.Context, arg InsertRoleParams) error
 	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
 	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
+	ListPermissions(ctx context.Context, arg ListPermissionsParams) ([]ListPermissionsRow, error)
+	// roles_qs: user_count = users assigned to the role, or legacy role=code rows.
+	ListRoles(ctx context.Context, arg ListRolesParams) ([]ListRolesRow, error)
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	MediaAssetByID(ctx context.Context, id uuid.UUID) (MediaAssetByIDRow, error)
@@ -63,7 +74,11 @@ type Querier interface {
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
 	// notify_risk_reviewers: active SUPER_ADMIN / OPS_MANAGER, max 25.
 	RiskReviewers(ctx context.Context) ([]uuid.UUID, error)
+	RoleCodeExists(ctx context.Context, code string) (bool, error)
 	RolePermissionCodes(ctx context.Context, id uuid.UUID) ([]string, error)
+	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
+	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
+	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
 	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
@@ -73,6 +88,7 @@ type Querier interface {
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
+	UpdateRole(ctx context.Context, arg UpdateRoleParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)

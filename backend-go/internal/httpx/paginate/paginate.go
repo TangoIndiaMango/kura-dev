@@ -136,16 +136,29 @@ func BuildNumberPage[T any](r *http.Request, rows []T, total, page, size int) (N
 	if page < pages {
 		out.Next = link(r, "page", strconv.Itoa(page+1))
 	}
-	if page > 1 {
+	if page == 2 {
+		out.Previous = linkWithout(r, "page") // DRF drops page=1
+	} else if page > 2 {
 		out.Previous = link(r, "page", strconv.Itoa(page-1))
 	}
 	return out, nil
+}
+
+// linkWithout rebuilds the absolute request URL without one query param.
+func linkWithout(r *http.Request, key string) *string {
+	q := r.URL.Query()
+	q.Del(key)
+	return absolute(r, q)
 }
 
 // link rebuilds the absolute request URL with one query param replaced.
 func link(r *http.Request, key, value string) *string {
 	q := r.URL.Query()
 	q.Set(key, value)
+	return absolute(r, q)
+}
+
+func absolute(r *http.Request, q url.Values) *string {
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"

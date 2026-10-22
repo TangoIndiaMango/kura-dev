@@ -286,14 +286,14 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## roles (8)
 
-- [ ] `GET    /api/v1/roles/`
-- [ ] `POST   /api/v1/roles/`
-- [ ] `GET    /api/v1/roles/export/`
-- [ ] `GET    /api/v1/roles/stats/`
-- [ ] `GET    /api/v1/roles/{id}/`
-- [ ] `PATCH  /api/v1/roles/{id}/`
-- [ ] `POST   /api/v1/roles/{id}/activate/`
-- [ ] `POST   /api/v1/roles/{id}/deactivate/`
+- [x] `GET    /api/v1/roles/`
+- [x] `POST   /api/v1/roles/`
+- [x] `GET    /api/v1/roles/export/`
+- [x] `GET    /api/v1/roles/stats/`
+- [x] `GET    /api/v1/roles/{id}/`
+- [x] `PATCH  /api/v1/roles/{id}/`
+- [x] `POST   /api/v1/roles/{id}/activate/`
+- [x] `POST   /api/v1/roles/{id}/deactivate/`
 
 ## support (8)
 
@@ -377,8 +377,8 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## permissions (2)
 
-- [ ] `GET    /api/v1/permissions/`
-- [ ] `GET    /api/v1/permissions/{id}/`
+- [x] `GET    /api/v1/permissions/`
+- [x] `GET    /api/v1/permissions/{id}/`
 
 ## telemetry (2)
 

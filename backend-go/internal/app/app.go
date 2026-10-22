@@ -14,6 +14,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 )
@@ -39,5 +40,6 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
 		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), limiter),
+		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 	)
 }
