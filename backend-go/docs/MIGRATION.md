@@ -202,7 +202,25 @@ translated to the envelope in exactly one place (`respond.Error`).
   form. Zero failed requests; /auth/me and impact identical on both
   backends for the browser-made rider. Next: mobility (125).
 
+- 2026-10-22 — Mobility + finance core → 158/317 ticked. Hubs, battery
+  types (maker-checker via `internal/approval`), batteries (custody verbs,
+  hash-chained BatteryEvent trail with Python-identical canonical JSON, QR
+  labels), vehicles + models (scoped reads, writes, assignments, commands,
+  QR / IoT keys, retire), finance (ledger, payments, wallets, holds, plan
+  fees, receipts JSON/PDF with HMAC seal, statement export, dev fund),
+  pricing (tariff matrices, hold policy, ensure_defaults), the plan
+  catalogue, discount campaigns (CRUD, activate, redeem quote, cursor
+  redemptions) and subscriptions (purchase, renew, switch preview / queue /
+  immediate, auto-renew, cancel). Suites: battery_types 20, batteries 154,
+  vehicles 125, finance 130, pricing_plans 71, subscriptions_discounts 116 —
+  all identical, including audit rows, wallet balances, payments and
+  redemption ledger rows. All Go files are now under 300 lines.
+
 ### Django bugs found while porting (fixed on main too)
+- Renewing with a discount code and no idempotency key → 500: the
+  redemption key `disc-renew:{sub.id}:{payment.id}` is 84 chars into a
+  varchar(64). Fixed in `mobility/services/plans/renew.py` (and Go) as
+  `disc-renew:{payment.id}` — the payment id alone is unique.
 - Battery stats totals were all 1: `batteries_queryset()` orders by
   -created_at and that column joined the GROUP BY. Fixed in
   `mobility/selectors.py` with `.order_by()` (go-backend branch; cherry-pick
@@ -223,6 +241,16 @@ translated to the envelope in exactly one place (`respond.Error`).
   Go answers 400 for that parameter.
 
 ### Django quirks kept for parity (fix in both later)
+- Buying a plan whose vehicle_type differs from the vehicle's (e.g. a BOAT
+  plan on a motorcycle) is allowed; the charge uses the vehicle's tariff.
+- Immediate plan switch cancels the old subscription in one transaction and
+  buys in a second; a failed purchase (e.g. low wallet) leaves the vehicle
+  with no plan. Go mirrors it.
+- `POST /subscriptions/` (and switch / preview) with an unknown vehicle or
+  plan id → 500 (`.get()`); Go answers 404.
+- Discount create checks the code UniqueValidator on the raw input but
+  saves it upper-cased, so `abc` when `ABC` exists → IntegrityError 500;
+  Go answers the unique-field 400.
 - `GET /accounts/stats/` is network-wide and open to any signed-in user
   (HasCapabilityOrReadOwn lets safe methods through, the stats aren't
   scoped). A rider can read total operator counts. Should require

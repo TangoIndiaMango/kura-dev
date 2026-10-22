@@ -139,7 +139,7 @@ def renew(
                 vehicle_count=vehicle_count(sub.account),
                 payment=payment,
                 subscription=sub,
-                idempotency_key=f"disc:{key}" if key else f"disc-renew:{sub.id}:{payment.id}",
+                idempotency_key=f"disc:{key}" if key else f"disc-renew:{payment.id}",
             )
 
         owner = owner_user(sub.account)

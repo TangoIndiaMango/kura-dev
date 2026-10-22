@@ -57,6 +57,14 @@ func decodeFields(obj map[string]json.RawMessage, dst any) apperr.Details {
 			f.Set(reflect.New(f.Type().Elem()))
 			f = f.Elem()
 		}
+		if f.Type() == dateTimeType {
+			var val any
+			_ = json.Unmarshal(raw, &val)
+			if msg := setDateTime(f, val); msg != "" {
+				errs[name] = []string{msg}
+			}
+			continue
+		}
 		if f.Type() == dateType {
 			var val any
 			_ = json.Unmarshal(raw, &val)

@@ -43,3 +43,14 @@ func dateOf(d spend.Date) pgtype.Date {
 	t, _ := time.Parse("2006-01-02", d.ISO())
 	return pgtype.Date{Time: t, Valid: true}
 }
+
+// pyFloat is repr(float) for ordinary magnitudes ("1.0", "1792653938.123456").
+func pyFloat(f float64) string {
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	for _, c := range s {
+		if c == '.' {
+			return s
+		}
+	}
+	return s + ".0"
+}

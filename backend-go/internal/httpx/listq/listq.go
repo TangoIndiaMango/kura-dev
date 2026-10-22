@@ -44,3 +44,25 @@ func Choice(r *http.Request, name string, choices ...string) (*string, error) {
 	}
 	return nil, apperr.Field(name, "Select a valid choice. "+v+" is not one of the available choices.")
 }
+
+// Merge combines several filter errors into one 400 with every field's
+// message, like a django-filter form reporting all invalid fields at once.
+func Merge(errs ...error) error {
+	d := apperr.Details{}
+	for _, err := range errs {
+		e, ok := apperr.As(err)
+		if !ok {
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		for k, v := range e.Details {
+			d[k] = v
+		}
+	}
+	if len(d) == 0 {
+		return nil
+	}
+	return apperr.Validation(d)
+}

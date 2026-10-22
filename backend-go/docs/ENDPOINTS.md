@@ -25,13 +25,13 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `POST   /api/v1/mobility/battery-types/`
 - [x] `GET    /api/v1/mobility/battery-types/{id}/`
 - [x] `POST   /api/v1/mobility/battery-types/{id}/activate/`
-- [ ] `GET    /api/v1/mobility/discounts/`
-- [ ] `POST   /api/v1/mobility/discounts/`
-- [ ] `POST   /api/v1/mobility/discounts/redeem/`
-- [ ] `GET    /api/v1/mobility/discounts/{id}/`
-- [ ] `PATCH  /api/v1/mobility/discounts/{id}/`
-- [ ] `POST   /api/v1/mobility/discounts/{id}/activate/`
-- [ ] `GET    /api/v1/mobility/discounts/{id}/redemptions/`
+- [x] `GET    /api/v1/mobility/discounts/`
+- [x] `POST   /api/v1/mobility/discounts/`
+- [x] `POST   /api/v1/mobility/discounts/redeem/`
+- [x] `GET    /api/v1/mobility/discounts/{id}/`
+- [x] `PATCH  /api/v1/mobility/discounts/{id}/`
+- [x] `POST   /api/v1/mobility/discounts/{id}/activate/`
+- [x] `GET    /api/v1/mobility/discounts/{id}/redemptions/`
 - [ ] `GET    /api/v1/mobility/eboarders/`
 - [ ] `POST   /api/v1/mobility/eboarders/`
 - [ ] `GET    /api/v1/mobility/eboarders/stats/`
@@ -81,15 +81,15 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [ ] `POST   /api/v1/mobility/retrofits/{id}/checklist/`
 - [ ] `POST   /api/v1/mobility/retrofits/{id}/engine-intake/`
 - [ ] `POST   /api/v1/mobility/retrofits/{id}/install/`
-- [ ] `GET    /api/v1/mobility/subscriptions/`
-- [ ] `POST   /api/v1/mobility/subscriptions/`
-- [ ] `GET    /api/v1/mobility/subscriptions/{id}/`
-- [ ] `POST   /api/v1/mobility/subscriptions/{id}/auto-renew/`
-- [ ] `PATCH  /api/v1/mobility/subscriptions/{id}/auto-renew/`
-- [ ] `POST   /api/v1/mobility/subscriptions/{id}/cancel/`
-- [ ] `POST   /api/v1/mobility/subscriptions/{id}/renew/`
-- [ ] `POST   /api/v1/mobility/subscriptions/{id}/switch-preview/`
-- [ ] `POST   /api/v1/mobility/subscriptions/{id}/switch/`
+- [x] `GET    /api/v1/mobility/subscriptions/`
+- [x] `POST   /api/v1/mobility/subscriptions/`
+- [x] `GET    /api/v1/mobility/subscriptions/{id}/`
+- [x] `POST   /api/v1/mobility/subscriptions/{id}/auto-renew/`
+- [x] `PATCH  /api/v1/mobility/subscriptions/{id}/auto-renew/`
+- [x] `POST   /api/v1/mobility/subscriptions/{id}/cancel/`
+- [x] `POST   /api/v1/mobility/subscriptions/{id}/renew/`
+- [x] `POST   /api/v1/mobility/subscriptions/{id}/switch-preview/`
+- [x] `POST   /api/v1/mobility/subscriptions/{id}/switch/`
 - [ ] `GET    /api/v1/mobility/swaps/`
 - [ ] `POST   /api/v1/mobility/swaps/`
 - [ ] `POST   /api/v1/mobility/swaps/complete/`
@@ -126,7 +126,7 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `POST   /api/v1/mobility/vehicles/{id}/command/`
 - [x] `GET    /api/v1/mobility/vehicles/{id}/commands/`
 - [x] `GET    /api/v1/mobility/vehicles/{id}/qr/`
-- [ ] `POST   /api/v1/mobility/vehicles/{id}/retire/`
+- [x] `POST   /api/v1/mobility/vehicles/{id}/retire/`
 - [x] `POST   /api/v1/mobility/vehicles/{id}/rotate-iot-key/`
 - [x] `POST   /api/v1/mobility/vehicles/{id}/rotate-qr/`
 - [x] `POST   /api/v1/mobility/vehicles/{id}/status/`

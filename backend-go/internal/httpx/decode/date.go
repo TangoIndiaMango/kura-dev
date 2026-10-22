@@ -40,3 +40,37 @@ func setDate(f reflect.Value, val any) string {
 	f.Set(reflect.ValueOf(Date{Time: t}))
 	return ""
 }
+
+// DateTime is a DRF DateTimeField value (ISO 8601; naive values are Lagos
+// time, the server's TIME_ZONE). Use *DateTime when null is allowed.
+type DateTime struct{ Time time.Time }
+
+var (
+	dateTimeType = reflect.TypeOf(DateTime{})
+	lagosZone    = func() *time.Location {
+		l, err := time.LoadLocation("Africa/Lagos")
+		if err != nil {
+			panic(err)
+		}
+		return l
+	}()
+)
+
+func setDateTime(f reflect.Value, val any) string {
+	bad := "Datetime has wrong format. Use one of these formats instead: " +
+		"YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]."
+	s, ok := val.(string)
+	if !ok {
+		return bad
+	}
+	s = strings.TrimSpace(s)
+	for _, l := range []string{time.RFC3339Nano, "2006-01-02T15:04:05.999999999", "2006-01-02T15:04",
+		"2006-01-02 15:04:05.999999999Z07:00", "2006-01-02 15:04:05.999999999", "2006-01-02 15:04",
+		"2006-01-02T15:04Z07:00", time.DateOnly} {
+		if t, err := time.ParseInLocation(l, s, lagosZone); err == nil {
+			f.Set(reflect.ValueOf(DateTime{Time: t}))
+			return ""
+		}
+	}
+	return bad
+}

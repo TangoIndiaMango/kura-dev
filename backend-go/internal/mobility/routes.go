@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/router"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
@@ -20,14 +21,17 @@ type Module struct {
 	vmodels *VehicleModelHandler
 	pricing *PricingHandler
 	plans   *PlanHandler
+	subs    *SubscriptionHandler
+	discs   *DiscountHandler
 	limiter *throttle.Limiter
 }
 
-func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, limiter *throttle.Limiter) *Module {
+func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, tokens *auth.Tokens,
+	limiter *throttle.Limiter) *Module {
 	return &Module{hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool),
 		bats: NewBatteryHandler(pool, signer), vehs: NewVehicleHandler(pool, signer),
 		vmodels: NewVehicleModelHandler(pool), pricing: NewPricingHandler(pool, mailer), plans: NewPlanHandler(pool),
-		limiter: limiter}
+		subs: NewSubscriptionHandler(pool, tokens), discs: NewDiscountHandler(pool), limiter: limiter}
 }
 
 // Register mounts the ported routes. Not-yet-ported ones (e.g. hub status,
@@ -69,8 +73,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	b.Cap("POST", "/{id}/transfer/", "batteries:manage", bh.transfer())
 
 	// VehicleViewSet: HasCapabilityOrReadOwn — GETs need sign-in only (scoped;
-	// stats / export / models check capabilities in the view). retire stays
-	// on Django until subscription cancellation is ported.
+	// stats / export / models check capabilities in the view).
 	v, vh := router.New(mux, "/api/v1/mobility/vehicles", m.limiter), m.vehs
 	v.User("GET", "/", vh.list)
 	v.Cap("POST", "/", "vehicles:manage", vh.create)
@@ -86,6 +89,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	v.User("GET", "/{id}/commands/", vh.commands)
 	v.User("GET", "/{id}/qr/", vh.qrCode)
 	v.Cap("POST", "/{id}/rotate-iot-key/", "telemetry:ingest", vh.rotateIoTKey)
+	v.Cap("POST", "/{id}/retire/", "vehicles:manage", vh.retire())
 	v.Cap("POST", "/{id}/rotate-qr/", "swaps:override", vh.rotateQR)
 	v.Cap("POST", "/{id}/status/", "vehicles:manage", vh.status())
 
@@ -113,4 +117,25 @@ func (m *Module) Register(mux *http.ServeMux) {
 	pl.Cap("PATCH", "/{id}/", "tariffs:manage", m.plans.patch)
 	pl.Cap("POST", "/{id}/activate/", "price:approve", m.plans.setActive(true))
 	pl.Cap("POST", "/{id}/deactivate/", "tariffs:manage", m.plans.setActive(false))
+
+	// SubscriptionViewSet: HasCapabilityOrReadOwn (GETs sign-in only, scoped).
+	s, sh := router.New(mux, "/api/v1/mobility/subscriptions", m.limiter), m.subs
+	s.User("GET", "/", sh.list)
+	s.Cap("POST", "/", "swaps:read", sh.create)
+	s.User("GET", "/{id}/", sh.get)
+	s.Cap("PATCH", "/{id}/auto-renew/", "swaps:read", sh.autoRenew)
+	s.Cap("POST", "/{id}/auto-renew/", "swaps:read", sh.autoRenew)
+	s.Cap("POST", "/{id}/cancel/", "swaps:read", sh.cancel)
+	s.Cap("POST", "/{id}/renew/", "swaps:read", sh.renew)
+	s.Cap("POST", "/{id}/switch/", "swaps:read", sh.doSwitch)
+	s.Cap("POST", "/{id}/switch-preview/", "swaps:read", sh.switchPreview)
+
+	d, dh := router.New(mux, "/api/v1/mobility/discounts", m.limiter), m.discs
+	d.Cap("GET", "/", "tariffs:manage", dh.list)
+	d.Cap("POST", "/", "tariffs:manage", dh.create)
+	d.User("POST", "/redeem/", dh.redeem)
+	d.Cap("GET", "/{id}/", "tariffs:manage", dh.get)
+	d.Cap("PATCH", "/{id}/", "tariffs:manage", dh.patch)
+	d.Cap("POST", "/{id}/activate/", "price:approve", dh.activate)
+	d.Cap("GET", "/{id}/redemptions/", "tariffs:manage", dh.redemptions)
 }
