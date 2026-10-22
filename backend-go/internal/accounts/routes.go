@@ -15,11 +15,12 @@ import (
 // Module mounts the accounts endpoints.
 type Module struct {
 	auth    *AuthHandler
+	staff   *StaffHandler
 	limiter *throttle.Limiter
 }
 
-func NewModule(auth *AuthHandler, limiter *throttle.Limiter) *Module {
-	return &Module{auth: auth, limiter: limiter}
+func NewModule(auth *AuthHandler, staff *StaffHandler, limiter *throttle.Limiter) *Module {
+	return &Module{auth: auth, staff: staff, limiter: limiter}
 }
 
 // Register mounts /api/v1/auth/* with AuthViewSet's permissions and throttles.
@@ -44,6 +45,18 @@ func (m *Module) Register(mux *http.ServeMux) {
 	g.User("POST", "/devices/heartbeat/", handle(a.devicesHeartbeat))
 	g.Throttle(throttle.AnonBurst).Public("POST", "/password-setup/context/", handle(a.setupContext))
 	g.Throttle(throttle.AnonBurst).Public("POST", "/password-setup/", handle(a.passwordSetup))
+
+	// StaffUserViewSet capability_map.
+	u, st := router.New(mux, "/api/v1/users", m.limiter), m.staff
+	u.Cap("GET", "/", "users:read", st.list)
+	u.Cap("POST", "/", "users:manage", st.create)
+	u.Cap("GET", "/stats/", "users:read", st.stats)
+	u.Cap("GET", "/export/", "users:read", st.export)
+	u.Cap("GET", "/{id}/", "users:read", st.get)
+	u.Cap("PATCH", "/{id}/", "users:manage", st.patch)
+	u.Cap("POST", "/{id}/activate/", "users:manage", st.setActive(true))
+	u.Cap("POST", "/{id}/deactivate/", "users:manage", st.setActive(false))
+	u.Cap("POST", "/{id}/resend-invite/", "users:manage", st.resendInvite)
 }
 
 // otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).

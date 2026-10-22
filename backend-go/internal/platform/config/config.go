@@ -48,6 +48,19 @@ type Config struct {
 
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"20s"`
 
+	EmailEnabled      bool   `env:"EMAIL_ENABLED" envDefault:"false"`
+	EmailHost         string `env:"EMAIL_HOST"`
+	EmailPort         int    `env:"EMAIL_PORT" envDefault:"465"`
+	EmailUser         string `env:"EMAIL_HOST_USER"`
+	EmailPassword     string `env:"EMAIL_HOST_PASSWORD"`
+	EmailUseSSL       *bool  `env:"EMAIL_USE_SSL"`
+	EmailUseTLS       *bool  `env:"EMAIL_USE_TLS"`
+	DefaultFromEmail  string `env:"DEFAULT_FROM_EMAIL" envDefault:"KURA <noreply@kura.eco>"`
+	DefaultReplyTo    string `env:"DEFAULT_REPLY_TO"`
+	SupportEmail      string `env:"KURA_SUPPORT_EMAIL"`
+	FrontendAdminURL  string `env:"FRONTEND_ADMIN_URL" envDefault:"http://localhost:5176"`
+	FrontendClientURL string `env:"FRONTEND_CLIENT_URL" envDefault:"http://localhost:5175"`
+
 	// DjangoUpstreamURL forwards not-yet-ported routes to Django during the
 	// migration (e.g. http://localhost:8001). Empty = Go answers everything.
 	DjangoUpstreamURL string `env:"DJANGO_UPSTREAM_URL"`
@@ -73,6 +86,22 @@ func (c Config) Pepper() []byte {
 		return []byte(c.OTPPepper)
 	}
 	return []byte(c.SecretKey)
+}
+
+// MailSSL / MailTLS follow Django: SSL defaults on for port 465, TLS
+// (STARTTLS) defaults to the opposite of SSL.
+func (c Config) MailSSL() bool {
+	if c.EmailUseSSL != nil {
+		return *c.EmailUseSSL
+	}
+	return c.EmailPort == 465
+}
+
+func (c Config) MailTLS() bool {
+	if c.EmailUseTLS != nil {
+		return *c.EmailUseTLS
+	}
+	return !c.MailSSL()
 }
 
 // Load parses the environment and validates what must never be missing.

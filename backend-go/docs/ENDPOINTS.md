@@ -274,15 +274,15 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## users (9)
 
-- [ ] `GET    /api/v1/users/`
-- [ ] `POST   /api/v1/users/`
-- [ ] `GET    /api/v1/users/export/`
-- [ ] `GET    /api/v1/users/stats/`
-- [ ] `GET    /api/v1/users/{id}/`
-- [ ] `PATCH  /api/v1/users/{id}/`
-- [ ] `POST   /api/v1/users/{id}/activate/`
-- [ ] `POST   /api/v1/users/{id}/deactivate/`
-- [ ] `POST   /api/v1/users/{id}/resend-invite/`
+- [x] `GET    /api/v1/users/`
+- [x] `POST   /api/v1/users/`
+- [x] `GET    /api/v1/users/export/`
+- [x] `GET    /api/v1/users/stats/`
+- [x] `GET    /api/v1/users/{id}/`
+- [x] `PATCH  /api/v1/users/{id}/`
+- [x] `POST   /api/v1/users/{id}/activate/`
+- [x] `POST   /api/v1/users/{id}/deactivate/`
+- [x] `POST   /api/v1/users/{id}/resend-invite/`
 
 ## roles (8)
 

@@ -153,9 +153,22 @@ translated to the envelope in exactly one place (`respond.Error`).
   what the other wrote). Fixed in Go: path values on {id} routes, DRF's
   page=1 omission in `previous`, "Not found." for malformed ids.
 
+- 2026-10-22 — **Staff users (9) done → 36/317.** Invite/update/activate/
+  deactivate/resend + list (all StaffUserFilter params), stats, CSV/PDF export.
+  New `mail` package: Django email templates as Go templates (HTML golden-
+  tested identical), brand CIDs, SMTP SSL/STARTTLS or console, sent after
+  commit. Contract `scripts/contract/users.py` 29/29 incl. cross-reads.
+
 ### Django bugs found while porting (fixed on main too)
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().
+
+### Django quirks kept for parity (fix in both later)
+- List `end_date` filters (django-filters DateFilter on a datetime) stop at
+  Lagos *midnight starting* that day, so the end day is excluded. Stats use
+  the inclusive day. Unify once Go is primary.
+- Plain-text emails HTML-escape `&` (Django autoescapes .txt templates). Go
+  sends the correct `&` (golden test documents the one difference).
 
 ### How to run
 ```

@@ -79,7 +79,7 @@ func (q *Query) Date(name string) *time.Time {
 	}
 	d, err := time.Parse(time.DateOnly, raw)
 	if err != nil {
-		q.fail(name, "Enter a valid date (YYYY-MM-DD).")
+		q.fail(name, "Enter a valid date.")
 		return nil
 	}
 	return &d

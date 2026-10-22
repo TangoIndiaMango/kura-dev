@@ -12,6 +12,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
@@ -30,6 +31,10 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	cdn := media.Cloudinary{CloudName: cfg.CloudinaryCloudName, APIKey: cfg.CloudinaryAPIKey,
 		APISecret: cfg.CloudinaryAPISecret, UploadPreset: cfg.CloudinaryUploadPreset}
 	meSvc := accounts.NewMeService(queries, cdn, cfg.ConsentPolicyVersion)
+	mailer := mail.New(mail.Config{Enabled: cfg.EmailEnabled, Host: cfg.EmailHost, Port: cfg.EmailPort,
+		User: cfg.EmailUser, Password: cfg.EmailPassword, UseSSL: cfg.MailSSL(), UseTLS: cfg.MailTLS(),
+		From: cfg.DefaultFromEmail, ReplyTo: cfg.DefaultReplyTo, SupportEmail: cfg.SupportEmail}, log)
+	staffSvc := accounts.NewStaffService(pool, cfg, mailer, authSvc)
 
 	upstream, err := server.Upstream(cfg.DjangoUpstreamURL, log)
 	if err != nil {
@@ -39,7 +44,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
-		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), limiter),
+		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), accounts.NewStaffHandler(staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 	)
 }

@@ -2,6 +2,7 @@ package accounts
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -75,3 +76,13 @@ func str(p *string) string {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// jsonRoundTrip turns a DTO into a generic map (to merge extra keys).
+func jsonRoundTrip(v any) (map[string]any, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	return out, json.Unmarshal(b, &out)
+}
