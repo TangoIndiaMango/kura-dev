@@ -32,7 +32,9 @@ from mobility.serializers.velocity import (
 from mobility.services import SwapService
 
 
-class SwapViewSet(viewsets.ModelViewSet):
+class SwapViewSet(viewsets.ReadOnlyModelViewSet):
+    # Read-only base: ModelViewSet's POST / (create) had a writable serializer
+    # and no capability — any signed-in user could insert a swap row.
     permission_classes = [IsAuthenticated, HasCapabilityOrReadOwn]
     serializer_class = SwapSerializer
     pagination_class = KuraCursorPagination

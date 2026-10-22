@@ -27,6 +27,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
     serializer_class = ReservationSerializer
     pagination_class = KuraCursorPagination
     filterset_class = ReservationFilter
+    # No PUT/PATCH/DELETE: ModelViewSet exposed them with a fully writable
+    # serializer and no capability (riders could edit status / hold amount).
+    http_method_names = ["get", "post", "head", "options"]
     capability_map = {
         "list": "swaps:read",
         "retrieve": "swaps:read",

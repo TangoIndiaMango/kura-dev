@@ -216,7 +216,27 @@ translated to the envelope in exactly one place (`respond.Error`).
   all identical, including audit rows, wallet balances, payments and
   redemption ledger rows. All Go files are now under 300 lines.
 
+- 2026-10-22 — Risk (10 endpoints → 168/317): rules list / detail / PUT /
+  PATCH, events cursor list (filters + ?q=), detail with active velocity
+  grant, manual flag, stats, CSV/PDF export, review with SWAP_VELOCITY
+  grants; plus the velocity engine the bay uses (inspect, grant consume,
+  block-or-grant with a committed risk event, bay status, exception
+  request). `scripts/contract/risk.py`: 79 identical incl. cursor walks,
+  grants, audit and reviewer notifications. `follow()` moved into lib.py.
+- Known gap (API-only, no frontend use): DRF cursor lists honour
+  `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
+  (payments, ledger, battery events, risk events) ignore it. Fix in one pass
+  after swaps.
+
 ### Django bugs found while porting (fixed on main too)
+- **Security:** `ReservationViewSet` (ModelViewSet) exposed PUT / PATCH /
+  DELETE with a fully writable ReservationSerializer and no capability for
+  those actions, so any signed-in rider could edit their hold (status,
+  hold_amount_kobo, battery…) or delete it. `SwapViewSet` likewise exposed
+  `POST /mobility/swaps/` (create) — anyone signed in could insert a
+  COMPLETED swap for any account. Closed both (http_method_names /
+  ReadOnlyModelViewSet; regression test `mobility/tests/
+  test_viewset_methods.py`); Go never registers them. No frontend used them.
 - Renewing with a discount code and no idempotency key → 500: the
   redemption key `disc-renew:{sub.id}:{payment.id}` is 84 chars into a
   varchar(64). Fixed in `mobility/services/plans/renew.py` (and Go) as

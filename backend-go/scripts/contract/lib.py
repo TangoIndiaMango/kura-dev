@@ -186,3 +186,27 @@ def purge_phones(phones):
       DELETE FROM core_mediaasset WHERE uploaded_by_id IN (SELECT id FROM pu);
       DELETE FROM accounts_otpchallenge WHERE phone IN ({ph});
       DELETE FROM accounts_user WHERE id IN (SELECT id FROM pu);""")
+
+
+CUR = ("next", "previous")
+
+
+def _path(url):
+    import urllib.parse
+    return urllib.parse.urlparse(url)._replace(scheme="", netloc="").geturl()
+
+
+def follow(name, path, tok, pages=3, extra=()):
+    """Walk next links on each backend independently, compare every page, then
+    step back once via previous."""
+    d, g = call(DJ, "GET", path, token=tok[0]), call(GO, "GET", path, token=tok[1])
+    for i in range(pages):
+        check(f"{name} page {i + 1}", d, g, extra=CUR + tuple(extra))
+        nd, ng = d[1].get("next"), g[1].get("next")
+        if not nd or not ng:
+            break
+        d, g = call(DJ, "GET", _path(nd), token=tok[0]), call(GO, "GET", _path(ng), token=tok[1])
+    pd, pg = d[1].get("previous"), g[1].get("previous")
+    if pd and pg:
+        check(f"{name} previous", call(DJ, "GET", _path(pd), token=tok[0]), call(GO, "GET", _path(pg), token=tok[1]),
+              extra=CUR + tuple(extra))

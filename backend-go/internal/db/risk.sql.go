@@ -7,9 +7,99 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const activeGrantForEvent = `-- name: ActiveGrantForEvent :one
+SELECT id, created_at, updated_at, vehicle_id, expires_at, max_uses, uses_remaining, status, note, account_id, granted_by_id, risk_event_id FROM risk_riskvelocitygrant
+WHERE risk_event_id = $1 AND status = 'ACTIVE' AND expires_at > now() AND uses_remaining > 0
+ORDER BY created_at DESC LIMIT 1
+`
+
+func (q *Queries) ActiveGrantForEvent(ctx context.Context, riskEventID uuid.UUID) (RiskRiskvelocitygrant, error) {
+	row := q.db.QueryRow(ctx, activeGrantForEvent, riskEventID)
+	var i RiskRiskvelocitygrant
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VehicleID,
+		&i.ExpiresAt,
+		&i.MaxUses,
+		&i.UsesRemaining,
+		&i.Status,
+		&i.Note,
+		&i.AccountID,
+		&i.GrantedByID,
+		&i.RiskEventID,
+	)
+	return i, err
+}
+
+const activeGrantForVehicle = `-- name: ActiveGrantForVehicle :one
+SELECT id, created_at, updated_at, vehicle_id, expires_at, max_uses, uses_remaining, status, note, account_id, granted_by_id, risk_event_id FROM risk_riskvelocitygrant
+WHERE vehicle_id = $1 AND status = 'ACTIVE' AND expires_at > now() AND uses_remaining > 0
+ORDER BY expires_at LIMIT 1
+`
+
+func (q *Queries) ActiveGrantForVehicle(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error) {
+	row := q.db.QueryRow(ctx, activeGrantForVehicle, vehicleID)
+	var i RiskRiskvelocitygrant
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VehicleID,
+		&i.ExpiresAt,
+		&i.MaxUses,
+		&i.UsesRemaining,
+		&i.Status,
+		&i.Note,
+		&i.AccountID,
+		&i.GrantedByID,
+		&i.RiskEventID,
+	)
+	return i, err
+}
+
+const consumableGrantForUpdate = `-- name: ConsumableGrantForUpdate :one
+SELECT id, created_at, updated_at, vehicle_id, expires_at, max_uses, uses_remaining, status, note, account_id, granted_by_id, risk_event_id FROM risk_riskvelocitygrant
+WHERE vehicle_id = $1 AND status = 'ACTIVE' AND expires_at > now() AND uses_remaining > 0
+ORDER BY expires_at LIMIT 1 FOR UPDATE
+`
+
+func (q *Queries) ConsumableGrantForUpdate(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error) {
+	row := q.db.QueryRow(ctx, consumableGrantForUpdate, vehicleID)
+	var i RiskRiskvelocitygrant
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VehicleID,
+		&i.ExpiresAt,
+		&i.MaxUses,
+		&i.UsesRemaining,
+		&i.Status,
+		&i.Note,
+		&i.AccountID,
+		&i.GrantedByID,
+		&i.RiskEventID,
+	)
+	return i, err
+}
+
+const countRiskRules = `-- name: CountRiskRules :one
+SELECT count(*) FROM risk_riskrule
+`
+
+func (q *Queries) CountRiskRules(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countRiskRules)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const enabledRiskRule = `-- name: EnabledRiskRule :one
 SELECT id, code, severity, action FROM risk_riskrule WHERE code = $1 AND enabled LIMIT 1
@@ -95,6 +185,447 @@ func (q *Queries) InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams
 	return err
 }
 
+const insertVelocityGrant = `-- name: InsertVelocityGrant :exec
+INSERT INTO risk_riskvelocitygrant (id, created_at, updated_at, vehicle_id, expires_at, max_uses, uses_remaining,
+  status, note, account_id, granted_by_id, risk_event_id)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $4, 'ACTIVE', $5, $6, $7, $8)
+`
+
+type InsertVelocityGrantParams struct {
+	ID          uuid.UUID
+	VehicleID   uuid.UUID
+	ExpiresAt   time.Time
+	MaxUses     int16
+	Note        string
+	AccountID   *uuid.UUID
+	GrantedByID uuid.UUID
+	RiskEventID uuid.UUID
+}
+
+func (q *Queries) InsertVelocityGrant(ctx context.Context, arg InsertVelocityGrantParams) error {
+	_, err := q.db.Exec(ctx, insertVelocityGrant,
+		arg.ID,
+		arg.VehicleID,
+		arg.ExpiresAt,
+		arg.MaxUses,
+		arg.Note,
+		arg.AccountID,
+		arg.GrantedByID,
+		arg.RiskEventID,
+	)
+	return err
+}
+
+const lastCompletedSwapAt = `-- name: LastCompletedSwapAt :one
+SELECT completed_at FROM mobility_swap WHERE vehicle_id = $1 AND status = 'COMPLETED' AND completed_at IS NOT NULL
+ORDER BY completed_at DESC LIMIT 1
+`
+
+func (q *Queries) LastCompletedSwapAt(ctx context.Context, vehicleID uuid.UUID) (*time.Time, error) {
+	row := q.db.QueryRow(ctx, lastCompletedSwapAt, vehicleID)
+	var completed_at *time.Time
+	err := row.Scan(&completed_at)
+	return completed_at, err
+}
+
+const listRiskRules = `-- name: ListRiskRules :many
+SELECT id, created_at, updated_at, code, name, severity, params, action, enabled FROM risk_riskrule ORDER BY code LIMIT $2 OFFSET $1
+`
+
+type ListRiskRulesParams struct {
+	Off int32
+	Lim int32
+}
+
+func (q *Queries) ListRiskRules(ctx context.Context, arg ListRiskRulesParams) ([]RiskRiskrule, error) {
+	rows, err := q.db.Query(ctx, listRiskRules, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RiskRiskrule{}
+	for rows.Next() {
+		var i RiskRiskrule
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Code,
+			&i.Name,
+			&i.Severity,
+			&i.Params,
+			&i.Action,
+			&i.Enabled,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const openVelocityEvent = `-- name: OpenVelocityEvent :one
+SELECT e.id, e.created_at, e.updated_at, e.subject_type, e.subject_id, e.severity, e.score, e.context, e.action_taken, e.status, e.review_note, e.account_id, e.reviewed_by_id, e.rule_id FROM risk_riskevent e JOIN risk_riskrule r ON r.id = e.rule_id
+WHERE r.code = 'SWAP_VELOCITY' AND e.subject_type = 'vehicle' AND e.subject_id = $1 AND e.status = 'OPEN'
+ORDER BY e.created_at DESC LIMIT 1
+`
+
+func (q *Queries) OpenVelocityEvent(ctx context.Context, subjectID string) (RiskRiskevent, error) {
+	row := q.db.QueryRow(ctx, openVelocityEvent, subjectID)
+	var i RiskRiskevent
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SubjectType,
+		&i.SubjectID,
+		&i.Severity,
+		&i.Score,
+		&i.Context,
+		&i.ActionTaken,
+		&i.Status,
+		&i.ReviewNote,
+		&i.AccountID,
+		&i.ReviewedByID,
+		&i.RuleID,
+	)
+	return i, err
+}
+
+const revokeEventGrants = `-- name: RevokeEventGrants :exec
+UPDATE risk_riskvelocitygrant SET status = 'REVOKED', updated_at = now()
+WHERE risk_event_id = $1 AND status = 'ACTIVE'
+`
+
+func (q *Queries) RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, revokeEventGrants, riskEventID)
+	return err
+}
+
+const riskEventForUpdate = `-- name: RiskEventForUpdate :one
+SELECT e.id, e.created_at, e.updated_at, e.subject_type, e.subject_id, e.severity, e.score, e.context, e.action_taken, e.status, e.review_note, e.account_id, e.reviewed_by_id, e.rule_id, r.code AS rule_code FROM risk_riskevent e JOIN risk_riskrule r ON r.id = e.rule_id
+WHERE e.id = $1 FOR UPDATE OF e
+`
+
+type RiskEventForUpdateRow struct {
+	ID           uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	SubjectType  string
+	SubjectID    string
+	Severity     string
+	Score        int32
+	Context      []byte
+	ActionTaken  string
+	Status       string
+	ReviewNote   string
+	AccountID    *uuid.UUID
+	ReviewedByID *uuid.UUID
+	RuleID       uuid.UUID
+	RuleCode     string
+}
+
+func (q *Queries) RiskEventForUpdate(ctx context.Context, id uuid.UUID) (RiskEventForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, riskEventForUpdate, id)
+	var i RiskEventForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SubjectType,
+		&i.SubjectID,
+		&i.Severity,
+		&i.Score,
+		&i.Context,
+		&i.ActionTaken,
+		&i.Status,
+		&i.ReviewNote,
+		&i.AccountID,
+		&i.ReviewedByID,
+		&i.RuleID,
+		&i.RuleCode,
+	)
+	return i, err
+}
+
+const riskEventRows = `-- name: RiskEventRows :many
+SELECT e.id, e.created_at, e.updated_at, e.subject_type, e.subject_id, e.severity, e.score, e.context, e.action_taken, e.status, e.review_note, e.account_id, e.reviewed_by_id, e.rule_id, r.code AS rule_code, r.name AS rule_name, a.kura_id AS account_kura_id,
+  a.display_name AS account_display_name,
+  u.first_name AS reviewer_first, u.last_name AS reviewer_last, u.email AS reviewer_email, u.phone AS reviewer_phone
+FROM risk_riskevent e
+JOIN risk_riskrule r ON r.id = e.rule_id
+LEFT JOIN accounts_account a ON a.id = e.account_id
+LEFT JOIN accounts_user u ON u.id = e.reviewed_by_id
+WHERE e.id = ANY($1::uuid[])
+`
+
+type RiskEventRowsRow struct {
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	SubjectType        string
+	SubjectID          string
+	Severity           string
+	Score              int32
+	Context            []byte
+	ActionTaken        string
+	Status             string
+	ReviewNote         string
+	AccountID          *uuid.UUID
+	ReviewedByID       *uuid.UUID
+	RuleID             uuid.UUID
+	RuleCode           string
+	RuleName           string
+	AccountKuraID      *string
+	AccountDisplayName *string
+	ReviewerFirst      *string
+	ReviewerLast       *string
+	ReviewerEmail      *string
+	ReviewerPhone      *string
+}
+
+func (q *Queries) RiskEventRows(ctx context.Context, ids []uuid.UUID) ([]RiskEventRowsRow, error) {
+	rows, err := q.db.Query(ctx, riskEventRows, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RiskEventRowsRow{}
+	for rows.Next() {
+		var i RiskEventRowsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Severity,
+			&i.Score,
+			&i.Context,
+			&i.ActionTaken,
+			&i.Status,
+			&i.ReviewNote,
+			&i.AccountID,
+			&i.ReviewedByID,
+			&i.RuleID,
+			&i.RuleCode,
+			&i.RuleName,
+			&i.AccountKuraID,
+			&i.AccountDisplayName,
+			&i.ReviewerFirst,
+			&i.ReviewerLast,
+			&i.ReviewerEmail,
+			&i.ReviewerPhone,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const riskEventsPage = `-- name: RiskEventsPage :many
+SELECT e.id FROM risk_riskevent e
+JOIN risk_riskrule r ON r.id = e.rule_id
+LEFT JOIN accounts_account a ON a.id = e.account_id
+WHERE ($1::uuid IS NULL OR e.account_id = $1)
+  AND ($2::text IS NULL OR e.status = $2)
+  AND ($3::text IS NULL OR e.severity = $3)
+  AND ($4::text IS NULL OR r.code = $4)
+  AND ($5::text IS NULL OR e.subject_type = $5)
+  AND ($6::text IS NULL OR e.subject_id = $6)
+  AND ($7::timestamptz IS NULL OR e.created_at >= $7)
+  AND ($8::timestamptz IS NULL OR e.created_at < $8)
+  AND ($9::text IS NULL OR r.code ILIKE '%' || $9 || '%' OR r.name ILIKE '%' || $9 || '%'
+       OR a.display_name ILIKE '%' || $9 || '%' OR a.kura_id ILIKE '%' || $9 || '%'
+       OR e.subject_id ILIKE '%' || $9 || '%')
+  AND ($10::timestamptz IS NULL
+       OR ($11::bool AND (e.created_at, e.id) > ($10, $12::uuid))
+       OR (NOT $11::bool AND (e.created_at, e.id) < ($10, $12::uuid)))
+ORDER BY CASE WHEN $11::bool THEN e.created_at END, CASE WHEN $11::bool THEN e.id END,
+  e.created_at DESC, e.id DESC
+LIMIT $13
+`
+
+type RiskEventsPageParams struct {
+	Account     *uuid.UUID
+	Status      *string
+	Severity    *string
+	Rule        *string
+	SubjectType *string
+	SubjectID   *string
+	FromAt      *time.Time
+	ToAt        *time.Time
+	Q           *string
+	AfterAt     *time.Time
+	Back        bool
+	AfterID     uuid.UUID
+	Lim         int32
+}
+
+// RiskEventViewSet list: filters, ?q= over rule code/name, account name/kura id, subject id; keyset newest first.
+func (q *Queries) RiskEventsPage(ctx context.Context, arg RiskEventsPageParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, riskEventsPage,
+		arg.Account,
+		arg.Status,
+		arg.Severity,
+		arg.Rule,
+		arg.SubjectType,
+		arg.SubjectID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.Q,
+		arg.AfterAt,
+		arg.Back,
+		arg.AfterID,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const riskOpenBySeverity = `-- name: RiskOpenBySeverity :many
+SELECT severity, count(*)::int AS count FROM risk_riskevent WHERE status = 'OPEN'
+GROUP BY severity ORDER BY count DESC
+`
+
+type RiskOpenBySeverityRow struct {
+	Severity string
+	Count    int32
+}
+
+func (q *Queries) RiskOpenBySeverity(ctx context.Context) ([]RiskOpenBySeverityRow, error) {
+	rows, err := q.db.Query(ctx, riskOpenBySeverity)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RiskOpenBySeverityRow{}
+	for rows.Next() {
+		var i RiskOpenBySeverityRow
+		if err := rows.Scan(&i.Severity, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const riskPeriodByRule = `-- name: RiskPeriodByRule :many
+SELECT r.code AS rule, count(e.id)::int AS count FROM risk_riskevent e JOIN risk_riskrule r ON r.id = e.rule_id
+WHERE ($1::timestamptz IS NULL OR e.created_at >= $1)
+  AND ($2::timestamptz IS NULL OR e.created_at <= $2)
+GROUP BY r.code ORDER BY count DESC
+`
+
+type RiskPeriodByRuleParams struct {
+	FromAt *time.Time
+	ToAt   *time.Time
+}
+
+type RiskPeriodByRuleRow struct {
+	Rule  string
+	Count int32
+}
+
+func (q *Queries) RiskPeriodByRule(ctx context.Context, arg RiskPeriodByRuleParams) ([]RiskPeriodByRuleRow, error) {
+	rows, err := q.db.Query(ctx, riskPeriodByRule, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RiskPeriodByRuleRow{}
+	for rows.Next() {
+		var i RiskPeriodByRuleRow
+		if err := rows.Scan(&i.Rule, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const riskPeriodStats = `-- name: RiskPeriodStats :one
+SELECT count(*)::int AS opened,
+  count(*) FILTER (WHERE status IN ('REVIEWED_OK', 'REVIEWED_FRAUD'))::int AS reviewed
+FROM risk_riskevent
+WHERE ($1::timestamptz IS NULL OR created_at >= $1)
+  AND ($2::timestamptz IS NULL OR created_at <= $2)
+`
+
+type RiskPeriodStatsParams struct {
+	FromAt *time.Time
+	ToAt   *time.Time
+}
+
+type RiskPeriodStatsRow struct {
+	Opened   int32
+	Reviewed int32
+}
+
+func (q *Queries) RiskPeriodStats(ctx context.Context, arg RiskPeriodStatsParams) (RiskPeriodStatsRow, error) {
+	row := q.db.QueryRow(ctx, riskPeriodStats, arg.FromAt, arg.ToAt)
+	var i RiskPeriodStatsRow
+	err := row.Scan(&i.Opened, &i.Reviewed)
+	return i, err
+}
+
+const riskQueueStats = `-- name: RiskQueueStats :one
+SELECT count(*) FILTER (WHERE status = 'OPEN')::int AS open,
+  count(*) FILTER (WHERE status = 'ESCALATED')::int AS escalated,
+  count(*) FILTER (WHERE status = 'OPEN' AND severity IN ('HIGH', 'CRITICAL'))::int AS high_severity,
+  count(*) FILTER (WHERE status = 'OPEN' AND severity = 'CRITICAL')::int AS critical,
+  count(*) FILTER (WHERE status IN ('REVIEWED_OK', 'REVIEWED_FRAUD'))::int AS reviewed
+FROM risk_riskevent
+`
+
+type RiskQueueStatsRow struct {
+	Open         int32
+	Escalated    int32
+	HighSeverity int32
+	Critical     int32
+	Reviewed     int32
+}
+
+func (q *Queries) RiskQueueStats(ctx context.Context) (RiskQueueStatsRow, error) {
+	row := q.db.QueryRow(ctx, riskQueueStats)
+	var i RiskQueueStatsRow
+	err := row.Scan(
+		&i.Open,
+		&i.Escalated,
+		&i.HighSeverity,
+		&i.Critical,
+		&i.Reviewed,
+	)
+	return i, err
+}
+
 const riskReviewers = `-- name: RiskReviewers :many
 SELECT id FROM accounts_user
 WHERE is_active AND role IN ('SUPER_ADMIN', 'OPS_MANAGER')
@@ -120,4 +651,146 @@ func (q *Queries) RiskReviewers(ctx context.Context) ([]uuid.UUID, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const riskRuleByCode = `-- name: RiskRuleByCode :one
+SELECT id, created_at, updated_at, code, name, severity, params, action, enabled FROM risk_riskrule WHERE code = $1
+`
+
+func (q *Queries) RiskRuleByCode(ctx context.Context, code string) (RiskRiskrule, error) {
+	row := q.db.QueryRow(ctx, riskRuleByCode, code)
+	var i RiskRiskrule
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.Name,
+		&i.Severity,
+		&i.Params,
+		&i.Action,
+		&i.Enabled,
+	)
+	return i, err
+}
+
+const riskRuleByID = `-- name: RiskRuleByID :one
+SELECT id, created_at, updated_at, code, name, severity, params, action, enabled FROM risk_riskrule WHERE id = $1
+`
+
+func (q *Queries) RiskRuleByID(ctx context.Context, id uuid.UUID) (RiskRiskrule, error) {
+	row := q.db.QueryRow(ctx, riskRuleByID, id)
+	var i RiskRiskrule
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.Name,
+		&i.Severity,
+		&i.Params,
+		&i.Action,
+		&i.Enabled,
+	)
+	return i, err
+}
+
+const saveGrantUse = `-- name: SaveGrantUse :exec
+UPDATE risk_riskvelocitygrant SET uses_remaining = $2, status = $3, updated_at = now() WHERE id = $1
+`
+
+type SaveGrantUseParams struct {
+	ID            uuid.UUID
+	UsesRemaining int16
+	Status        string
+}
+
+func (q *Queries) SaveGrantUse(ctx context.Context, arg SaveGrantUseParams) error {
+	_, err := q.db.Exec(ctx, saveGrantUse, arg.ID, arg.UsesRemaining, arg.Status)
+	return err
+}
+
+const saveRiskEventContext = `-- name: SaveRiskEventContext :exec
+UPDATE risk_riskevent SET context = $2, updated_at = now() WHERE id = $1
+`
+
+type SaveRiskEventContextParams struct {
+	ID      uuid.UUID
+	Context []byte
+}
+
+func (q *Queries) SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error {
+	_, err := q.db.Exec(ctx, saveRiskEventContext, arg.ID, arg.Context)
+	return err
+}
+
+const saveRiskEventReview = `-- name: SaveRiskEventReview :exec
+UPDATE risk_riskevent SET status = $2, reviewed_by_id = $3, review_note = $4, updated_at = now() WHERE id = $1
+`
+
+type SaveRiskEventReviewParams struct {
+	ID           uuid.UUID
+	Status       string
+	ReviewedByID *uuid.UUID
+	ReviewNote   string
+}
+
+func (q *Queries) SaveRiskEventReview(ctx context.Context, arg SaveRiskEventReviewParams) error {
+	_, err := q.db.Exec(ctx, saveRiskEventReview,
+		arg.ID,
+		arg.Status,
+		arg.ReviewedByID,
+		arg.ReviewNote,
+	)
+	return err
+}
+
+const saveRiskRule = `-- name: SaveRiskRule :exec
+UPDATE risk_riskrule SET name = $2, severity = $3, action = $4, enabled = $5, params = $6, updated_at = now()
+WHERE id = $1
+`
+
+type SaveRiskRuleParams struct {
+	ID       uuid.UUID
+	Name     string
+	Severity string
+	Action   string
+	Enabled  bool
+	Params   []byte
+}
+
+func (q *Queries) SaveRiskRule(ctx context.Context, arg SaveRiskRuleParams) error {
+	_, err := q.db.Exec(ctx, saveRiskRule,
+		arg.ID,
+		arg.Name,
+		arg.Severity,
+		arg.Action,
+		arg.Enabled,
+		arg.Params,
+	)
+	return err
+}
+
+const vehicleSwapsToday = `-- name: VehicleSwapsToday :one
+SELECT
+  (SELECT count(*) FROM mobility_swap s WHERE s.vehicle_id = $1 AND s.status = 'COMPLETED'
+     AND s.completed_at >= $2 AND s.completed_at < $3)::int
+  + (SELECT count(*) FROM mobility_swap s WHERE s.vehicle_id = $1
+     AND s.status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED')
+     AND ((s.started_at >= $2 AND s.started_at < $3)
+          OR (s.started_at IS NULL AND s.created_at >= $2 AND s.created_at < $3)))::int
+`
+
+type VehicleSwapsTodayParams struct {
+	VehicleID uuid.UUID
+	DayStart  *time.Time
+	DayEnd    *time.Time
+}
+
+// inspect_swap_velocity: completed in the WAT day + open swaps started (or created) that day.
+func (q *Queries) VehicleSwapsToday(ctx context.Context, arg VehicleSwapsTodayParams) (int32, error) {
+	row := q.db.QueryRow(ctx, vehicleSwapsToday, arg.VehicleID, arg.DayStart, arg.DayEnd)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }

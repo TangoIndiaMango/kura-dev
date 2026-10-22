@@ -33,6 +33,8 @@ type Querier interface {
 	ActivateBatteryType(ctx context.Context, arg ActivateBatteryTypeParams) error
 	ActivateVA(ctx context.Context, arg ActivateVAParams) error
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
+	ActiveGrantForEvent(ctx context.Context, riskEventID uuid.UUID) (RiskRiskvelocitygrant, error)
+	ActiveGrantForVehicle(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error)
 	ActiveMatrixAsOf(ctx context.Context, arg ActiveMatrixAsOfParams) (MobilityPricematrix, error)
 	ActiveMatrixExists(ctx context.Context, vehicleType string) (bool, error)
 	ActiveSubscriptionForVehicle(ctx context.Context, vehicleID uuid.UUID) (MobilitySubscription, error)
@@ -60,6 +62,7 @@ type Querier interface {
 	ClearSlotOfBattery(ctx context.Context, batteryID *uuid.UUID) error
 	CloseOpenAssignments(ctx context.Context, arg CloseOpenAssignmentsParams) error
 	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
+	ConsumableGrantForUpdate(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
 	ConsumeOpenSetupTokens(ctx context.Context, arg ConsumeOpenSetupTokensParams) error
 	// Consume this token and every other open one for the same user + purpose.
@@ -77,6 +80,7 @@ type Querier interface {
 	CountMatrices(ctx context.Context, arg CountMatricesParams) (int64, error)
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountPlans(ctx context.Context, arg CountPlansParams) (int64, error)
+	CountRiskRules(ctx context.Context) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
 	CountSubscriptions(ctx context.Context, arg CountSubscriptionsParams) (int64, error)
@@ -192,7 +196,9 @@ type Querier interface {
 	InsertVehicle(ctx context.Context, arg InsertVehicleParams) error
 	InsertVehicleCommand(ctx context.Context, arg InsertVehicleCommandParams) error
 	InsertVehicleModel(ctx context.Context, arg InsertVehicleModelParams) error
+	InsertVelocityGrant(ctx context.Context, arg InsertVelocityGrantParams) error
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
+	LastCompletedSwapAt(ctx context.Context, vehicleID uuid.UUID) (*time.Time, error)
 	// Newest ACTIVE matrix for a type (no date bound) — ensure_defaults' sync.
 	LatestActiveMatrix(ctx context.Context, vehicleType string) (MobilityPricematrix, error)
 	LatestBVNOrNIN(ctx context.Context, accountID uuid.UUID) (string, error)
@@ -222,6 +228,7 @@ type Querier interface {
 	ListPermissions(ctx context.Context, arg ListPermissionsParams) ([]ListPermissionsRow, error)
 	// PlanViewSet: active subscriber counts; default order vehicle_type, price.
 	ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPlansRow, error)
+	ListRiskRules(ctx context.Context, arg ListRiskRulesParams) ([]RiskRiskrule, error)
 	// roles_qs: user_count = users assigned to the role, or legacy role=code rows.
 	ListRoles(ctx context.Context, arg ListRolesParams) ([]ListRolesRow, error)
 	// Shared WHERE for the staff directory (StaffUserFilter). Dates arrive as
@@ -247,6 +254,7 @@ type Querier interface {
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
 	NubanTaken(ctx context.Context, arg NubanTakenParams) (bool, error)
 	OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uuid.UUID, error)
+	OpenVelocityEvent(ctx context.Context, subjectID string) (RiskRiskevent, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
@@ -278,10 +286,21 @@ type Querier interface {
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
 	// A resubmit resets review state: PENDING, no verification, no requests.
 	ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityDocParams) error
+	RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error
+	RiskEventForUpdate(ctx context.Context, id uuid.UUID) (RiskEventForUpdateRow, error)
+	RiskEventRows(ctx context.Context, ids []uuid.UUID) ([]RiskEventRowsRow, error)
+	// RiskEventViewSet list: filters, ?q= over rule code/name, account name/kura id, subject id; keyset newest first.
+	RiskEventsPage(ctx context.Context, arg RiskEventsPageParams) ([]uuid.UUID, error)
+	RiskOpenBySeverity(ctx context.Context) ([]RiskOpenBySeverityRow, error)
+	RiskPeriodByRule(ctx context.Context, arg RiskPeriodByRuleParams) ([]RiskPeriodByRuleRow, error)
+	RiskPeriodStats(ctx context.Context, arg RiskPeriodStatsParams) (RiskPeriodStatsRow, error)
+	RiskQueueStats(ctx context.Context) (RiskQueueStatsRow, error)
 	// notify_risk_reviewers: active super admins / ops managers (User: -created_at).
 	RiskReviewerIDs(ctx context.Context) ([]uuid.UUID, error)
 	// notify_risk_reviewers: active SUPER_ADMIN / OPS_MANAGER, max 25.
 	RiskReviewers(ctx context.Context) ([]uuid.UUID, error)
+	RiskRuleByCode(ctx context.Context, code string) (RiskRiskrule, error)
+	RiskRuleByID(ctx context.Context, id uuid.UUID) (RiskRiskrule, error)
 	RoleByCode(ctx context.Context, code string) (RoleByCodeRow, error)
 	RoleCodeExists(ctx context.Context, code string) (bool, error)
 	RolePermissionCodes(ctx context.Context, id uuid.UUID) ([]string, error)
@@ -292,7 +311,11 @@ type Querier interface {
 	SaveBattery(ctx context.Context, arg SaveBatteryParams) error
 	SaveCataloguePlan(ctx context.Context, arg SaveCataloguePlanParams) error
 	SaveDiscount(ctx context.Context, arg SaveDiscountParams) error
+	SaveGrantUse(ctx context.Context, arg SaveGrantUseParams) error
 	SavePlan(ctx context.Context, arg SavePlanParams) error
+	SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error
+	SaveRiskEventReview(ctx context.Context, arg SaveRiskEventReviewParams) error
+	SaveRiskRule(ctx context.Context, arg SaveRiskRuleParams) error
 	SaveSubscription(ctx context.Context, arg SaveSubscriptionParams) error
 	SaveVehicle(ctx context.Context, arg SaveVehicleParams) error
 	SaveVehicleModel(ctx context.Context, arg SaveVehicleModelParams) error
@@ -370,6 +393,8 @@ type Querier interface {
 	VehicleModelTypeCounts(ctx context.Context) ([]VehicleModelTypeCountsRow, error)
 	VehicleRows(ctx context.Context, ids []uuid.UUID) ([]VehicleRowsRow, error)
 	VehicleStatusCounts(ctx context.Context) ([]VehicleStatusCountsRow, error)
+	// inspect_swap_velocity: completed in the WAT day + open swaps started (or created) that day.
+	VehicleSwapsToday(ctx context.Context, arg VehicleSwapsTodayParams) (int32, error)
 	VehicleTypeCounts(ctx context.Context) ([]VehicleTypeCountsRow, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
 	VirtualAccountFull(ctx context.Context, accountID uuid.UUID) (FinanceVirtualaccount, error)

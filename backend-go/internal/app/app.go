@@ -21,6 +21,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/risk"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
@@ -62,6 +63,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		finance.NewModule(finance.NewHandler(pool, firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper,
 			"kura-dev-receipt-secret"), cfg.AllowDevVA()), limiter),
 		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens, limiter),
+		risk.NewModule(pool, limiter),
 	)
 }
 

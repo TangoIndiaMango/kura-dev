@@ -3,7 +3,7 @@ wallets (list, detail, mine, dev fund) and the ledger."""
 import sys
 import urllib.parse
 
-from lib import DJ, GO, both, call, check, fresh, sql, staff_tokens, summary
+from lib import DJ, GO, both, call, check, follow, fresh, sql, staff_tokens, summary
 
 ops = staff_tokens()
 admin = staff_tokens("admin@yopmail.com", "adminpass123")
@@ -20,24 +20,6 @@ owner, rider, fdriver = pin("+2348022220001"), pin("+2348033330001"), pin("+2348
 P, W, L = "/api/v1/finance/payments/", "/api/v1/finance/wallets/", "/api/v1/finance/ledger/"
 CUR = ("next", "previous")
 
-
-def follow(name, path, tok, pages=3):
-    """Walk next links on each backend independently and compare every page."""
-    d, g = call(DJ, "GET", path, token=tok[0]), call(GO, "GET", path, token=tok[1])
-    for i in range(pages):
-        check(f"{name} page {i + 1}", d, g, extra=CUR)
-        nd, ng = d[1].get("next"), g[1].get("next")
-        if not nd or not ng:
-            break
-        d = call(DJ, "GET", urllib.parse.urlparse(nd)._replace(scheme="", netloc="").geturl(), token=tok[0])
-        g = call(GO, "GET", urllib.parse.urlparse(ng)._replace(scheme="", netloc="").geturl(), token=tok[1])
-    # And back one page from where we stopped.
-    pd, pg = d[1].get("previous"), g[1].get("previous")
-    if pd and pg:
-        check(f"{name} previous", call(DJ, "GET", urllib.parse.urlparse(pd)._replace(scheme="", netloc="").geturl(),
-                                       token=tok[0]),
-              call(GO, "GET", urllib.parse.urlparse(pg)._replace(scheme="", netloc="").geturl(), token=tok[1]),
-              extra=CUR)
 
 
 for label, tok in [("ops", ops), ("admin", admin), ("agent", agent), ("owner", owner), ("rider", rider),

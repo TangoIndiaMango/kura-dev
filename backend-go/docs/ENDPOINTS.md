@@ -261,16 +261,16 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## risk (10)
 
-- [ ] `GET    /api/v1/risk/events/`
-- [ ] `POST   /api/v1/risk/events/`
-- [ ] `GET    /api/v1/risk/events/export/`
-- [ ] `GET    /api/v1/risk/events/stats/`
-- [ ] `GET    /api/v1/risk/events/{id}/`
-- [ ] `POST   /api/v1/risk/events/{id}/review/`
-- [ ] `GET    /api/v1/risk/rules/`
-- [ ] `GET    /api/v1/risk/rules/{id}/`
-- [ ] `PUT    /api/v1/risk/rules/{id}/`
-- [ ] `PATCH  /api/v1/risk/rules/{id}/`
+- [x] `GET    /api/v1/risk/events/`
+- [x] `POST   /api/v1/risk/events/`
+- [x] `GET    /api/v1/risk/events/export/`
+- [x] `GET    /api/v1/risk/events/stats/`
+- [x] `GET    /api/v1/risk/events/{id}/`
+- [x] `POST   /api/v1/risk/events/{id}/review/`
+- [x] `GET    /api/v1/risk/rules/`
+- [x] `GET    /api/v1/risk/rules/{id}/`
+- [x] `PUT    /api/v1/risk/rules/{id}/`
+- [x] `PATCH  /api/v1/risk/rules/{id}/`
 
 ## users (9)
 
