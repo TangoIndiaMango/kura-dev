@@ -41,15 +41,15 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [ ] `GET    /api/v1/mobility/engines/{id}/`
 - [ ] `POST   /api/v1/mobility/engines/{id}/release-request/`
 - [ ] `POST   /api/v1/mobility/engines/{id}/release/`
-- [ ] `GET    /api/v1/mobility/hubs/`
-- [ ] `POST   /api/v1/mobility/hubs/`
-- [ ] `GET    /api/v1/mobility/hubs/discover/`
-- [ ] `GET    /api/v1/mobility/hubs/export/`
-- [ ] `GET    /api/v1/mobility/hubs/stats/`
-- [ ] `GET    /api/v1/mobility/hubs/{id}/`
-- [ ] `PATCH  /api/v1/mobility/hubs/{id}/`
-- [ ] `GET    /api/v1/mobility/hubs/{id}/slots/`
-- [ ] `GET    /api/v1/mobility/hubs/{id}/stats/`
+- [x] `GET    /api/v1/mobility/hubs/`
+- [x] `POST   /api/v1/mobility/hubs/`
+- [x] `GET    /api/v1/mobility/hubs/discover/`
+- [x] `GET    /api/v1/mobility/hubs/export/`
+- [x] `GET    /api/v1/mobility/hubs/stats/`
+- [x] `GET    /api/v1/mobility/hubs/{id}/`
+- [x] `PATCH  /api/v1/mobility/hubs/{id}/`
+- [x] `GET    /api/v1/mobility/hubs/{id}/slots/`
+- [x] `GET    /api/v1/mobility/hubs/{id}/stats/`
 - [ ] `POST   /api/v1/mobility/hubs/{id}/status/`
 - [ ] `GET    /api/v1/mobility/plans/`
 - [ ] `POST   /api/v1/mobility/plans/`

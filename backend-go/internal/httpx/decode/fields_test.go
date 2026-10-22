@@ -73,3 +73,31 @@ func TestDRFCoercions(t *testing.T) {
 		t.Fatalf("list body: %v", got)
 	}
 }
+
+func TestDecimalField(t *testing.T) {
+	type d struct {
+		V Decimal `json:"v" decimal:"5,2"`
+	}
+	cases := map[string]string{`12.5`: "12.50", `"12.50"`: "12.50", `0`: "0.00", `"999.99"`: "999.99",
+		`"1e2"`: "100.00", `-3`: "-3.00", `".5"`: "0.50", `"-0"`: "-0.00"}
+	for in, want := range cases {
+		var x d
+		if err := JSON(httptest.NewRequest("POST", "/", strings.NewReader(`{"v":`+in+`}`)), &x); err != nil || x.V.Text != want {
+			t.Errorf("%s → %q, %v (want %q)", in, x.V.Text, err, want)
+		}
+	}
+	bad := map[string]string{`12.345`: "Ensure that there are no more than 2 decimal places.",
+		`1234.5`: "Ensure that there are no more than 3 digits before the decimal point.",
+		`123456`: "Ensure that there are no more than 5 digits in total.",
+		`"-0.001"`: "Ensure that there are no more than 2 decimal places.",
+		`1000`:   "Ensure that there are no more than 3 digits before the decimal point.",
+		`"abc"`:  "A valid number is required.", `true`: "A valid number is required."}
+	for in, want := range bad {
+		var x d
+		err := JSON(httptest.NewRequest("POST", "/", strings.NewReader(`{"v":`+in+`}`)), &x)
+		var ae *apperr.Error
+		if !errors.As(err, &ae) || !reflect.DeepEqual(ae.Details["v"], []string{want}) {
+			t.Errorf("%s → %v (want %q)", in, err, want)
+		}
+	}
+}

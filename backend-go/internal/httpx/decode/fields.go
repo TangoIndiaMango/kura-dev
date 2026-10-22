@@ -57,6 +57,14 @@ func decodeFields(obj map[string]json.RawMessage, dst any) apperr.Details {
 			f.Set(reflect.New(f.Type().Elem()))
 			f = f.Elem()
 		}
+		if f.Type() == decimalType {
+			var val any
+			_ = json.Unmarshal(raw, &val)
+			if msg := setDecimal(f, val, raw, sf.Tag.Get("decimal")); msg != "" {
+				errs[name] = []string{msg}
+			}
+			continue
+		}
 		if msg := setField(f, raw); msg != "" {
 			errs[name] = []string{msg}
 		}

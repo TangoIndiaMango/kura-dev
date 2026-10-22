@@ -210,6 +210,14 @@ translated to the envelope in exactly one place (`respond.Error`).
   (`.strip()` on int; the view reads request.data without a serializer).
   Go returns the 400 "display_name is required.".
 
+- Hub detail stats never use the demand forecast: `hub_demand_forecast(
+  user=None)` gets an empty hub scope from `hub_ids_for(None)`, so
+  `expected_swaps_today` is always the fallback `round(swaps_per_day)`
+  (null with no swaps). Go mirrors the fallback; fix both together.
+- `GET /mobility/hubs/discover/` with a non-UUID `vehicle` / `battery_type`
+  or non-numeric `lat`/`lng`/`radius_km` → 500 (unchecked float()/UUID()).
+  Go answers 400 for that parameter.
+
 ### Django quirks kept for parity (fix in both later)
 - `GET /accounts/stats/` is network-wide and open to any signed-in user
   (HasCapabilityOrReadOwn lets safe methods through, the stats aren't

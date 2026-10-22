@@ -48,12 +48,15 @@ type Querier interface {
 	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
 	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
+	CountHubs(ctx context.Context, arg CountHubsParams) (int64, error)
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
 	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
+	// discover_hubs: ready slots overall and, when a pack type is given, of that type.
+	DiscoverHubs(ctx context.Context, arg DiscoverHubsParams) ([]DiscoverHubsRow, error)
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
 	DriverRowByUser(ctx context.Context, userID uuid.UUID) (AccountsDriver, error)
@@ -87,7 +90,21 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
+	// Pack types physically at the hub now (sorted, distinct).
+	HubBatteryTypeNames(ctx context.Context, hubID uuid.UUID) ([]string, error)
+	HubCodeExists(ctx context.Context, code string) (bool, error)
+	HubForUpdate(ctx context.Context, id uuid.UUID) (HubForUpdateRow, error)
 	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
+	HubInventory(ctx context.Context, arg HubInventoryParams) (HubInventoryRow, error)
+	// Hub columns plus slot state counts (hubs_with_slot_counts annotations).
+	HubRows(ctx context.Context, ids []uuid.UUID) ([]HubRowsRow, error)
+	HubSlotNumbers(ctx context.Context, hubID uuid.UUID) ([]int32, error)
+	HubSlotRows(ctx context.Context, hubID uuid.UUID) ([]HubSlotRowsRow, error)
+	HubSlotStateCounts(ctx context.Context, hubID uuid.UUID) (HubSlotStateCountsRow, error)
+	HubStatusCounts(ctx context.Context, arg HubStatusCountsParams) ([]HubStatusCountsRow, error)
+	// Energy = charge handed over × the issued pack's rated capacity.
+	HubSwapDaily(ctx context.Context, arg HubSwapDailyParams) ([]HubSwapDailyRow, error)
+	HubSwapTotals(ctx context.Context, arg HubSwapTotalsParams) (HubSwapTotalsRow, error)
 	IdentityDocByID(ctx context.Context, id uuid.UUID) (AccountsIdentitydocument, error)
 	// Identity / KYC writes (IdentityService, identity_review, identity_withdraw)
 	// and AccountService.complete_profile.
@@ -100,6 +117,8 @@ type Querier interface {
 	InsertDriverRow(ctx context.Context, arg InsertDriverRowParams) (AccountsDriver, error)
 	InsertFleetDriver(ctx context.Context, arg InsertFleetDriverParams) error
 	InsertFleetDriverUser(ctx context.Context, arg InsertFleetDriverUserParams) error
+	InsertHub(ctx context.Context, arg InsertHubParams) error
+	InsertHubSlot(ctx context.Context, arg InsertHubSlotParams) error
 	InsertIdentityDoc(ctx context.Context, arg InsertIdentityDocParams) error
 	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
@@ -125,6 +144,9 @@ type Querier interface {
 	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
 	ListCooperatives(ctx context.Context, arg ListCooperativesParams) ([]ListCooperativesRow, error)
 	ListDrivers(ctx context.Context, arg ListDriversParams) ([]ListDriversRow, error)
+	// Hubs (HubViewSet + hub selectors). Scope: all_rows or ids (hub_ids_for).
+	// hubs_with_slot_counts orders by code; ?ordering= over code / name / created_at.
+	ListHubIDs(ctx context.Context, arg ListHubIDsParams) ([]uuid.UUID, error)
 	ListPermissions(ctx context.Context, arg ListPermissionsParams) ([]ListPermissionsRow, error)
 	// roles_qs: user_count = users assigned to the role, or legacy role=code rows.
 	ListRoles(ctx context.Context, arg ListRolesParams) ([]ListRolesRow, error)
@@ -203,12 +225,14 @@ type Querier interface {
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
 	UpdateCooperative(ctx context.Context, arg UpdateCooperativeParams) error
+	UpdateHub(ctx context.Context, arg UpdateHubParams) error
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) error
 	UpdateStaffUser(ctx context.Context, arg UpdateStaffUserParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 	UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
+	VehicleBatteryType(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
 	VirtualAccountRow(ctx context.Context, accountID uuid.UUID) (VirtualAccountRowRow, error)
 	WithdrawConsent(ctx context.Context, arg WithdrawConsentParams) error

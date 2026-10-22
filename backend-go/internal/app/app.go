@@ -16,6 +16,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/va"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mobility"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
@@ -56,5 +57,6 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
 				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity, staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
+		mobility.NewModule(mobility.NewHubHandler(pool), limiter),
 	)
 }
