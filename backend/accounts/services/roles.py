@@ -101,7 +101,7 @@ class RoleService:
             "name": role.name,
             "description": role.description,
             "is_active": role.is_active,
-            "permission_ids": list(role.permissions.values_list("id", flat=True)),
+            "permission_ids": [str(pk) for pk in role.permissions.values_list("id", flat=True)],
         }
         if name is not None:
             role.name = name.strip()
@@ -123,7 +123,7 @@ class RoleService:
                 "name": role.name,
                 "description": role.description,
                 "is_active": role.is_active,
-                "permission_ids": list(role.permissions.values_list("id", flat=True)),
+                "permission_ids": [str(pk) for pk in role.permissions.values_list("id", flat=True)],
             },
         )
         return role
