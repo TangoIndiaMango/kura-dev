@@ -3,9 +3,12 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/accounts"
@@ -57,6 +60,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	}
 
 	receiptKey := firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper, "kura-dev-receipt-secret")
+	ops := operations.NewModule(pool, mailer, tokens, receiptKey, cfg.FrontendClientURL, cfg.CashFloatLimit, limiter)
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
@@ -66,12 +70,21 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity, staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 		finance.NewModule(finance.NewHandler(pool, receiptKey, cfg.AllowDevVA()), limiter),
-		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens, limiter),
+		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens,
+			mobility.BayDeps{Secret: cfg.SecretKey, Ops: ops.Service(), CDN: cdn,
+				VerifyPin: func(ctx context.Context, user uuid.UUID, pin string) (string, time.Time, error) {
+					u, err := queries.GetUserRow(ctx, user)
+					if err != nil {
+						return "", time.Time{}, err
+					}
+					g, err := authSvc.VerifyPin(ctx, u, pin, "")
+					return g.Token, g.ExpiresAt, err
+				}}, limiter),
 		risk.NewModule(pool, limiter),
 		support.NewModule(pool, cdn, limiter),
 		platformcfg.NewModule(pool, limiter),
 		credit.NewModule(pool, tokens, limiter),
-		operations.NewModule(pool, mailer, tokens, receiptKey, cfg.FrontendClientURL, cfg.CashFloatLimit, limiter),
+		ops,
 	)
 }
 

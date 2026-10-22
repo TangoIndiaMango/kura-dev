@@ -1,6 +1,7 @@
 package mobility
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/apperr"
@@ -40,26 +42,41 @@ func (h *VehicleHandler) resolve(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, r, err)
 		return
 	}
-	bad := func(msg string) error { return apperr.New("AUTH_INVALID", msg).WithStatus(http.StatusUnauthorized) }
-	parts := strings.Split(strings.TrimSpace(b.Token), ".")
-	if len(parts) != 4 || parts[0] != "v1" {
-		respond.Error(w, r, bad("Malformed vehicle QR."))
+	v, err := resolveVehicleQR(ctx, h.pool, h.qr, b.Token)
+	if err != nil {
+		respond.Error(w, r, err)
 		return
+	}
+	rows, err := h.q.VehicleRows(ctx, []uuid.UUID{v.ID})
+	if err != nil || len(rows) == 0 {
+		respond.Error(w, r, err)
+		return
+	}
+	respond.OK(w, vehicleSerializerDTO(rows[0]))
+}
+
+// resolveVehicleQR is resolve_vehicle_qr: hull tag → vehicle (minting the
+// QR secret on first use).
+func resolveVehicleQR(ctx context.Context, pool *pgxpool.Pool, signer qr.Signer, token string) (db.MobilityVehicle, error) {
+	q := db.New(pool)
+	bad := func(msg string) error { return apperr.New("AUTH_INVALID", msg).WithStatus(http.StatusUnauthorized) }
+	parts := strings.Split(strings.TrimSpace(token), ".")
+	if len(parts) != 4 || parts[0] != "v1" {
+		return db.MobilityVehicle{}, bad("Malformed vehicle QR.")
 	}
 	vid, err := uuid.Parse(parts[1])
 	var v db.MobilityVehicle
 	if err == nil {
-		v, err = h.q.VehicleByIDPlain(ctx, vid)
+		v, err = q.VehicleByIDPlain(ctx, vid)
 	}
 	if err != nil {
-		if err == nil || database.IsNoRows(err) || strings.Contains(err.Error(), "invalid UUID") {
+		if database.IsNoRows(err) || strings.Contains(err.Error(), "invalid UUID") {
 			err = apperr.New("NOT_FOUND", "Vehicle not found.").WithStatus(http.StatusNotFound)
 		}
-		respond.Error(w, r, err)
-		return
+		return v, err
 	}
 	if v.QrSecret == "" { // ensure_vehicle_qr_secret
-		err = database.InTx(ctx, h.pool, func(tx pgx.Tx) error {
+		err = database.InTx(ctx, pool, func(tx pgx.Tx) error {
 			q := db.New(tx)
 			locked, err := q.VehicleForUpdate(ctx, v.ID)
 			if err != nil || locked.QrSecret != "" {
@@ -71,8 +88,7 @@ func (h *VehicleHandler) resolve(w http.ResponseWriter, r *http.Request) {
 			return saveVehicle(ctx, q, locked)
 		})
 		if err != nil {
-			respond.Error(w, r, err)
-			return
+			return v, err
 		}
 	}
 	exp, err := strconv.ParseInt(parts[2], 10, 64)
@@ -81,21 +97,12 @@ func (h *VehicleHandler) resolve(w http.ResponseWriter, r *http.Request) {
 		err = bad("Malformed vehicle QR.")
 	case exp < time.Now().Unix():
 		err = bad("Vehicle QR expired.")
-	case !h.qr.Verify(v.QrSecret, parts[3], "veh", parts[1], strconv.FormatInt(exp, 10)):
+	case !signer.Verify(v.QrSecret, parts[3], "veh", parts[1], strconv.FormatInt(exp, 10)):
 		err = bad("Vehicle QR signature invalid.")
 	case parts[1] != v.ID.String():
 		err = bad("Vehicle QR mismatch.")
 	}
-	if err != nil {
-		respond.Error(w, r, err)
-		return
-	}
-	rows, err := h.q.VehicleRows(ctx, []uuid.UUID{v.ID})
-	if err != nil || len(rows) == 0 {
-		respond.Error(w, r, err)
-		return
-	}
-	respond.OK(w, vehicleSerializerDTO(rows[0]))
+	return v, err
 }
 
 // models is the vehicle model catalogue (vehicles:read or swaps:read).

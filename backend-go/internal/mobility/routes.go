@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/router"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
@@ -23,19 +24,21 @@ type Module struct {
 	plans   *PlanHandler
 	subs    *SubscriptionHandler
 	discs   *DiscountHandler
+	bay     *Bay
 	limiter *throttle.Limiter
 }
 
-func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, tokens *auth.Tokens,
+func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, tokens *auth.Tokens, deps BayDeps,
 	limiter *throttle.Limiter) *Module {
-	return &Module{hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool),
+	bay := &Bay{pool: pool, q: db.New(pool), signer: signer, secret: deps.Secret, ops: deps.Ops, tokens: tokens,
+		verifyPin: deps.VerifyPin, cdn: deps.CDN}
+	return &Module{bay: bay, hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool),
 		bats: NewBatteryHandler(pool, signer), vehs: NewVehicleHandler(pool, signer),
 		vmodels: NewVehicleModelHandler(pool), pricing: NewPricingHandler(pool, mailer), plans: NewPlanHandler(pool),
 		subs: NewSubscriptionHandler(pool, tokens), discs: NewDiscountHandler(pool), limiter: limiter}
 }
 
-// Register mounts the ported routes. Not-yet-ported ones (e.g. hub status,
-// which cancels reservations) fall through to Django via the proxy.
+// Register mounts the mobility routes.
 func (m *Module) Register(mux *http.ServeMux) {
 	h := router.New(mux, "/api/v1/mobility/hubs", m.limiter) // HubViewSet capability_map
 	h.Cap("GET", "/", "hubs:read", m.hubs.list)
@@ -47,6 +50,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	h.Cap("PATCH", "/{id}/", "hubs:manage", m.hubs.patch)
 	h.Cap("GET", "/{id}/slots/", "hubs:read", m.hubs.slots)
 	h.Cap("GET", "/{id}/stats/", "hubs:read", m.hubs.detailStats)
+	h.Cap("POST", "/{id}/status/", "hubs:manage", m.hubs.hubStatus(m.bay))
 
 	bt := router.New(mux, "/api/v1/mobility/battery-types", m.limiter)
 	bt.Cap("GET", "/", "batteries:read", m.btypes.list)
@@ -138,4 +142,30 @@ func (m *Module) Register(mux *http.ServeMux) {
 	d.Cap("PATCH", "/{id}/", "tariffs:manage", dh.patch)
 	d.Cap("POST", "/{id}/activate/", "price:approve", dh.activate)
 	d.Cap("GET", "/{id}/redemptions/", "tariffs:manage", dh.redemptions)
+
+	// ReservationViewSet (HasCapabilityOrReadOwn; no PUT/PATCH/DELETE).
+	bay := m.bay
+	rv := router.New(mux, "/api/v1/mobility/reservations", m.limiter)
+	rv.User("GET", "/", bay.reservations)
+	rv.Cap("POST", "/", "swaps:read", bay.createReservationHandler)
+	rv.Cap("POST", "/lookup/", "swaps:read", bay.lookup)
+	rv.User("GET", "/{id}/", bay.getReservation)
+	rv.Cap("POST", "/{id}/cancel/", "swaps:read", bay.cancelReservationHandler)
+	rv.Cap("POST", "/{id}/extend/", "swaps:override", bay.extendHandler)
+
+	// SwapViewSet (read-only base + bay actions).
+	sw := router.New(mux, "/api/v1/mobility/swaps", m.limiter)
+	sw.User("GET", "/", bay.swaps)
+	sw.Cap("POST", "/start/", "swaps:complete", bay.start)
+	sw.Cap("POST", "/complete/", "swaps:complete", bay.completeLegacyHandler)
+	sw.Cap("POST", "/identity-mismatch/", "swaps:complete", bay.identityMismatch)
+	sw.Cap("GET", "/velocity-status/", "swaps:complete", bay.velocityStatus)
+	sw.Cap("POST", "/request-velocity-exception/", "swaps:complete", bay.requestException)
+	sw.Cap("POST", "/verify-rider-pin/", "swaps:complete", bay.verifyRiderPin)
+	sw.User("GET", "/{id}/", bay.getSwap)
+	sw.Cap("POST", "/{id}/return/", "swaps:complete", bay.recordReturnHandler)
+	sw.Cap("POST", "/{id}/issue/", "swaps:complete", bay.issue)
+	sw.Cap("POST", "/{id}/complete/", "swaps:complete", bay.completeSessionHandler)
+	sw.Cap("POST", "/{id}/abort/", "swaps:complete", bay.abort)
+	sw.Cap("POST", "/{id}/reverse/", "swaps:reverse", bay.reverse)
 }

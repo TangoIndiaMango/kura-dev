@@ -50,7 +50,7 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `PATCH  /api/v1/mobility/hubs/{id}/`
 - [x] `GET    /api/v1/mobility/hubs/{id}/slots/`
 - [x] `GET    /api/v1/mobility/hubs/{id}/stats/`
-- [ ] `POST   /api/v1/mobility/hubs/{id}/status/`
+- [x] `POST   /api/v1/mobility/hubs/{id}/status/`
 - [x] `GET    /api/v1/mobility/plans/`
 - [x] `POST   /api/v1/mobility/plans/`
 - [x] `GET    /api/v1/mobility/plans/{id}/`
@@ -65,15 +65,15 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `POST   /api/v1/mobility/pricing/matrices/{id}/activate/`
 - [x] `POST   /api/v1/mobility/pricing/matrices/{id}/reject/`
 - [x] `POST   /api/v1/mobility/pricing/matrices/{id}/schedule/`
-- [ ] `GET    /api/v1/mobility/reservations/`
-- [ ] `POST   /api/v1/mobility/reservations/`
-- [ ] `POST   /api/v1/mobility/reservations/lookup/`
-- [ ] `GET    /api/v1/mobility/reservations/{id}/`
-- [ ] `PUT    /api/v1/mobility/reservations/{id}/`
-- [ ] `PATCH  /api/v1/mobility/reservations/{id}/`
-- [ ] `DELETE /api/v1/mobility/reservations/{id}/`
-- [ ] `POST   /api/v1/mobility/reservations/{id}/cancel/`
-- [ ] `POST   /api/v1/mobility/reservations/{id}/extend/`
+- [x] `GET    /api/v1/mobility/reservations/`
+- [x] `POST   /api/v1/mobility/reservations/`
+- [x] `POST   /api/v1/mobility/reservations/lookup/`
+- [x] `GET    /api/v1/mobility/reservations/{id}/`
+- [x] `PUT    /api/v1/mobility/reservations/{id}/` — closed (405 in both; was an unauthenticated-write hole)
+- [x] `PATCH  /api/v1/mobility/reservations/{id}/` — closed (405 in both; was an unauthenticated-write hole)
+- [x] `DELETE /api/v1/mobility/reservations/{id}/` — closed (405 in both; was an unauthenticated-write hole)
+- [x] `POST   /api/v1/mobility/reservations/{id}/cancel/`
+- [x] `POST   /api/v1/mobility/reservations/{id}/extend/`
 - [ ] `GET    /api/v1/mobility/retrofits/`
 - [ ] `POST   /api/v1/mobility/retrofits/`
 - [ ] `GET    /api/v1/mobility/retrofits/{id}/`
@@ -90,20 +90,20 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `POST   /api/v1/mobility/subscriptions/{id}/renew/`
 - [x] `POST   /api/v1/mobility/subscriptions/{id}/switch-preview/`
 - [x] `POST   /api/v1/mobility/subscriptions/{id}/switch/`
-- [ ] `GET    /api/v1/mobility/swaps/`
-- [ ] `POST   /api/v1/mobility/swaps/`
-- [ ] `POST   /api/v1/mobility/swaps/complete/`
-- [ ] `POST   /api/v1/mobility/swaps/identity-mismatch/`
-- [ ] `POST   /api/v1/mobility/swaps/request-velocity-exception/`
-- [ ] `POST   /api/v1/mobility/swaps/start/`
-- [ ] `GET    /api/v1/mobility/swaps/velocity-status/`
-- [ ] `POST   /api/v1/mobility/swaps/verify-rider-pin/`
-- [ ] `GET    /api/v1/mobility/swaps/{id}/`
-- [ ] `POST   /api/v1/mobility/swaps/{id}/abort/`
-- [ ] `POST   /api/v1/mobility/swaps/{id}/complete/`
-- [ ] `POST   /api/v1/mobility/swaps/{id}/issue/`
-- [ ] `POST   /api/v1/mobility/swaps/{id}/return/`
-- [ ] `POST   /api/v1/mobility/swaps/{id}/reverse/`
+- [x] `GET    /api/v1/mobility/swaps/`
+- [x] `POST   /api/v1/mobility/swaps/` — closed (405 in both; was an unauthenticated-write hole)
+- [x] `POST   /api/v1/mobility/swaps/complete/`
+- [x] `POST   /api/v1/mobility/swaps/identity-mismatch/`
+- [x] `POST   /api/v1/mobility/swaps/request-velocity-exception/`
+- [x] `POST   /api/v1/mobility/swaps/start/`
+- [x] `GET    /api/v1/mobility/swaps/velocity-status/`
+- [x] `POST   /api/v1/mobility/swaps/verify-rider-pin/`
+- [x] `GET    /api/v1/mobility/swaps/{id}/`
+- [x] `POST   /api/v1/mobility/swaps/{id}/abort/`
+- [x] `POST   /api/v1/mobility/swaps/{id}/complete/`
+- [x] `POST   /api/v1/mobility/swaps/{id}/issue/`
+- [x] `POST   /api/v1/mobility/swaps/{id}/return/`
+- [x] `POST   /api/v1/mobility/swaps/{id}/reverse/`
 - [ ] `GET    /api/v1/mobility/telemetry/events/`
 - [ ] `POST   /api/v1/mobility/telemetry/events/ingest/`
 - [ ] `GET    /api/v1/mobility/telemetry/events/{id}/`

@@ -596,7 +596,8 @@ func (q *Queries) LockBatteryChain(ctx context.Context, key int64) error {
 const saveBattery = `-- name: SaveBattery :exec
 UPDATE mobility_battery SET serial = $2, status = $3, charge_pct = $4, health_pct = $5, cycle_count = $6,
   battery_type_id = $7, current_hub_id = $8, custodian_id = $9, custodian_type = $10, expected_return_by = $11,
-  issued_at = $12, qr_secret = $13, charge_source = $14, manufactured_at = $15, updated_at = now()
+  issued_at = $12, qr_secret = $13, charge_source = $14, manufactured_at = $15, charge_observed_at = $16,
+  updated_at = now()
 WHERE id = $1
 `
 
@@ -616,6 +617,7 @@ type SaveBatteryParams struct {
 	QrSecret         string
 	ChargeSource     string
 	ManufacturedAt   pgtype.Date
+	ChargeObservedAt *time.Time
 }
 
 // Full save (Django model.save()): every mutable column.
@@ -636,6 +638,7 @@ func (q *Queries) SaveBattery(ctx context.Context, arg SaveBatteryParams) error 
 		arg.QrSecret,
 		arg.ChargeSource,
 		arg.ManufacturedAt,
+		arg.ChargeObservedAt,
 	)
 	return err
 }

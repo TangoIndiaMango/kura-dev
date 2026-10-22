@@ -249,6 +249,20 @@ translated to the envelope in exactly one place (`respond.Error`).
   segments (criteria validation, preview, members). `ConsumeSwapCredit`,
   `ActiveSwapCredit`, `CheckBustout` exported for swap settlement.
   config.py 50 + credit.py 82 identical.
+- 2026-10-22 — The bay: reservations + swaps + hub status (24 → 267/317).
+  Holds (fleet guards, overdue-pack check, hub hours, plan / credit checks,
+  RESERVED pack + hash-chained event, sealed QR via Django signing, booking
+  discount, wallet hold, rider + agent notices), lookup triage, extend,
+  cancel / expire (hold + discount + pack release, linked session abort);
+  swap start (scope, idempotent client id, committed velocity check),
+  return / issue custody, complete (fee rules, bay discount, rider PIN,
+  wallet capture / walk-in / agent cash / swap credit / plan allowance,
+  geo-impossible flag, override, credit bust-out after commit), legacy
+  one-shot, abort, reverse (custody + money), identity mismatch, velocity
+  status / exception, rider PIN, hub status (cancels holds, pages staff).
+  `scripts/contract/bay.py`: 89 identical incl. pack states, battery
+  events, payments, wallet, audit and notifications. All 22 suites
+  identical. Battery full-save now persists `charge_observed_at`.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
@@ -295,6 +309,12 @@ translated to the envelope in exactly one place (`respond.Error`).
   Go answers 400 for that parameter.
 
 ### Django quirks kept for parity (fix in both later)
+- Swap completion response shows the reservation's pre-save status
+  (`CONFIRMED`; stale select_related object) while the row is `USED`. Go
+  returns the saved value.
+- `POST /reservations/` reads `request.data` without a serializer: any
+  `payment_mode` string is accepted (an unknown mode holds no money);
+  unknown vehicle / hub / no driver → 500 in Django, 400/404 in Go.
 - Config namespaces and versions are readable with `finance:read`, which
   rider roles hold (only the admin app calls these endpoints).
 - `POST /credit/scores/{unknown}/override/`, offer assign with an unknown

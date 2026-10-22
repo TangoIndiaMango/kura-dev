@@ -20,6 +20,7 @@ type Querier interface {
 	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	// Virtual account provisioning (integrations.services.va + WalletService).
 	AccountForVA(ctx context.Context, id uuid.UUID) (AccountForVARow, error)
+	AccountHasOverdueBattery(ctx context.Context, accountID uuid.UUID) (bool, error)
 	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
 	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
 	AccountRedemptionCount(ctx context.Context, arg AccountRedemptionCountParams) (int32, error)
@@ -43,6 +44,7 @@ type Querier interface {
 	ActiveGrantForVehicle(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error)
 	ActiveMatrixAsOf(ctx context.Context, arg ActiveMatrixAsOfParams) (MobilityPricematrix, error)
 	ActiveMatrixExists(ctx context.Context, vehicleType string) (bool, error)
+	ActiveSubscriptionCovering(ctx context.Context, vehicleID uuid.UUID) (MobilitySubscription, error)
 	ActiveSubscriptionForVehicle(ctx context.Context, vehicleID uuid.UUID) (MobilitySubscription, error)
 	ActiveUser(ctx context.Context, id uuid.UUID) (ActiveUserRow, error)
 	ActivityAlerts(ctx context.Context, limit int32) ([]ActivityAlertsRow, error)
@@ -73,11 +75,13 @@ type Querier interface {
 	AssignmentsForAccount(ctx context.Context, accountID uuid.UUID) ([]AssignmentsForAccountRow, error)
 	AuditChainTip(ctx context.Context) (string, error)
 	BatteryBySerial(ctx context.Context, upper interface{}) (BatteryBySerialRow, error)
+	BatteryBySerialForUpdate(ctx context.Context, serial string) (MobilityBattery, error)
 	BatteryChainTip(ctx context.Context, batteryID uuid.UUID) (string, error)
 	// Newest first by (occurred_at, id); after_* is the cursor position.
 	BatteryEventsPage(ctx context.Context, arg BatteryEventsPageParams) ([]BatteryEventsPageRow, error)
 	BatteryForUpdate(ctx context.Context, id uuid.UUID) (MobilityBattery, error)
 	BatteryRows(ctx context.Context, ids []uuid.UUID) ([]BatteryRowsRow, error)
+	BatterySlot(ctx context.Context, batteryID *uuid.UUID) (MobilityHubslot, error)
 	BatteryStatusCounts(ctx context.Context, arg BatteryStatusCountsParams) ([]BatteryStatusCountsRow, error)
 	BatteryTypeByID(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
 	BatteryTypeCounts(ctx context.Context, arg BatteryTypeCountsParams) ([]BatteryTypeCountsRow, error)
@@ -85,6 +89,7 @@ type Querier interface {
 	BlacklistToken(ctx context.Context, tokenID int64) error
 	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
 	BumpRedemptions(ctx context.Context, arg BumpRedemptionsParams) (int64, error)
+	BumpSubscriptionSwaps(ctx context.Context, arg BumpSubscriptionSwapsParams) error
 	CaseCodeTaken(ctx context.Context, code string) (bool, error)
 	// CaseEvent.Meta.ordering = created_at.
 	CaseEventRows(ctx context.Context, caseID uuid.UUID) ([]CaseEventRowsRow, error)
@@ -147,6 +152,7 @@ type Querier interface {
 	CreditLineForUpdate(ctx context.Context, accountID uuid.UUID) (CreditCreditline, error)
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
+	DecrementRedemptions(ctx context.Context, id uuid.UUID) error
 	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
 	DepositByIdempotency(ctx context.Context, idempotencyKey *string) (OperationsCashdeposit, error)
 	DepositRows(ctx context.Context, ids []uuid.UUID) ([]DepositRowsRow, error)
@@ -160,13 +166,18 @@ type Querier interface {
 	// discover_hubs: ready slots overall and, when a pack type is given, of that type.
 	DiscoverHubs(ctx context.Context, arg DiscoverHubsParams) ([]DiscoverHubsRow, error)
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
+	DriverDaySwaps(ctx context.Context, arg DriverDaySwapsParams) (DriverDaySwapsRow, error)
+	DriverForUpdate(ctx context.Context, id uuid.UUID) (AccountsDriver, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
+	DriverLiveHolds(ctx context.Context, driverID uuid.UUID) (DriverLiveHoldsRow, error)
+	DriverPhoto(ctx context.Context, id uuid.UUID) (DriverPhotoRow, error)
 	DriverRowByID(ctx context.Context, id uuid.UUID) (AccountsDriver, error)
 	DriverRowByUser(ctx context.Context, userID uuid.UUID) (AccountsDriver, error)
 	DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error)
 	// retry_pending_virtual_accounts: PENDING NUBANs whose retry is due.
 	DueVirtualAccounts(ctx context.Context, arg DueVirtualAccountsParams) ([]uuid.UUID, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
+	EmptySlot(ctx context.Context, hubID uuid.UUID) (MobilityHubslot, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
 	EnsureCreditLine(ctx context.Context, arg EnsureCreditLineParams) error
 	EnsureLedgerAccount(ctx context.Context, arg EnsureLedgerAccountParams) error
@@ -197,6 +208,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
+	GetUserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	HardwareTaken(ctx context.Context, arg HardwareTakenParams) (bool, error)
 	HourlyCompletedSwaps(ctx context.Context, arg HourlyCompletedSwapsParams) ([]HourlyCompletedSwapsRow, error)
 	// Pack types physically at the hub now (sorted, distinct).
@@ -267,6 +279,7 @@ type Querier interface {
 	// register_operator: a rider created by staff (no PIN yet, invite emailed).
 	InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error
 	InsertRepayment(ctx context.Context, arg InsertRepaymentParams) error
+	InsertReservation(ctx context.Context, arg InsertReservationParams) error
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
 	InsertRole(ctx context.Context, arg InsertRoleParams) error
 	InsertSegment(ctx context.Context, arg InsertSegmentParams) error
@@ -274,6 +287,7 @@ type Querier interface {
 	InsertShift(ctx context.Context, arg InsertShiftParams) error
 	InsertStaffUser(ctx context.Context, arg InsertStaffUserParams) error
 	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
+	InsertSwap(ctx context.Context, arg InsertSwapParams) error
 	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
 	InsertVehicle(ctx context.Context, arg InsertVehicleParams) error
 	InsertVehicleCommand(ctx context.Context, arg InsertVehicleCommandParams) error
@@ -297,6 +311,7 @@ type Querier interface {
 	LedgerEntriesFor(ctx context.Context, ids []uuid.UUID) ([]LedgerEntriesForRow, error)
 	LedgerPage(ctx context.Context, arg LedgerPageParams) ([]FinanceLedgertransaction, error)
 	LedgerTxByID(ctx context.Context, id uuid.UUID) (FinanceLedgertransaction, error)
+	LinkRedemptionPayment(ctx context.Context, arg LinkRedemptionPaymentParams) error
 	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
 	// ?ordering= (OrderingFilter over created_at / display_name); default newest first.
 	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
@@ -330,6 +345,8 @@ type Querier interface {
 	ListVehicleIDs(ctx context.Context, arg ListVehicleIDsParams) ([]uuid.UUID, error)
 	ListVehicleModels(ctx context.Context, arg ListVehicleModelsParams) ([]ListVehicleModelsRow, error)
 	ListWallets(ctx context.Context, arg ListWalletsParams) ([]FinanceWallet, error)
+	LiveReservationForVehicle(ctx context.Context, vehicleID uuid.UUID) (MobilityReservation, error)
+	LiveReservationsAtHub(ctx context.Context, hubID uuid.UUID) ([]uuid.UUID, error)
 	LoanBlocksCredit(ctx context.Context, accountID uuid.UUID) (bool, error)
 	LoanByApplication(ctx context.Context, applicationID uuid.UUID) (CreditLoan, error)
 	LoanForUpdate(ctx context.Context, id uuid.UUID) (CreditLoan, error)
@@ -356,6 +373,8 @@ type Querier interface {
 	OpenShiftByIDForUpdate(ctx context.Context, id uuid.UUID) (OperationsShift, error)
 	OpenShiftForUpdate(ctx context.Context, arg OpenShiftForUpdateParams) (OperationsShift, error)
 	OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uuid.UUID, error)
+	OpenSwapForReservation(ctx context.Context, reservationID *uuid.UUID) (MobilitySwap, error)
+	OpenSwapsForVehicle(ctx context.Context, vehicleID uuid.UUID) ([]uuid.UUID, error)
 	OpenVelocityEvent(ctx context.Context, subjectID string) (RiskRiskevent, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
@@ -367,6 +386,7 @@ type Querier interface {
 	PaymentByPSPRef(ctx context.Context, pspReference *string) (FinancePayment, error)
 	PaymentChannelTotals(ctx context.Context, arg PaymentChannelTotalsParams) ([]PaymentChannelTotalsRow, error)
 	PaymentStats(ctx context.Context, arg PaymentStatsParams) (PaymentStatsRow, error)
+	PaymentStatusForUpdate(ctx context.Context, id uuid.UUID) (FinancePayment, error)
 	// Finance reads (PaymentViewSet, WalletViewSet, LedgerTransactionViewSet).
 	// payments_for scope + PaymentFilter; cursor on (created_at, id) newest first.
 	PaymentsPage(ctx context.Context, arg PaymentsPageParams) ([]PaymentsPageRow, error)
@@ -379,7 +399,10 @@ type Querier interface {
 	PlanRow(ctx context.Context, id uuid.UUID) (MobilityPlan, error)
 	PlanWithCount(ctx context.Context, id uuid.UUID) (PlanWithCountRow, error)
 	PlateTaken(ctx context.Context, arg PlateTakenParams) (bool, error)
+	PrevCompletedSwap(ctx context.Context, arg PrevCompletedSwapParams) (PrevCompletedSwapRow, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
+	// First READY slot (slot_no order) holding an AVAILABLE pack of the vehicle's type.
+	ReadySlotForUpdate(ctx context.Context, arg ReadySlotForUpdateParams) (ReadySlotForUpdateRow, error)
 	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
 	// _swap_for_payment: newest swap paid by this payment, with pack details.
 	ReceiptSwap(ctx context.Context, paymentID *uuid.UUID) (ReceiptSwapRow, error)
@@ -389,7 +412,17 @@ type Querier interface {
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
 	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
+	ReleaseRedemptionForReservation(ctx context.Context, idempotencyKey *string) (uuid.UUID, error)
+	ReleaseReservedBattery(ctx context.Context, id uuid.UUID) error
 	RepaymentByKey(ctx context.Context, idempotencyKey string) (CreditLoanrepayment, error)
+	ReservationByCode(ctx context.Context, upper interface{}) (MobilityReservation, error)
+	ReservationByID(ctx context.Context, id uuid.UUID) (MobilityReservation, error)
+	ReservationCodeTaken(ctx context.Context, code string) (bool, error)
+	ReservationForUpdate(ctx context.Context, id uuid.UUID) (MobilityReservation, error)
+	ReservationHasCompletedSwap(ctx context.Context, reservationID *uuid.UUID) (bool, error)
+	ReservationRows(ctx context.Context, ids []uuid.UUID) ([]ReservationRowsRow, error)
+	// Reservations (bay holds): ReservationViewSet + ReservationService.
+	ReservationsPage(ctx context.Context, arg ReservationsPageParams) ([]uuid.UUID, error)
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
 	RestrictLoan(ctx context.Context, id uuid.UUID) error
 	// A resubmit resets review state: PENDING, no verification, no requests.
@@ -432,6 +465,7 @@ type Querier interface {
 	SaveOffer(ctx context.Context, arg SaveOfferParams) error
 	SavePlan(ctx context.Context, arg SavePlanParams) error
 	SaveRepayment(ctx context.Context, arg SaveRepaymentParams) error
+	SaveReservation(ctx context.Context, arg SaveReservationParams) error
 	SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error
 	SaveRiskEventReview(ctx context.Context, arg SaveRiskEventReviewParams) error
 	SaveRiskRule(ctx context.Context, arg SaveRiskRuleParams) error
@@ -439,6 +473,7 @@ type Querier interface {
 	SaveShiftClose(ctx context.Context, arg SaveShiftCloseParams) error
 	SaveShiftLodge(ctx context.Context, arg SaveShiftLodgeParams) error
 	SaveSubscription(ctx context.Context, arg SaveSubscriptionParams) error
+	SaveSwap(ctx context.Context, arg SaveSwapParams) error
 	SaveVehicle(ctx context.Context, arg SaveVehicleParams) error
 	SaveVehicleModel(ctx context.Context, arg SaveVehicleModelParams) error
 	SaveWalletBalances(ctx context.Context, arg SaveWalletBalancesParams) error
@@ -453,11 +488,14 @@ type Querier interface {
 	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error
 	SetAccountKycStatus(ctx context.Context, arg SetAccountKycStatusParams) error
 	SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) error
+	SetBatteryAvailable(ctx context.Context, id uuid.UUID) error
+	SetBatteryStatus(ctx context.Context, arg SetBatteryStatusParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
 	SetCreditLineStatus(ctx context.Context, arg SetCreditLineStatusParams) error
 	SetDriverLimits(ctx context.Context, arg SetDriverLimitsParams) error
 	SetDriverPhoto(ctx context.Context, arg SetDriverPhotoParams) error
 	SetDriverPhotoAccount(ctx context.Context, arg SetDriverPhotoAccountParams) error
+	SetHubStatus(ctx context.Context, arg SetHubStatusParams) error
 	SetIdentityDocPhotoRequest(ctx context.Context, arg SetIdentityDocPhotoRequestParams) error
 	SetIdentityDocPhotos(ctx context.Context, arg SetIdentityDocPhotosParams) error
 	SetIdentityDocReview(ctx context.Context, arg SetIdentityDocReviewParams) error
@@ -467,10 +505,12 @@ type Querier interface {
 	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
+	SetSlot(ctx context.Context, arg SetSlotParams) error
 	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
 	SetUserOnboardingStep(ctx context.Context, arg SetUserOnboardingStepParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
+	SetVehicleBattery(ctx context.Context, arg SetVehicleBatteryParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	ShiftByID(ctx context.Context, id uuid.UUID) (OperationsShift, error)
@@ -482,6 +522,7 @@ type Querier interface {
 	// ShiftViewSet: hub scope, ShiftFilter (a window belongs to every day it overlaps), ordering -opened_at.
 	ShiftIDs(ctx context.Context, arg ShiftIDsParams) ([]uuid.UUID, error)
 	ShiftRows(ctx context.Context, ids []uuid.UUID) ([]ShiftRowsRow, error)
+	SlotAtHubWithBattery(ctx context.Context, arg SlotAtHubWithBatteryParams) (MobilityHubslot, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
 	// statement_rows: the same joins as Django's select_related so rows tied on
 	// created_at come back in the same order; swaps are fetched separately.
@@ -491,6 +532,7 @@ type Querier interface {
 	SubscriptionRows(ctx context.Context, ids []uuid.UUID) ([]SubscriptionRowsRow, error)
 	SupersedeConfig(ctx context.Context, arg SupersedeConfigParams) error
 	SupersedeMatrices(ctx context.Context, arg SupersedeMatricesParams) error
+	SwapByClientEvent(ctx context.Context, clientEventID string) (MobilitySwap, error)
 	SwapByDriver(ctx context.Context, arg SwapByDriverParams) ([]SwapByDriverRow, error)
 	SwapByDriverTop(ctx context.Context, arg SwapByDriverTopParams) ([]SwapByDriverTopRow, error)
 	SwapByMode(ctx context.Context, arg SwapByModeParams) ([]SwapByModeRow, error)
@@ -502,17 +544,22 @@ type Querier interface {
 	// Lagos-local days (TruncDate in Django's TIME_ZONE); energy is 3.24 kWh per pack.
 	SwapDaily(ctx context.Context, arg SwapDailyParams) ([]SwapDailyRow, error)
 	SwapDayCounts(ctx context.Context, arg SwapDayCountsParams) ([]SwapDayCountsRow, error)
+	SwapForUpdate(ctx context.Context, id uuid.UUID) (MobilitySwap, error)
 	SwapHub(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	SwapImpact(ctx context.Context, accountID uuid.UUID) (SwapImpactRow, error)
 	// _swap_stats: completed / failed swaps in the last 60 days.
 	SwapOutcomes(ctx context.Context, arg SwapOutcomesParams) (SwapOutcomesRow, error)
+	SwapRows(ctx context.Context, ids []uuid.UUID) ([]SwapRowsRow, error)
 	// Account spend (accounts.selectors.spend + account_detail_stats).
 	// Every query reads COMPLETED swaps of one account with completed_at in [from, to).
 	SwapTotals(ctx context.Context, arg SwapTotalsParams) (SwapTotalsRow, error)
 	SwapsForPayments(ctx context.Context, ids []uuid.UUID) ([]SwapsForPaymentsRow, error)
+	// Swaps (bay sessions): SwapViewSet + SwapService.
+	SwapsPage(ctx context.Context, arg SwapsPageParams) ([]uuid.UUID, error)
 	SyncPlanPrice(ctx context.Context, arg SyncPlanPriceParams) error
 	// Owners of vehicles of this type (distinct), for the customer notice.
 	TariffNoticeOwners(ctx context.Context, vehicleType string) ([]TariffNoticeOwnersRow, error)
+	TouchHubSync(ctx context.Context, id uuid.UUID) error
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	TouchOverride(ctx context.Context, id uuid.UUID) error
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
@@ -527,6 +574,8 @@ type Querier interface {
 	UserExists(ctx context.Context, id uuid.UUID) (bool, error)
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 	UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
+	// users_for_hub: staff memberships on the hub or an open shift there.
+	UsersForHub(ctx context.Context, dollar_1 uuid.UUID) ([]uuid.UUID, error)
 	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
 	VehicleAssignments(ctx context.Context, vehicleID uuid.UUID) ([]VehicleAssignmentsRow, error)
 	VehicleBatteryType(ctx context.Context, id uuid.UUID) (uuid.UUID, error)

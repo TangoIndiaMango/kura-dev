@@ -94,7 +94,8 @@ VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, $8, $9
 -- Full save (Django model.save()): every mutable column.
 UPDATE mobility_battery SET serial = $2, status = $3, charge_pct = $4, health_pct = $5, cycle_count = $6,
   battery_type_id = $7, current_hub_id = $8, custodian_id = $9, custodian_type = $10, expected_return_by = $11,
-  issued_at = $12, qr_secret = $13, charge_source = $14, manufactured_at = $15, updated_at = now()
+  issued_at = $12, qr_secret = $13, charge_source = $14, manufactured_at = $15, charge_observed_at = $16,
+  updated_at = now()
 WHERE id = $1;
 
 -- name: ClearSlotOfBattery :exec

@@ -165,3 +165,8 @@ func AssertSwapVelocity(ctx context.Context, pool *pgxpool.Pool, vehicle uuid.UU
 	}
 	return apperr.New("THROTTLED", hit.Message).WithStatus(429).WithDetails(details)
 }
+
+// EnabledParams exposes _enabled_params (nil = rule missing / disabled).
+func EnabledParams(ctx context.Context, q *db.Queries, code string, defaults map[string]float64) (map[string]float64, error) {
+	return enabledParams(ctx, q, code, defaults)
+}

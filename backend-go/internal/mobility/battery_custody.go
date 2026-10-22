@@ -128,7 +128,7 @@ func saveBattery(ctx context.Context, q *db.Queries, b db.MobilityBattery) error
 		ChargePct: b.ChargePct, HealthPct: b.HealthPct, CycleCount: b.CycleCount, BatteryTypeID: b.BatteryTypeID,
 		CurrentHubID: b.CurrentHubID, CustodianID: b.CustodianID, CustodianType: b.CustodianType,
 		ExpectedReturnBy: b.ExpectedReturnBy, IssuedAt: b.IssuedAt, QrSecret: b.QrSecret,
-		ChargeSource: b.ChargeSource, ManufacturedAt: b.ManufacturedAt})
+		ChargeSource: b.ChargeSource, ManufacturedAt: b.ManufacturedAt, ChargeObservedAt: b.ChargeObservedAt})
 }
 
 // custodian is apply_custodian; clearHub drops the hub, a nil hub keeps it.
