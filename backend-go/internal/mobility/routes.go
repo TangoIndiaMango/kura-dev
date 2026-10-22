@@ -15,12 +15,15 @@ type Module struct {
 	hubs    *HubHandler
 	btypes  *BatteryTypeHandler
 	bats    *BatteryHandler
+	vehs    *VehicleHandler
+	vmodels *VehicleModelHandler
 	limiter *throttle.Limiter
 }
 
 func NewModule(pool *pgxpool.Pool, signer qr.Signer, limiter *throttle.Limiter) *Module {
 	return &Module{hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool),
-		bats: NewBatteryHandler(pool, signer), limiter: limiter}
+		bats: NewBatteryHandler(pool, signer), vehs: NewVehicleHandler(pool, signer),
+		vmodels: NewVehicleModelHandler(pool), limiter: limiter}
 }
 
 // Register mounts the ported routes. Not-yet-ported ones (e.g. hub status,
@@ -60,4 +63,32 @@ func (m *Module) Register(mux *http.ServeMux) {
 	b.Cap("POST", "/{id}/rotate-qr/", "batteries:manage", bh.rotateQR)
 	b.Cap("POST", "/{id}/status/", "batteries:manage", bh.status())
 	b.Cap("POST", "/{id}/transfer/", "batteries:manage", bh.transfer())
+
+	// VehicleViewSet: HasCapabilityOrReadOwn — GETs need sign-in only (scoped;
+	// stats / export / models check capabilities in the view). retire stays
+	// on Django until subscription cancellation is ported.
+	v, vh := router.New(mux, "/api/v1/mobility/vehicles", m.limiter), m.vehs
+	v.User("GET", "/", vh.list)
+	v.Cap("POST", "/", "vehicles:manage", vh.create)
+	v.User("GET", "/export/", vh.export)
+	v.User("GET", "/models/", vh.models)
+	v.Cap("POST", "/resolve/", "swaps:complete", vh.resolve)
+	v.User("GET", "/stats/", vh.stats)
+	v.User("GET", "/{id}/", vh.get)
+	v.Cap("PATCH", "/{id}/", "vehicles:manage", vh.patch())
+	v.Cap("POST", "/{id}/assign-driver/", "vehicles:manage", vh.assignDriver())
+	v.User("GET", "/{id}/assignments/", vh.assignments)
+	v.Cap("POST", "/{id}/command/", "vehicles:manage", vh.command)
+	v.User("GET", "/{id}/commands/", vh.commands)
+	v.User("GET", "/{id}/qr/", vh.qrCode)
+	v.Cap("POST", "/{id}/rotate-iot-key/", "telemetry:ingest", vh.rotateIoTKey)
+	v.Cap("POST", "/{id}/rotate-qr/", "swaps:override", vh.rotateQR)
+	v.Cap("POST", "/{id}/status/", "vehicles:manage", vh.status())
+
+	vm := router.New(mux, "/api/v1/mobility/vehicle-models", m.limiter)
+	vm.Cap("GET", "/", "vehicles:read", m.vmodels.list)
+	vm.Cap("POST", "/", "vehicles:manage", m.vmodels.create)
+	vm.Cap("GET", "/stats/", "vehicles:read", m.vmodels.stats)
+	vm.Cap("GET", "/{id}/", "vehicles:read", m.vmodels.get)
+	vm.Cap("PATCH", "/{id}/", "vehicles:manage", m.vmodels.patch)
 }

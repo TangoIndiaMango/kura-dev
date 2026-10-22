@@ -173,6 +173,10 @@ def purge_phones(phones):
       DELETE FROM accounts_consent WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_identitydocument WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_driver WHERE user_id IN (SELECT id FROM pu) OR account_id IN (SELECT id FROM pa);
+      DELETE FROM mobility_vehicleassignment WHERE vehicle_id IN (SELECT id FROM mobility_vehicle WHERE account_id IN (SELECT id FROM pa));
+      DELETE FROM mobility_vehiclecommand WHERE vehicle_id IN (SELECT id FROM mobility_vehicle WHERE account_id IN (SELECT id FROM pa));
+      DELETE FROM notifications_notification WHERE EXISTS (SELECT 1 FROM mobility_vehicle v WHERE v.account_id IN (SELECT id FROM pa) AND notifications_notification.link_path LIKE '%' || v.id || '%');
+      DELETE FROM mobility_vehicle WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM finance_virtualaccount WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM finance_wallet WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_account WHERE id IN (SELECT id FROM pa);

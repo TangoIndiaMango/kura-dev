@@ -2,10 +2,13 @@ package mobility
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
 )
 
 func contains(ids []uuid.UUID, id uuid.UUID) bool {
@@ -33,4 +36,10 @@ func ignoreNoRows(err error) error {
 		return nil
 	}
 	return err
+}
+
+// dateOf converts a calendar day to a DB date parameter.
+func dateOf(d spend.Date) pgtype.Date {
+	t, _ := time.Parse("2006-01-02", d.ISO())
+	return pgtype.Date{Time: t, Valid: true}
 }

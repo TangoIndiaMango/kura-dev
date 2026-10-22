@@ -1,0 +1,417 @@
+package mobility
+
+import (
+	"context"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/export"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/apperr"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/decode"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/listq"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/paginate"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/reqctx"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/respond"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/scope"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
+)
+
+// VehicleDTO is VehicleListSerializer.
+type VehicleDTO struct {
+	ID                         string          `json:"id"`
+	RegistrationPlate          string          `json:"registration_plate"`
+	Make                       string          `json:"make"`
+	ModelName                  string          `json:"model_name"`
+	VehicleType                string          `json:"vehicle_type"`
+	BatteryTypeName            string          `json:"battery_type_name"`
+	AccountID                  string          `json:"account_id"`
+	OwnerName                  string          `json:"owner_name"`
+	OwnerKuraID                string          `json:"owner_kura_id"`
+	CurrentBatterySerial       *string         `json:"current_battery_serial"`
+	CurrentBatteryCharge       *int32          `json:"current_battery_charge"`
+	CurrentBatteryChargeSource *string         `json:"current_battery_charge_source"`
+	CurrentBatteryChargeAt     *jsontime.Field `json:"current_battery_charge_at"`
+	AssignedDriverID           *string         `json:"assigned_driver_id"`
+	AssignedDriverName         *string         `json:"assigned_driver_name"`
+	EstimatedRangeKm           *int64          `json:"estimated_range_km"`
+	PayPerSwapKobo             *int64          `json:"pay_per_swap_kobo"`
+	HardwareID                 *string         `json:"hardware_id"`
+	Vin                        string          `json:"vin"`
+	Status                     string          `json:"status"`
+	CreatedAt                  jsontime.Field  `json:"created_at"`
+}
+
+// VehicleDetailDTO is VehicleDetailSerializer.
+type VehicleDetailDTO struct {
+	VehicleDTO
+	VehicleModelID   string         `json:"vehicle_model_id"`
+	CurrentBatteryID *string        `json:"current_battery_id"`
+	PetrolEngineID   *string        `json:"petrol_engine_id"`
+	AcquisitionPath  string         `json:"acquisition_path"`
+	UpdatedAt        jsontime.Field `json:"updated_at"`
+}
+
+// estimateRangeKm is range_estimate.estimate_range_km: SoC × usable Wh ×
+// SoH / Wh-per-km, truncated.
+func estimateRangeKm(v db.VehicleRowsRow) *int64 {
+	if v.CurrentBatteryID == nil || v.BatteryUsableWh == nil || v.BatteryWhPerKm == nil ||
+		*v.BatteryUsableWh == 0 || *v.BatteryWhPerKm <= 0 {
+		return nil
+	}
+	soc := float64(min(100, max(0, *v.BatteryCharge))) / 100
+	health := int32(100)
+	if v.BatteryHealth != nil && *v.BatteryHealth != 0 {
+		health = *v.BatteryHealth
+	}
+	soh := float64(min(100, max(50, health))) / 100
+	km := int64(soc * float64(*v.BatteryUsableWh) * soh / float64(*v.BatteryWhPerKm))
+	return &km
+}
+
+// driverName is the assigned driver's "First Last", else phone, else nil.
+func driverName(first, last, phone *string) *string {
+	if first == nil && phone == nil {
+		return nil
+	}
+	n := strings.TrimSpace(strings.TrimSpace(deref(first)) + " " + strings.TrimSpace(deref(last)))
+	if n == "" {
+		if phone == nil || *phone == "" {
+			return nil
+		}
+		return phone
+	}
+	return &n
+}
+
+// VehicleHandler serves /api/v1/mobility/vehicles (VehicleViewSet).
+type VehicleHandler struct {
+	pool *pgxpool.Pool
+	q    *db.Queries
+	qr   qr.Signer
+}
+
+func NewVehicleHandler(pool *pgxpool.Pool, signer qr.Signer) *VehicleHandler {
+	return &VehicleHandler{pool: pool, q: db.New(pool), qr: signer}
+}
+
+// dtos renders rows; pay-per-swap is cached per vehicle type like the
+// serializer's context cache.
+func (h *VehicleHandler) dtos(ctx context.Context, rows []db.VehicleRowsRow) ([]VehicleDetailDTO, error) {
+	pps := map[string]*int64{}
+	today := spend.LagosToday(time.Now())
+	out := make([]VehicleDetailDTO, len(rows))
+	for i, v := range rows {
+		price, seen := pps[v.VehicleType]
+		if !seen && v.VehicleType != "" {
+			n, err := h.q.ActiveMatrixPPS(ctx, db.ActiveMatrixPPSParams{VehicleType: v.VehicleType,
+				Today: dateOf(today)})
+			if err == nil {
+				price = &n
+			} else if !database.IsNoRows(err) {
+				return nil, err
+			}
+			pps[v.VehicleType] = price
+		}
+		d := VehicleDTO{ID: v.ID.String(), RegistrationPlate: v.RegistrationPlate, Make: v.Make, ModelName: v.Model,
+			VehicleType: v.VehicleType, BatteryTypeName: v.BatteryTypeName, AccountID: v.AccountID.String(),
+			OwnerName: v.OwnerName, OwnerKuraID: v.OwnerKuraID, CurrentBatterySerial: v.BatterySerial,
+			CurrentBatteryCharge: v.BatteryCharge, CurrentBatteryChargeSource: v.BatteryChargeSource,
+			CurrentBatteryChargeAt: jsontime.FieldPtr(v.BatteryChargeAt), AssignedDriverID: idPtr(v.AssignedDriverID),
+			EstimatedRangeKm: estimateRangeKm(v), PayPerSwapKobo: price, HardwareID: v.HardwareID, Vin: v.Vin,
+			Status: v.Status, CreatedAt: jsontime.Field(v.CreatedAt)}
+		if v.AssignedDriverID != nil {
+			d.AssignedDriverName = driverName(v.DriverFirst, v.DriverLast, v.DriverPhone)
+		}
+		out[i] = VehicleDetailDTO{VehicleDTO: d, VehicleModelID: v.VehicleModelID.String(),
+			CurrentBatteryID: idPtr(v.CurrentBatteryID), PetrolEngineID: idPtr(v.PetrolEngineID),
+			AcquisitionPath: v.AcquisitionPath, UpdatedAt: jsontime.Field(v.UpdatedAt)}
+	}
+	return out, nil
+}
+
+// vehicleScope is vehicles_for.
+type vehicleScope struct {
+	all              bool
+	own, hubs, touch []uuid.UUID
+}
+
+func (h *VehicleHandler) scope(ctx context.Context) (vehicleScope, error) {
+	p := reqctx.User(ctx)
+	if canReadAllMobility(p) {
+		return vehicleScope{all: true}, nil
+	}
+	hubs, err := scope.HubsFor(ctx, h.q, p)
+	if err != nil {
+		return vehicleScope{}, err
+	}
+	if !hubs.All {
+		touch, err := scope.AccountsTouching(ctx, h.q, hubs.IDs)
+		return vehicleScope{hubs: nonNil(hubs.IDs), touch: nonNil(touch), own: []uuid.UUID{}}, err
+	}
+	uid, _ := uuid.Parse(p.UserID)
+	own, err := ownAccounts(ctx, h.q, uid)
+	return vehicleScope{own: own, hubs: []uuid.UUID{}, touch: []uuid.UUID{}}, err
+}
+
+func nonNil(ids []uuid.UUID) []uuid.UUID {
+	if ids == nil {
+		return []uuid.UUID{}
+	}
+	return ids
+}
+
+// ownAccounts is _own_account_ids (order irrelevant here).
+func ownAccounts(ctx context.Context, q *db.Queries, user uuid.UUID) ([]uuid.UUID, error) {
+	out := []uuid.UUID{}
+	if d, err := q.DriverRowByUser(ctx, user); err == nil {
+		out = append(out, d.AccountID)
+	} else if !database.IsNoRows(err) {
+		return nil, err
+	}
+	owned, err := q.OwnedAccountIDs(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range owned {
+		if !contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
+func (s vehicleScope) allows(ctx context.Context, q *db.Queries, v db.VehicleRowsRow) (bool, error) {
+	if s.all || contains(s.own, v.AccountID) || contains(s.touch, v.AccountID) {
+		return true, nil
+	}
+	if len(s.hubs) == 0 {
+		return false, nil
+	}
+	n, err := q.CountVehicles(ctx, db.CountVehiclesParams{HubIds: s.hubs, OwnAccounts: []uuid.UUID{},
+		Touching: s.touch, Account: &v.AccountID})
+	return n > 0 && err == nil, err
+}
+
+func vehicleOrdering(raw string) string {
+	for _, t := range strings.Split(raw, ",") {
+		switch t = strings.TrimSpace(t); strings.TrimPrefix(t, "-") {
+		case "registration_plate", "created_at", "status":
+			return t
+		}
+	}
+	return "-created_at"
+}
+
+func (h *VehicleHandler) filters(r *http.Request) (db.ListVehicleIDsParams, error) {
+	qp := decode.Params(r)
+	account := qp.UUID("account")
+	if err := qp.Err(); err != nil {
+		return db.ListVehicleIDsParams{}, err
+	}
+	sc, err := h.scope(r.Context())
+	return db.ListVehicleIDsParams{AllRows: sc.all, OwnAccounts: nonNil(sc.own), HubIds: nonNil(sc.hubs),
+		Touching: nonNil(sc.touch), Account: account, Status: listq.Exact(r, "status"), Q: listq.Search(r),
+		Ord: vehicleOrdering(r.URL.Query().Get("ordering"))}, err
+}
+
+func (h *VehicleHandler) rows(ctx context.Context, ids []uuid.UUID) ([]db.VehicleRowsRow, error) {
+	rows, err := h.q.VehicleRows(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	by := make(map[uuid.UUID]db.VehicleRowsRow, len(rows))
+	for _, r := range rows {
+		by[r.ID] = r
+	}
+	out := make([]db.VehicleRowsRow, 0, len(ids))
+	for _, id := range ids {
+		if r, ok := by[id]; ok {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (h *VehicleHandler) list(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	f, err := h.filters(r)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	total, err := h.q.CountVehicles(ctx, db.CountVehiclesParams{AllRows: f.AllRows, OwnAccounts: f.OwnAccounts,
+		HubIds: f.HubIds, Touching: f.Touching, Account: f.Account, Status: f.Status, Q: f.Q})
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	page, size := paginate.Page(r), paginate.Size(r)
+	f.Lim, f.Off = int32(size), int32(paginate.Offset(page, size))
+	ids, err := h.q.ListVehicleIDs(ctx, f)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	rows, err := h.rows(ctx, ids)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	full, err := h.dtos(ctx, rows)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	out := make([]VehicleDTO, len(full))
+	for i, d := range full {
+		out[i] = d.VehicleDTO
+	}
+	body, err := paginate.BuildNumberPage(r, out, int(total), page, size)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	respond.OK(w, body)
+}
+
+// load reads one vehicle in scope (404 otherwise).
+func (h *VehicleHandler) load(ctx context.Context, id uuid.UUID) (db.VehicleRowsRow, error) {
+	rows, err := h.q.VehicleRows(ctx, []uuid.UUID{id})
+	if err != nil {
+		return db.VehicleRowsRow{}, err
+	}
+	nf := apperr.NotFound("No Vehicle matches the given query.")
+	if len(rows) == 0 {
+		return db.VehicleRowsRow{}, nf
+	}
+	sc, err := h.scope(ctx)
+	if err != nil {
+		return db.VehicleRowsRow{}, err
+	}
+	ok, err := sc.allows(ctx, h.q, rows[0])
+	if err != nil {
+		return db.VehicleRowsRow{}, err
+	}
+	if !ok {
+		return db.VehicleRowsRow{}, nf
+	}
+	return rows[0], nil
+}
+
+// object is get_object: scope (404) then HasCapabilityOrReadOwn's object
+// rule — staff readers or the owner of the vehicle's account (403).
+func (h *VehicleHandler) object(r *http.Request) (db.VehicleRowsRow, error) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		return db.VehicleRowsRow{}, apperr.NotFound("Not found.")
+	}
+	v, err := h.load(r.Context(), id)
+	if err != nil {
+		return v, err
+	}
+	p := reqctx.User(r.Context())
+	if p.Can("accounts:manage") || p.Can("accounts:read") || v.OwnerUserID.String() == p.UserID {
+		return v, nil
+	}
+	return v, apperr.Forbidden("")
+}
+
+func (h *VehicleHandler) detail(w http.ResponseWriter, r *http.Request, id uuid.UUID) {
+	v, err := h.load(r.Context(), id)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	out, err := h.dtos(r.Context(), []db.VehicleRowsRow{v})
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	respond.OK(w, out[0])
+}
+
+func (h *VehicleHandler) get(w http.ResponseWriter, r *http.Request) {
+	v, err := h.object(r)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	h.detail(w, r, v.ID)
+}
+
+// bareForbidden is `Response(status=403)`: no body at all.
+func bareForbidden(w http.ResponseWriter) { w.WriteHeader(http.StatusForbidden) }
+
+// stats is vehicle_stats (network-wide; vehicles:read checked in the view).
+func (h *VehicleHandler) stats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !reqctx.User(ctx).Can("vehicles:read") {
+		bareForbidden(w)
+		return
+	}
+	counts, err := h.q.VehicleStatusCounts(ctx)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	st, total := map[string]int32{}, int32(0)
+	for _, c := range counts {
+		st[c.Status], total = c.N, total+c.N
+	}
+	types, err := h.q.VehicleTypeCounts(ctx)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	type byType struct {
+		VehicleType string `json:"vehicle_type"`
+		Count       int32  `json:"count"`
+	}
+	bt := make([]byType, len(types))
+	for i, t := range types {
+		bt[i] = byType{firstOf(t.VehicleType, "—"), t.N}
+	}
+	respond.OK(w, map[string]any{"totals": map[string]int32{"all": total, "active": st["ACTIVE"],
+		"pending": st["PENDING"], "suspended": st["SUSPENDED"]}, "by_type": bt})
+}
+
+func (h *VehicleHandler) export(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !reqctx.User(ctx).Can("vehicles:read") {
+		bareForbidden(w)
+		return
+	}
+	f, err := h.filters(r)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	f.Lim = export.RowCap + 1
+	ids, err := h.q.ListVehicleIDs(ctx, f)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	rows, err := h.rows(ctx, ids)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	t := export.Table{Stem: "vehicles", Title: "Kura vehicles", Headers: []string{"id", "registration_plate", "make",
+		"model", "vehicle_type", "owner_kura_id", "status", "created_at"}}
+	for _, v := range rows {
+		t.Rows = append(t.Rows, []string{v.ID.String(), v.RegistrationPlate, v.Make, v.Model, v.VehicleType,
+			v.OwnerKuraID, v.Status, jsontime.FormatISO(v.CreatedAt)})
+	}
+	if err := export.Write(w, r.URL.Query().Get("export"), t); err != nil {
+		respond.Error(w, r, err)
+	}
+}

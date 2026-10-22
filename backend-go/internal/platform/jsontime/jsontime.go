@@ -79,3 +79,20 @@ func FormatISO(t time.Time) string {
 	}
 	return t.Format("2006-01-02T15:04:05.000000") + "+00:00"
 }
+
+// DRF is a datetime put straight into a DRF Response (rest_framework's
+// JSONEncoder): UTC isoformat with microseconds, "+00:00" → "Z".
+type DRF time.Time
+
+func DRFPtr(t *time.Time) *DRF {
+	if t == nil {
+		return nil
+	}
+	d := DRF(*t)
+	return &d
+}
+
+func (d DRF) MarshalJSON() ([]byte, error) {
+	s := FormatISO(time.Time(d))
+	return []byte(`"` + s[:len(s)-6] + `Z"`), nil
+}

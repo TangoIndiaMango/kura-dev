@@ -108,28 +108,28 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [ ] `POST   /api/v1/mobility/telemetry/events/ingest/`
 - [ ] `GET    /api/v1/mobility/telemetry/events/{id}/`
 - [ ] `GET    /api/v1/mobility/telemetry/fleet/`
-- [ ] `GET    /api/v1/mobility/vehicle-models/`
-- [ ] `POST   /api/v1/mobility/vehicle-models/`
-- [ ] `GET    /api/v1/mobility/vehicle-models/stats/`
-- [ ] `GET    /api/v1/mobility/vehicle-models/{id}/`
-- [ ] `PATCH  /api/v1/mobility/vehicle-models/{id}/`
-- [ ] `GET    /api/v1/mobility/vehicles/`
-- [ ] `POST   /api/v1/mobility/vehicles/`
-- [ ] `GET    /api/v1/mobility/vehicles/export/`
-- [ ] `GET    /api/v1/mobility/vehicles/models/`
-- [ ] `POST   /api/v1/mobility/vehicles/resolve/`
-- [ ] `GET    /api/v1/mobility/vehicles/stats/`
-- [ ] `GET    /api/v1/mobility/vehicles/{id}/`
-- [ ] `PATCH  /api/v1/mobility/vehicles/{id}/`
-- [ ] `POST   /api/v1/mobility/vehicles/{id}/assign-driver/`
-- [ ] `GET    /api/v1/mobility/vehicles/{id}/assignments/`
-- [ ] `POST   /api/v1/mobility/vehicles/{id}/command/`
-- [ ] `GET    /api/v1/mobility/vehicles/{id}/commands/`
-- [ ] `GET    /api/v1/mobility/vehicles/{id}/qr/`
+- [x] `GET    /api/v1/mobility/vehicle-models/`
+- [x] `POST   /api/v1/mobility/vehicle-models/`
+- [x] `GET    /api/v1/mobility/vehicle-models/stats/`
+- [x] `GET    /api/v1/mobility/vehicle-models/{id}/`
+- [x] `PATCH  /api/v1/mobility/vehicle-models/{id}/`
+- [x] `GET    /api/v1/mobility/vehicles/`
+- [x] `POST   /api/v1/mobility/vehicles/`
+- [x] `GET    /api/v1/mobility/vehicles/export/`
+- [x] `GET    /api/v1/mobility/vehicles/models/`
+- [x] `POST   /api/v1/mobility/vehicles/resolve/`
+- [x] `GET    /api/v1/mobility/vehicles/stats/`
+- [x] `GET    /api/v1/mobility/vehicles/{id}/`
+- [x] `PATCH  /api/v1/mobility/vehicles/{id}/`
+- [x] `POST   /api/v1/mobility/vehicles/{id}/assign-driver/`
+- [x] `GET    /api/v1/mobility/vehicles/{id}/assignments/`
+- [x] `POST   /api/v1/mobility/vehicles/{id}/command/`
+- [x] `GET    /api/v1/mobility/vehicles/{id}/commands/`
+- [x] `GET    /api/v1/mobility/vehicles/{id}/qr/`
 - [ ] `POST   /api/v1/mobility/vehicles/{id}/retire/`
-- [ ] `POST   /api/v1/mobility/vehicles/{id}/rotate-iot-key/`
-- [ ] `POST   /api/v1/mobility/vehicles/{id}/rotate-qr/`
-- [ ] `POST   /api/v1/mobility/vehicles/{id}/status/`
+- [x] `POST   /api/v1/mobility/vehicles/{id}/rotate-iot-key/`
+- [x] `POST   /api/v1/mobility/vehicles/{id}/rotate-qr/`
+- [x] `POST   /api/v1/mobility/vehicles/{id}/status/`
 
 ## operations (30)
 

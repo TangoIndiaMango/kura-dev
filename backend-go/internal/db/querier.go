@@ -26,11 +26,14 @@ type Querier interface {
 	AccountStatusCounts(ctx context.Context, arg AccountStatusCountsParams) ([]AccountStatusCountsRow, error)
 	AccountVehicleCount(ctx context.Context, accountID uuid.UUID) (int64, error)
 	AccountVehicleIDs(ctx context.Context, accountID uuid.UUID) ([]uuid.UUID, error)
+	AccountVehicleTotal(ctx context.Context, accountID uuid.UUID) (int32, error)
 	// TruncWeek in Africa/Lagos (Django TIME_ZONE), Monday-start weeks.
 	AccountWeeklyRegistrations(ctx context.Context, arg AccountWeeklyRegistrationsParams) ([]AccountWeeklyRegistrationsRow, error)
 	ActivateBatteryType(ctx context.Context, arg ActivateBatteryTypeParams) error
 	ActivateVA(ctx context.Context, arg ActivateVAParams) error
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
+	// PricingService.active_matrix(...).pay_per_swap_kobo for today (Lagos).
+	ActiveMatrixPPS(ctx context.Context, arg ActiveMatrixPPSParams) (int64, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AllBatteryTypes(ctx context.Context) ([]MobilityBatterytype, error)
 	AuditChainTip(ctx context.Context) (string, error)
@@ -50,6 +53,7 @@ type Querier interface {
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	ClearSlotOfBattery(ctx context.Context, batteryID *uuid.UUID) error
+	CloseOpenAssignments(ctx context.Context, arg CloseOpenAssignmentsParams) error
 	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
 	ConsumeOpenSetupTokens(ctx context.Context, arg ConsumeOpenSetupTokensParams) error
@@ -67,6 +71,8 @@ type Querier interface {
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
+	CountVehicleModels(ctx context.Context, arg CountVehicleModelsParams) (int64, error)
+	CountVehicles(ctx context.Context, arg CountVehiclesParams) (int64, error)
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
 	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
@@ -74,6 +80,7 @@ type Querier interface {
 	DiscoverHubs(ctx context.Context, arg DiscoverHubsParams) ([]DiscoverHubsRow, error)
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
+	DriverRowByID(ctx context.Context, id uuid.UUID) (AccountsDriver, error)
 	DriverRowByUser(ctx context.Context, userID uuid.UUID) (AccountsDriver, error)
 	DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error)
 	// retry_pending_virtual_accounts: PENDING NUBANs whose retry is due.
@@ -105,6 +112,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
+	HardwareTaken(ctx context.Context, arg HardwareTakenParams) (bool, error)
 	// Pack types physically at the hub now (sorted, distinct).
 	HubBatteryTypeNames(ctx context.Context, hubID uuid.UUID) ([]string, error)
 	HubCodeExists(ctx context.Context, code string) (bool, error)
@@ -126,6 +134,7 @@ type Querier interface {
 	// and AccountService.complete_profile.
 	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) (AccountsAccount, error)
+	InsertAssignment(ctx context.Context, arg InsertAssignmentParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertBattery(ctx context.Context, arg InsertBatteryParams) error
 	InsertBatteryEvent(ctx context.Context, arg InsertBatteryEventParams) error
@@ -152,6 +161,9 @@ type Querier interface {
 	InsertSetupToken(ctx context.Context, arg InsertSetupTokenParams) error
 	InsertStaffUser(ctx context.Context, arg InsertStaffUserParams) error
 	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
+	InsertVehicle(ctx context.Context, arg InsertVehicleParams) error
+	InsertVehicleCommand(ctx context.Context, arg InsertVehicleCommandParams) error
+	InsertVehicleModel(ctx context.Context, arg InsertVehicleModelParams) error
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
 	LatestBVNOrNIN(ctx context.Context, accountID uuid.UUID) (string, error)
 	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
@@ -176,6 +188,10 @@ type Querier interface {
 	// Shared WHERE for the staff directory (StaffUserFilter). Dates arrive as
 	// Lagos-midnight timestamps computed in Go (django-filters DateFilter).
 	ListStaffUsers(ctx context.Context, arg ListStaffUsersParams) ([]uuid.UUID, error)
+	// Vehicles + vehicle models (VehicleViewSet, VehicleModelViewSet).
+	// Scope (vehicles_for): all | hub ids (vehicle_q_for_hubs) | own accounts.
+	ListVehicleIDs(ctx context.Context, arg ListVehicleIDsParams) ([]uuid.UUID, error)
+	ListVehicleModels(ctx context.Context, arg ListVehicleModelsParams) ([]ListVehicleModelsRow, error)
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	LockBatteryChain(ctx context.Context, key int64) error
@@ -193,6 +209,7 @@ type Querier interface {
 	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
 	PlanFeesByVehicle(ctx context.Context, arg PlanFeesByVehicleParams) ([]PlanFeesByVehicleRow, error)
 	PlanFeesDaily(ctx context.Context, arg PlanFeesDailyParams) ([]PlanFeesDailyRow, error)
+	PlateTaken(ctx context.Context, arg PlateTakenParams) (bool, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
 	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
 	RecordVAAttempt(ctx context.Context, arg RecordVAAttemptParams) error
@@ -211,6 +228,8 @@ type Querier interface {
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
 	// Full save (Django model.save()): every mutable column.
 	SaveBattery(ctx context.Context, arg SaveBatteryParams) error
+	SaveVehicle(ctx context.Context, arg SaveVehicleParams) error
+	SaveVehicleModel(ctx context.Context, arg SaveVehicleModelParams) error
 	SerialTaken(ctx context.Context, arg SerialTakenParams) (bool, error)
 	SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error
 	SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error
@@ -259,7 +278,17 @@ type Querier interface {
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 	UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
+	VehicleAssignments(ctx context.Context, vehicleID uuid.UUID) ([]VehicleAssignmentsRow, error)
 	VehicleBatteryType(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	VehicleByIDPlain(ctx context.Context, id uuid.UUID) (MobilityVehicle, error)
+	VehicleCommands(ctx context.Context, vehicleID uuid.UUID) ([]VehicleCommandsRow, error)
+	VehicleForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehicle, error)
+	VehicleModelByID(ctx context.Context, id uuid.UUID) (VehicleModelByIDRow, error)
+	VehicleModelForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehiclemodel, error)
+	VehicleModelTypeCounts(ctx context.Context) ([]VehicleModelTypeCountsRow, error)
+	VehicleRows(ctx context.Context, ids []uuid.UUID) ([]VehicleRowsRow, error)
+	VehicleStatusCounts(ctx context.Context) ([]VehicleStatusCountsRow, error)
+	VehicleTypeCounts(ctx context.Context) ([]VehicleTypeCountsRow, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
 	VirtualAccountRow(ctx context.Context, accountID uuid.UUID) (VirtualAccountRowRow, error)
 	WithdrawConsent(ctx context.Context, arg WithdrawConsentParams) error

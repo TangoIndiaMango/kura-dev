@@ -22,14 +22,14 @@ import (
 
 // batteryWriteReq is BatteryWriteSerializer (every field optional).
 type batteryWriteReq struct {
-	Serial         *string    `json:"serial" validate:"omitempty,notblank,max=50"`
-	BatteryTypeID  *uuid.UUID `json:"battery_type_id"`
-	CurrentHubID   *uuid.UUID `json:"current_hub_id"`
-	Status         *string    `json:"status" validate:"omitempty,oneof=AVAILABLE RESERVED ISSUED RETURNED CHARGING UNAVAILABLE FAULTED LOST RETIRED"`
-	ChargePct      *int       `json:"charge_pct" validate:"omitempty,min=0,max=100"`
-	ChargeSource   *string    `json:"charge_source" validate:"omitempty,oneof=MANUAL BMS TELEMETRY"`
-	HealthPct      *int       `json:"health_pct" validate:"omitempty,min=0,max=100"`
-	CycleCount     *int       `json:"cycle_count" validate:"omitempty,min=0"`
+	Serial         *string      `json:"serial" validate:"omitempty,notblank,max=50"`
+	BatteryTypeID  *uuid.UUID   `json:"battery_type_id"`
+	CurrentHubID   *uuid.UUID   `json:"current_hub_id"`
+	Status         *string      `json:"status" validate:"omitempty,oneof=AVAILABLE RESERVED ISSUED RETURNED CHARGING UNAVAILABLE FAULTED LOST RETIRED"`
+	ChargePct      *int         `json:"charge_pct" validate:"omitempty,min=0,max=100"`
+	ChargeSource   *string      `json:"charge_source" validate:"omitempty,oneof=MANUAL BMS TELEMETRY"`
+	HealthPct      *int         `json:"health_pct" validate:"omitempty,min=0,max=100"`
+	CycleCount     *int         `json:"cycle_count" validate:"omitempty,min=0"`
 	ManufacturedAt *decode.Date `json:"manufactured_at"`
 }
 
