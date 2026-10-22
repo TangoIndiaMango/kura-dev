@@ -15,7 +15,6 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/paginate"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/reqctx"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/respond"
-	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/scope"
@@ -165,22 +164,7 @@ func nonNil(ids []uuid.UUID) []uuid.UUID {
 
 // ownAccounts is _own_account_ids (order irrelevant here).
 func ownAccounts(ctx context.Context, q *db.Queries, user uuid.UUID) ([]uuid.UUID, error) {
-	out := []uuid.UUID{}
-	if d, err := q.DriverRowByUser(ctx, user); err == nil {
-		out = append(out, d.AccountID)
-	} else if !database.IsNoRows(err) {
-		return nil, err
-	}
-	owned, err := q.OwnedAccountIDs(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	for _, id := range owned {
-		if !contains(out, id) {
-			out = append(out, id)
-		}
-	}
-	return out, nil
+	return scope.OwnAccounts(ctx, q, user)
 }
 
 func (s vehicleScope) allows(ctx context.Context, q *db.Queries, v db.VehicleRowsRow) (bool, error) {

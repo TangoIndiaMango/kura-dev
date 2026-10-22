@@ -173,6 +173,8 @@ def purge_phones(phones):
       DELETE FROM accounts_consent WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_identitydocument WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_driver WHERE user_id IN (SELECT id FROM pu) OR account_id IN (SELECT id FROM pa);
+      DELETE FROM support_caseevent WHERE case_id IN (SELECT id FROM support_supportcase WHERE account_id IN (SELECT id FROM pa));
+      DELETE FROM support_supportcase WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM mobility_discountredemption WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM mobility_subscription WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM finance_payment WHERE account_id IN (SELECT id FROM pa);

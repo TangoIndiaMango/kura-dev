@@ -24,6 +24,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/risk"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/support"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 )
 
@@ -64,6 +65,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 			"kura-dev-receipt-secret"), cfg.AllowDevVA()), limiter),
 		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens, limiter),
 		risk.NewModule(pool, limiter),
+		support.NewModule(pool, cdn, limiter),
 	)
 }
 

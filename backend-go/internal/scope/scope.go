@@ -4,11 +4,13 @@ package scope
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/reqctx"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
 )
 
 // Hubs is a hub scope: All=true means unrestricted; otherwise only IDs
@@ -66,4 +68,25 @@ func AccountsTouching(ctx context.Context, q *db.Queries, hubs []uuid.UUID) ([]u
 		return nil, nil
 	}
 	return q.AccountIDsTouchingHubs(ctx, hubs)
+}
+
+// OwnAccounts is the "own rows" set used by *_for selectors: the driver's
+// account first, then accounts the user owns (newest first), de-duplicated.
+func OwnAccounts(ctx context.Context, q *db.Queries, user uuid.UUID) ([]uuid.UUID, error) {
+	out := []uuid.UUID{}
+	if d, err := q.DriverRowByUser(ctx, user); err == nil {
+		out = append(out, d.AccountID)
+	} else if !database.IsNoRows(err) {
+		return nil, err
+	}
+	owned, err := q.OwnedAccountIDs(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range owned {
+		if !slices.Contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }

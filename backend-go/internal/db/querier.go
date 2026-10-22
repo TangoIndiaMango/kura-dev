@@ -38,6 +38,7 @@ type Querier interface {
 	ActiveMatrixAsOf(ctx context.Context, arg ActiveMatrixAsOfParams) (MobilityPricematrix, error)
 	ActiveMatrixExists(ctx context.Context, vehicleType string) (bool, error)
 	ActiveSubscriptionForVehicle(ctx context.Context, vehicleID uuid.UUID) (MobilitySubscription, error)
+	ActiveUser(ctx context.Context, id uuid.UUID) (ActiveUserRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AllBatteryTypes(ctx context.Context) ([]MobilityBatterytype, error)
 	// Pricing: tariff matrices, hold policy, catalogue plans (PricingService).
@@ -56,6 +57,17 @@ type Querier interface {
 	BlacklistToken(ctx context.Context, tokenID int64) error
 	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
 	BumpRedemptions(ctx context.Context, arg BumpRedemptionsParams) (int64, error)
+	CaseCodeTaken(ctx context.Context, code string) (bool, error)
+	// CaseEvent.Meta.ordering = created_at.
+	CaseEventRows(ctx context.Context, caseID uuid.UUID) ([]CaseEventRowsRow, error)
+	CaseForUpdate(ctx context.Context, id uuid.UUID) (SupportSupportcase, error)
+	CasePeriodByKind(ctx context.Context, arg CasePeriodByKindParams) ([]CasePeriodByKindRow, error)
+	CasePeriodStats(ctx context.Context, arg CasePeriodStatsParams) (CasePeriodStatsRow, error)
+	CaseQueueStats(ctx context.Context) (CaseQueueStatsRow, error)
+	CaseRows(ctx context.Context, ids []uuid.UUID) ([]CaseRowsRow, error)
+	// Support cases (SupportCaseViewSet / SupportCaseService).
+	// cases_for scope + SupportCaseFilter + ?q= (code, subject, account name / kura id); keyset newest first.
+	CasesPage(ctx context.Context, arg CasesPageParams) ([]uuid.UUID, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
@@ -161,6 +173,8 @@ type Querier interface {
 	InsertBattery(ctx context.Context, arg InsertBatteryParams) error
 	InsertBatteryEvent(ctx context.Context, arg InsertBatteryEventParams) error
 	InsertBatteryType(ctx context.Context, arg InsertBatteryTypeParams) error
+	InsertCase(ctx context.Context, arg InsertCaseParams) error
+	InsertCaseEvent(ctx context.Context, arg InsertCaseEventParams) error
 	InsertCataloguePlan(ctx context.Context, arg InsertCataloguePlanParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
@@ -247,6 +261,7 @@ type Querier interface {
 	MatrixByID(ctx context.Context, id uuid.UUID) (MobilityPricematrix, error)
 	MatrixForUpdate(ctx context.Context, id uuid.UUID) (MobilityPricematrix, error)
 	MediaAssetByID(ctx context.Context, id uuid.UUID) (MediaAssetByIDRow, error)
+	MediaAssetFull(ctx context.Context, id uuid.UUID) (CoreMediaasset, error)
 	MediaAssetOwner(ctx context.Context, id uuid.UUID) (MediaAssetOwnerRow, error)
 	MembershipHubIDs(ctx context.Context, userID uuid.UUID) ([]string, error)
 	// user.accounts.first(): Account's default ordering is -created_at.
@@ -309,6 +324,8 @@ type Querier interface {
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
 	// Full save (Django model.save()): every mutable column.
 	SaveBattery(ctx context.Context, arg SaveBatteryParams) error
+	SaveCaseAssignee(ctx context.Context, arg SaveCaseAssigneeParams) error
+	SaveCaseStatus(ctx context.Context, arg SaveCaseStatusParams) error
 	SaveCataloguePlan(ctx context.Context, arg SaveCataloguePlanParams) error
 	SaveDiscount(ctx context.Context, arg SaveDiscountParams) error
 	SaveGrantUse(ctx context.Context, arg SaveGrantUseParams) error

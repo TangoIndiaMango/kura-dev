@@ -297,14 +297,14 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## support (8)
 
-- [ ] `GET    /api/v1/support/cases/`
-- [ ] `POST   /api/v1/support/cases/`
-- [ ] `GET    /api/v1/support/cases/export/`
-- [ ] `GET    /api/v1/support/cases/stats/`
-- [ ] `GET    /api/v1/support/cases/{id}/`
-- [ ] `POST   /api/v1/support/cases/{id}/assign/`
-- [ ] `POST   /api/v1/support/cases/{id}/notes/`
-- [ ] `POST   /api/v1/support/cases/{id}/status/`
+- [x] `GET    /api/v1/support/cases/`
+- [x] `POST   /api/v1/support/cases/`
+- [x] `GET    /api/v1/support/cases/export/`
+- [x] `GET    /api/v1/support/cases/stats/`
+- [x] `GET    /api/v1/support/cases/{id}/`
+- [x] `POST   /api/v1/support/cases/{id}/assign/`
+- [x] `POST   /api/v1/support/cases/{id}/notes/`
+- [x] `POST   /api/v1/support/cases/{id}/status/`
 
 ## offers (7)
 

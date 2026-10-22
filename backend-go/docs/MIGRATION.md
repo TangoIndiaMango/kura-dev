@@ -223,6 +223,14 @@ translated to the envelope in exactly one place (`respond.Error`).
   block-or-grant with a committed risk event, bay status, exception
   request). `scripts/contract/risk.py`: 79 identical incl. cursor walks,
   grants, audit and reviewer notifications. `follow()` moved into lib.py.
+- 2026-10-22 — Support cases (8 → 176/317): scoped cursor list (cases_for:
+  cases:read / hub scope / own accounts), filters incl. unassigned + SLA,
+  detail with events + attachment URLs, open (own-account rules, driver /
+  payment / owned-asset checks, optional assign), notes (owner pages staff,
+  staff page owner), status, assign / unassign, stats, export.
+  `OpenCase` is exported for the bay identity-mismatch flow.
+  `scripts/contract/support.py`: identical incl. case events,
+  notifications and audit. `scope.OwnAccounts` shared.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
