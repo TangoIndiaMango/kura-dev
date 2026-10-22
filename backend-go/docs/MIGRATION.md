@@ -91,7 +91,10 @@ translated to the envelope in exactly one place (`respond.Error`).
 4. **Operations + risk + alerts + support + notifications + audit.**
 5. **Credit, offers, segments, analytics, reports, config, media, webhooks.**
 6. **Worker** — every sweep from `run_task_worker`.
-7. **Cutover** — run both side by side, compare responses, switch traffic.
+7. **Cutover** — strangler proxy: Go fronts all traffic and forwards
+   not-yet-ported routes to Django (`DJANGO_UPSTREAM_URL`). Every response
+   carries `X-Kura-Served-By: go|django`. Production can run this from the
+   first ported module; when the checklist is complete, unset the upstream.
 
 ## Progress log
 
@@ -137,6 +140,12 @@ translated to the envelope in exactly one place (`respond.Error`).
   Note: re-running auth.py within an hour hits real throttles (429) — expected.
   **Next:** rest of accounts (users, roles, permissions, drivers,
   cooperatives, accounts CRUD/identity) then mobility.
+- 2026-10-22 — Strangler proxy added (`internal/server/upstream.go`).
+  **Frontend tested through Go** (apps pointed at :8091): admin sign-in +
+  dashboard/hubs/payments/operators, rider phone → PIN → consent → home —
+  zero failed requests; Go served auth/me/consent/heartbeat, Django the rest.
+  Run: `CORS_ORIGINS=... scripts/dev.sh` and
+  `VITE_API_BASE_URL=http://localhost:8091/api/v1 npx vite --port 5185|5187`.
 
 ### How to run
 ```

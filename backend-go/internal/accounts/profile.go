@@ -97,7 +97,7 @@ func (s *AuthService) UpdateProfile(ctx context.Context, userID uuid.UUID, p Pro
 		return events.Emit(ctx, q, events.Event{Action: "user.profile_updated",
 			SubjectType: "user", SubjectID: u.ID.String(),
 			SubjectLabel: firstNonEmpty(str(u.PublicID), str(u.Email), str(u.Phone)),
-			Actor: actorOf(u), Before: before, After: profileSnapshot(u)})
+			Actor:        actorOf(u), Before: before, After: profileSnapshot(u)})
 	})
 }
 
@@ -164,7 +164,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 		return events.Emit(ctx, q, events.Event{Action: "user.password_changed",
 			SubjectType: "user", SubjectID: u.ID.String(),
 			SubjectLabel: firstNonEmpty(str(u.PublicID), str(u.Email), str(u.Phone)),
-			Actor: actorOf(u), Metadata: events.Map{"self_serve": true}})
+			Actor:        actorOf(u), Metadata: events.Map{"self_serve": true}})
 	})
 }
 

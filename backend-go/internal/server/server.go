@@ -23,6 +23,8 @@ type Deps struct {
 	Config config.Config
 	Log    *slog.Logger
 	Auth   *auth.Authenticator
+	// Upstream (optional) serves routes Go hasn't ported: the Django backend.
+	Upstream http.Handler
 }
 
 // New builds the root handler. Unknown paths get the JSON 404 envelope, not
@@ -35,9 +37,14 @@ func New(d Deps, modules ...Module) http.Handler {
 	root := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h, pattern := mux.Handler(r)
 		if pattern == "" {
+			if d.Upstream != nil {
+				d.Upstream.ServeHTTP(w, r)
+				return
+			}
 			respond.Error(w, r, notFoundOrMethod(mux, r))
 			return
 		}
+		w.Header().Set("X-Kura-Served-By", "go")
 		h.ServeHTTP(w, r)
 	})
 	return middleware.Chain(root,

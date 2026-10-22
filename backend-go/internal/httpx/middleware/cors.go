@@ -8,7 +8,7 @@ import (
 // Same lists as Django's CORS_ALLOW_HEADERS / CORS_EXPOSE_HEADERS.
 const (
 	allowHeaders  = "accept, authorization, content-type, user-agent, x-csrftoken, x-requested-with, idempotency-key, x-kura-device-id, x-request-id"
-	exposeHeaders = "x-kura-server-time, x-request-id, retry-after"
+	exposeHeaders = "x-kura-server-time, x-request-id, retry-after, x-kura-served-by"
 	allowMethods  = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 )
 

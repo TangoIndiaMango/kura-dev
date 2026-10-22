@@ -30,8 +30,13 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		APISecret: cfg.CloudinaryAPISecret, UploadPreset: cfg.CloudinaryUploadPreset}
 	meSvc := accounts.NewMeService(queries, cdn, cfg.ConsentPolicyVersion)
 
+	upstream, err := server.Upstream(cfg.DjangoUpstreamURL, log)
+	if err != nil {
+		panic(err) // invalid URL is a deploy config bug; fail at boot
+	}
+
 	return server.New(
-		server.Deps{Config: cfg, Log: log, Auth: authn},
+		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
 		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), limiter),
 	)

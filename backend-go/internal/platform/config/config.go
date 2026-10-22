@@ -47,6 +47,10 @@ type Config struct {
 	ConsentPolicyVersion   string `env:"CONSENT_POLICY_VERSION" envDefault:"2026-10"`
 
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"20s"`
+
+	// DjangoUpstreamURL forwards not-yet-ported routes to Django during the
+	// migration (e.g. http://localhost:8001). Empty = Go answers everything.
+	DjangoUpstreamURL string `env:"DJANGO_UPSTREAM_URL"`
 }
 
 // IsProduction is true for production and staging (both run with DEBUG off).
