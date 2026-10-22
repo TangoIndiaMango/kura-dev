@@ -87,9 +87,9 @@ func InspectSwapVelocity(ctx context.Context, q *db.Queries, vehicle uuid.UUID) 
 		return nil, nil
 	}
 	return &Throttle{Reason: "MIN_MINUTES_BETWEEN_SWAPS",
-		Message: fmt.Sprintf("Wait %d minutes between swaps for this vehicle.", minGap),
+		Message:    fmt.Sprintf("Wait %d minutes between swaps for this vehicle.", minGap),
 		RetryAfter: max(int64((need - elapsed).Seconds()), 1),
-		Context: map[string]any{"elapsed_seconds": int64(elapsed.Seconds()), "min_minutes": minGap}}, nil
+		Context:    map[string]any{"elapsed_seconds": int64(elapsed.Seconds()), "min_minutes": minGap}}, nil
 }
 
 // TryConsumeGrant is try_consume_velocity_grant (its own committed tx).

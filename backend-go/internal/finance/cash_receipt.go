@@ -33,8 +33,8 @@ func CashReceiptDoc(ctx context.Context, q *db.Queries, key []byte, d db.CashDep
 		"account_kura_id": d.AccountKuraID, "amount_kobo": d.AmountKobo, "amount_label": FormatNaira(d.AmountKobo),
 		"purpose": purpose, "purpose_label": purposeLabel, "hub_code": d.HubCode, "hub_name": d.HubName,
 		"operator_name": operator, "operator_user_id": operatorID,
-		"agent_name":   personLabel(d.AgentFirst, d.AgentLast, d.AgentEmail, d.AgentPhone, d.AgentID.String()),
-		"agent_id":     d.AgentID.String(), "shift_id": d.ShiftID.String(), "status": d.Status,
+		"agent_name": personLabel(d.AgentFirst, d.AgentLast, d.AgentEmail, d.AgentPhone, d.AgentID.String()),
+		"agent_id":   d.AgentID.String(), "shift_id": d.ShiftID.String(), "status": d.Status,
 		"psp_agent_ref": d.PspAgentRef, "issued_at": jsontime.FormatISO(d.CreatedAt),
 		"issued_at_label": d.CreatedAt.In(lagos).Format("02 Jan 2006, 15:04 WAT")}
 	if purpose == "SWAP" && d.PaymentID != nil {

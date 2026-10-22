@@ -71,8 +71,8 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 	respond.OK(w, map[string]any{
 		"queue": map[string]any{"open": queue.Open, "escalated": queue.Escalated,
 			"high_severity": queue.HighSeverity, "critical": queue.Critical},
-		"period": map[string]any{"opened": period.Opened, "reviewed": period.Reviewed, "by_rule": rules},
-		"totals": map[string]any{"all": period.Opened, "open": queue.Open, "reviewed": queue.Reviewed},
+		"period":      map[string]any{"opened": period.Opened, "reviewed": period.Reviewed, "by_rule": rules},
+		"totals":      map[string]any{"all": period.Opened, "open": queue.Open, "reviewed": queue.Reviewed},
 		"by_severity": sev,
 	})
 }
