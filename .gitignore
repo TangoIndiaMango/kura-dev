@@ -42,3 +42,4 @@ infra/.env
 # Generated report outputs (CSV/PDF jobs)
 backend/reports/csv/
 backend/reports/impact/
+backend-go/reports/
