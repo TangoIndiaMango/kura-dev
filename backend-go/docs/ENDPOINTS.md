@@ -358,10 +358,10 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## webhooks (4)
 
-- [ ] `GET    /api/v1/webhooks/events/`
-- [ ] `GET    /api/v1/webhooks/events/{id}/`
-- [ ] `POST   /api/v1/webhooks/nomba`
-- [ ] `POST   /api/v1/webhooks/paystack`
+- [x] `GET    /api/v1/webhooks/events/`
+- [x] `GET    /api/v1/webhooks/events/{id}/`
+- [x] `POST   /api/v1/webhooks/nomba`
+- [x] `POST   /api/v1/webhooks/paystack`
 
 ## audit (3)
 

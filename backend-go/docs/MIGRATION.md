@@ -309,6 +309,8 @@ translated to the envelope in exactly one place (`respond.Error`).
   Go answers 400 for that parameter.
 
 ### Django quirks kept for parity (fix in both later)
+- PSP webhook responses report `status: RECEIVED` for a new event even after
+  it was processed / ignored (the view returns the pre-processing object).
 - Swap completion response shows the reservation's pre-save status
   (`CONFIRMED`; stale select_related object) while the row is `USED`. Go
   returns the saved value.

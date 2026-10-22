@@ -283,6 +283,8 @@ type Querier interface {
 	InsertOverride(ctx context.Context, arg InsertOverrideParams) error
 	InsertPayment(ctx context.Context, arg InsertPaymentParams) (FinancePayment, error)
 	InsertPlan(ctx context.Context, arg InsertPlanParams) error
+	// PSP webhook events (integrations.PspWebhookEvent).
+	InsertPspEvent(ctx context.Context, arg InsertPspEventParams) error
 	InsertRedemption(ctx context.Context, arg InsertRedemptionParams) error
 	// register_operator: a rider created by staff (no PIN yet, invite emailed).
 	InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error
@@ -410,6 +412,9 @@ type Querier interface {
 	PlanWithCount(ctx context.Context, id uuid.UUID) (PlanWithCountRow, error)
 	PlateTaken(ctx context.Context, arg PlateTakenParams) (bool, error)
 	PrevCompletedSwap(ctx context.Context, arg PrevCompletedSwapParams) (PrevCompletedSwapRow, error)
+	PspEventByID(ctx context.Context, id uuid.UUID) (IntegrationsPspwebhookevent, error)
+	PspEventByKey(ctx context.Context, arg PspEventByKeyParams) (IntegrationsPspwebhookevent, error)
+	PspEventsPage(ctx context.Context, arg PspEventsPageParams) ([]IntegrationsPspwebhookevent, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
 	// First READY slot (slot_no order) holding an AVAILABLE pack of the vehicle's type.
 	ReadySlotForUpdate(ctx context.Context, arg ReadySlotForUpdateParams) (ReadySlotForUpdateRow, error)
@@ -515,6 +520,7 @@ type Querier interface {
 	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
+	SetPspEventStatus(ctx context.Context, arg SetPspEventStatusParams) error
 	SetSlot(ctx context.Context, arg SetSlotParams) error
 	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
 	SetUserOnboardingStep(ctx context.Context, arg SetUserOnboardingStepParams) error
@@ -586,6 +592,8 @@ type Querier interface {
 	UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	// users_for_hub: staff memberships on the hub or an open shift there.
 	UsersForHub(ctx context.Context, dollar_1 uuid.UUID) ([]uuid.UUID, error)
+	VAAccountByNuban(ctx context.Context, nuban *string) (uuid.UUID, error)
+	VAAccountByReference(ctx context.Context, pspReference string) (uuid.UUID, error)
 	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
 	VehicleAssignments(ctx context.Context, vehicleID uuid.UUID) ([]VehicleAssignmentsRow, error)
 	VehicleBatteryType(ctx context.Context, id uuid.UUID) (uuid.UUID, error)

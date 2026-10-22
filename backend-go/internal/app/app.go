@@ -34,6 +34,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/support"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/webhooks"
 )
 
 // Build wires config, logger and pool into the HTTP handler.
@@ -51,9 +52,10 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		User: cfg.EmailUser, Password: cfg.EmailPassword, UseSSL: cfg.MailSSL(), UseTLS: cfg.MailTLS(),
 		From: cfg.DefaultFromEmail, ReplyTo: cfg.DefaultReplyTo, SupportEmail: cfg.SupportEmail}, log)
 	staffSvc := accounts.NewStaffService(pool, cfg, mailer, authSvc)
-	vaSvc := va.New(pool, psp.Settings{DefaultPSP: cfg.DefaultPSP, PaystackSecret: cfg.PaystackSecret,
+	pspSettings := psp.Settings{DefaultPSP: cfg.DefaultPSP, PaystackSecret: cfg.PaystackSecret,
 		PaystackBank: cfg.PaystackBank, CustomerEmailDomain: cfg.PSPCustomerEmailDom, NombaSecret: cfg.NombaSecret,
-		NombaAccountID: cfg.NombaAccountID}, cfg.AllowDevVA(), cfg.SecretKey, log)
+		NombaAccountID: cfg.NombaAccountID}
+	vaSvc := va.New(pool, pspSettings, cfg.AllowDevVA(), cfg.SecretKey, log)
 	identity := accounts.NewIdentityService(pool, cdn, vaSvc, cfg.ConsentPolicyVersion, cfg.SecretKey)
 
 	upstream, err := server.Upstream(cfg.DjangoUpstreamURL, log)
@@ -88,6 +90,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		credit.NewModule(pool, tokens, limiter),
 		ops,
 		inbox.NewModule(pool, limiter),
+		webhooks.NewModule(pool, pspSettings, cfg.NombaWebhook, log, limiter),
 		auditlog.NewModule(pool, limiter),
 	)
 }
