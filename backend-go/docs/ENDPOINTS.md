@@ -328,11 +328,11 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## config (5)
 
-- [ ] `GET    /api/v1/config/versions/`
-- [ ] `GET    /api/v1/config/versions/{id}/`
-- [ ] `POST   /api/v1/config/versions/{id}/approve/`
-- [ ] `GET    /api/v1/config/{namespace}/`
-- [ ] `POST   /api/v1/config/{namespace}/`
+- [x] `GET    /api/v1/config/versions/`
+- [x] `GET    /api/v1/config/versions/{id}/`
+- [x] `POST   /api/v1/config/versions/{id}/approve/`
+- [x] `GET    /api/v1/config/{namespace}/`
+- [x] `POST   /api/v1/config/{namespace}/`
 
 ## notifications (5)
 

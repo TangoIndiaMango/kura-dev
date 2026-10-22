@@ -20,6 +20,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mobility"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/operations"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platformcfg"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/risk"
@@ -67,6 +68,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens, limiter),
 		risk.NewModule(pool, limiter),
 		support.NewModule(pool, cdn, limiter),
+		platformcfg.NewModule(pool, limiter),
 		operations.NewModule(pool, mailer, tokens, receiptKey, cfg.FrontendClientURL, cfg.CashFloatLimit, limiter),
 	)
 }

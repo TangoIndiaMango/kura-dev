@@ -31,7 +31,10 @@ type Querier interface {
 	// TruncWeek in Africa/Lagos (Django TIME_ZONE), Monday-start weeks.
 	AccountWeeklyRegistrations(ctx context.Context, arg AccountWeeklyRegistrationsParams) ([]AccountWeeklyRegistrationsRow, error)
 	ActivateBatteryType(ctx context.Context, arg ActivateBatteryTypeParams) error
+	ActivateConfig(ctx context.Context, arg ActivateConfigParams) error
 	ActivateVA(ctx context.Context, arg ActivateVAParams) error
+	// Platform config (ConfigService, ConfigVersionViewSet).
+	ActiveConfig(ctx context.Context, arg ActiveConfigParams) (CoreConfigversion, error)
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	ActiveGrantForEvent(ctx context.Context, riskEventID uuid.UUID) (RiskRiskvelocitygrant, error)
 	ActiveGrantForVehicle(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error)
@@ -91,6 +94,9 @@ type Querier interface {
 	CloseOpenAssignments(ctx context.Context, arg CloseOpenAssignmentsParams) error
 	CommandCentreHubs(ctx context.Context) ([]CommandCentreHubsRow, error)
 	CommandCentreKPIs(ctx context.Context, arg CommandCentreKPIsParams) (CommandCentreKPIsRow, error)
+	ConfigForUpdate(ctx context.Context, id uuid.UUID) (CoreConfigversion, error)
+	ConfigVersionRows(ctx context.Context, ids []uuid.UUID) ([]ConfigVersionRowsRow, error)
+	ConfigVersionsPage(ctx context.Context, arg ConfigVersionsPageParams) ([]uuid.UUID, error)
 	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
 	ConsumableGrantForUpdate(ctx context.Context, vehicleID uuid.UUID) (RiskRiskvelocitygrant, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
@@ -104,6 +110,7 @@ type Querier interface {
 	CountAlertRules(ctx context.Context) (int64, error)
 	CountBatteries(ctx context.Context, arg CountBatteriesParams) (int64, error)
 	CountBatteryTypes(ctx context.Context, arg CountBatteryTypesParams) (int64, error)
+	CountConfigVersions(ctx context.Context, arg CountConfigVersionsParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
 	CountDiscounts(ctx context.Context, arg CountDiscountsParams) (int64, error)
 	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
@@ -207,6 +214,7 @@ type Querier interface {
 	InsertCase(ctx context.Context, arg InsertCaseParams) error
 	InsertCaseEvent(ctx context.Context, arg InsertCaseEventParams) error
 	InsertCataloguePlan(ctx context.Context, arg InsertCataloguePlanParams) error
+	InsertConfig(ctx context.Context, arg InsertConfigParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
 	InsertDeposit(ctx context.Context, arg InsertDepositParams) error
@@ -328,6 +336,7 @@ type Querier interface {
 	// Finance reads (PaymentViewSet, WalletViewSet, LedgerTransactionViewSet).
 	// payments_for scope + PaymentFilter; cursor on (created_at, id) newest first.
 	PaymentsPage(ctx context.Context, arg PaymentsPageParams) ([]PaymentsPageRow, error)
+	PendingConfig(ctx context.Context, arg PendingConfigParams) (CoreConfigversion, error)
 	PhoneTaken(ctx context.Context, phone *string) (bool, error)
 	PlanByCode(ctx context.Context, code string) (MobilityPlan, error)
 	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
@@ -344,6 +353,7 @@ type Querier interface {
 	RedemptionByKey(ctx context.Context, idempotencyKey *string) (RedemptionByKeyRow, error)
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
+	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
 	// A resubmit resets review state: PENDING, no verification, no requests.
 	ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityDocParams) error
@@ -428,6 +438,7 @@ type Querier interface {
 	SubscriptionByKey(ctx context.Context, idempotencyKey *string) (MobilitySubscription, error)
 	SubscriptionForUpdate(ctx context.Context, id uuid.UUID) (MobilitySubscription, error)
 	SubscriptionRows(ctx context.Context, ids []uuid.UUID) ([]SubscriptionRowsRow, error)
+	SupersedeConfig(ctx context.Context, arg SupersedeConfigParams) error
 	SupersedeMatrices(ctx context.Context, arg SupersedeMatricesParams) error
 	SwapByDriver(ctx context.Context, arg SwapByDriverParams) ([]SwapByDriverRow, error)
 	SwapByDriverTop(ctx context.Context, arg SwapByDriverTopParams) ([]SwapByDriverTopRow, error)
