@@ -64,7 +64,7 @@ step("story create: empty", "POST", S, {})
 step("story create: blank title", "POST", S, {"title": " "})
 step("story create: bad", "POST", S, {"title": "x" * 161, "status": "LIVE", "raw": [], "region": None})
 step("story create: no title, other fields ok", "POST", S, {"region": "Lagos"})
-step("story create as ops", "POST", S, {"title": "x"}, tok={"django": ops[0], "go": ops[1]})
+step("story create as ops", "POST", S, {"title": "CT ops story"}, tok={"django": ops[0], "go": ops[1]})
 step("story create", "POST", S, {"title": "  CT impact story  ", "region": " Lagos ", "partners": "LASG",
                                  "summary": " Body ", "metric_highlight": "50 swaps", "raw": {"a": 1}}, keep=True)
 step("story patch", "PATCH", lambda k: f"{S}{ids[k]}/", {"title": "CT renamed", "status": "ARCHIVED", "raw": {"b": 2}})
@@ -77,4 +77,5 @@ rows = {k: norm(sql(f"SELECT action, before, after FROM audit_auditevent WHERE s
 check("db: audit", (200, rows["django"]), (200, rows["go"]))
 for k in BASE:
     sql(f"DELETE FROM analytics_impactstory WHERE id = '{ids[k]}'")
+sql("DELETE FROM analytics_impactstory WHERE title IN ('CT ops story', 'x')")
 sys.exit(1 if summary() else 0)
