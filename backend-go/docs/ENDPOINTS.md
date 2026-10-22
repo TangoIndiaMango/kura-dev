@@ -21,10 +21,10 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [ ] `POST   /api/v1/mobility/batteries/{id}/rotate-qr/`
 - [ ] `POST   /api/v1/mobility/batteries/{id}/status/`
 - [ ] `POST   /api/v1/mobility/batteries/{id}/transfer/`
-- [ ] `GET    /api/v1/mobility/battery-types/`
-- [ ] `POST   /api/v1/mobility/battery-types/`
-- [ ] `GET    /api/v1/mobility/battery-types/{id}/`
-- [ ] `POST   /api/v1/mobility/battery-types/{id}/activate/`
+- [x] `GET    /api/v1/mobility/battery-types/`
+- [x] `POST   /api/v1/mobility/battery-types/`
+- [x] `GET    /api/v1/mobility/battery-types/{id}/`
+- [x] `POST   /api/v1/mobility/battery-types/{id}/activate/`
 - [ ] `GET    /api/v1/mobility/discounts/`
 - [ ] `POST   /api/v1/mobility/discounts/`
 - [ ] `POST   /api/v1/mobility/discounts/redeem/`

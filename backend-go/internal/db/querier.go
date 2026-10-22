@@ -28,10 +28,13 @@ type Querier interface {
 	AccountVehicleIDs(ctx context.Context, accountID uuid.UUID) ([]uuid.UUID, error)
 	// TruncWeek in Africa/Lagos (Django TIME_ZONE), Monday-start weeks.
 	AccountWeeklyRegistrations(ctx context.Context, arg AccountWeeklyRegistrationsParams) ([]AccountWeeklyRegistrationsRow, error)
+	ActivateBatteryType(ctx context.Context, arg ActivateBatteryTypeParams) error
 	ActivateVA(ctx context.Context, arg ActivateVAParams) error
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AuditChainTip(ctx context.Context) (string, error)
+	BatteryTypeByID(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
+	BatteryTypeForUpdate(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
 	BlacklistToken(ctx context.Context, tokenID int64) error
 	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
@@ -46,6 +49,7 @@ type Querier interface {
 	CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
 	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
+	CountBatteryTypes(ctx context.Context, arg CountBatteryTypesParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
 	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
 	CountHubs(ctx context.Context, arg CountHubsParams) (int64, error)
@@ -111,6 +115,7 @@ type Querier interface {
 	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) (AccountsAccount, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertBatteryType(ctx context.Context, arg InsertBatteryTypeParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
 	InsertDriver(ctx context.Context, arg InsertDriverParams) error
@@ -142,6 +147,8 @@ type Querier interface {
 	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
 	// ?ordering= (OrderingFilter over created_at / display_name); default newest first.
 	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
+	// Battery types (BatteryTypeViewSet).
+	ListBatteryTypes(ctx context.Context, arg ListBatteryTypesParams) ([]MobilityBatterytype, error)
 	ListCooperatives(ctx context.Context, arg ListCooperativesParams) ([]ListCooperativesRow, error)
 	ListDrivers(ctx context.Context, arg ListDriversParams) ([]ListDriversRow, error)
 	// Hubs (HubViewSet + hub selectors). Scope: all_rows or ids (hub_ids_for).

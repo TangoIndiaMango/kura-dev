@@ -3,6 +3,8 @@ package mobility
 import (
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/router"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 )
@@ -10,11 +12,12 @@ import (
 // Module mounts /api/v1/mobility/*.
 type Module struct {
 	hubs    *HubHandler
+	btypes  *BatteryTypeHandler
 	limiter *throttle.Limiter
 }
 
-func NewModule(hubs *HubHandler, limiter *throttle.Limiter) *Module {
-	return &Module{hubs: hubs, limiter: limiter}
+func NewModule(pool *pgxpool.Pool, limiter *throttle.Limiter) *Module {
+	return &Module{hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool), limiter: limiter}
 }
 
 // Register mounts the ported routes. Not-yet-ported ones (e.g. hub status,
@@ -30,4 +33,10 @@ func (m *Module) Register(mux *http.ServeMux) {
 	h.Cap("PATCH", "/{id}/", "hubs:manage", m.hubs.patch)
 	h.Cap("GET", "/{id}/slots/", "hubs:read", m.hubs.slots)
 	h.Cap("GET", "/{id}/stats/", "hubs:read", m.hubs.detailStats)
+
+	bt := router.New(mux, "/api/v1/mobility/battery-types", m.limiter)
+	bt.Cap("GET", "/", "batteries:read", m.btypes.list)
+	bt.Cap("POST", "/", "batteries:manage", m.btypes.create)
+	bt.Cap("GET", "/{id}/", "batteries:read", m.btypes.get)
+	bt.Cap("POST", "/{id}/activate/", "battery-types:approve", m.btypes.activate)
 }
