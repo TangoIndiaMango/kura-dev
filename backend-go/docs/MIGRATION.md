@@ -194,6 +194,14 @@ translated to the envelope in exactly one place (`respond.Error`).
   VA provisioning stays synchronous after commit like Django: a background
   goroutine killed by a deploy would leave the NUBAN unscheduled forever.
 
+- 2026-10-22 — Accounts module complete (66/317 ticked). Frontend checked
+  against Go (VITE_API_BASE_URL=http://localhost:8091/api/v1, see the kura
+  root .claude/launch.json): admin login → dashboard → operators list +
+  stats → operator detail (KYC, detail stats charts, money); rider OTP
+  signup → home → add name (POST /accounts/) → account (impact) → identity
+  form. Zero failed requests; /auth/me and impact identical on both
+  backends for the browser-made rider. Next: mobility (125).
+
 ### Django bugs found while porting (fixed on main too)
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().

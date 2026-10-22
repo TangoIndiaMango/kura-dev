@@ -168,6 +168,8 @@ def purge_phones(phones):
         (SELECT id FROM token_blacklist_outstandingtoken WHERE user_id IN (SELECT id FROM pu));
       DELETE FROM token_blacklist_outstandingtoken WHERE user_id IN (SELECT id FROM pu);
       DELETE FROM accounts_trusteddevice WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM risk_riskevent WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM risk_riskvelocitygrant WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_consent WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_identitydocument WHERE account_id IN (SELECT id FROM pa);
       DELETE FROM accounts_driver WHERE user_id IN (SELECT id FROM pu) OR account_id IN (SELECT id FROM pa);
