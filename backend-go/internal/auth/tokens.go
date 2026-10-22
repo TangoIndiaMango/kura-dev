@@ -77,6 +77,17 @@ func (t *Tokens) IssuePinGrant(userID, parentJTI string) (string, time.Time, err
 	return tok, now.Add(PinGrantTTL), err
 }
 
+// ErrExpired distinguishes "Token is expired" from "Token is invalid".
+var ErrExpired = errors.New("auth: token expired")
+
+// TokenErrorDetail is simplejwt's TokenError message for err.
+func TokenErrorDetail(err error) string {
+	if errors.Is(err, ErrExpired) {
+		return "Token is expired"
+	}
+	return "Token is invalid"
+}
+
 // Parse verifies signature + expiry and the expected token type.
 func (t *Tokens) Parse(raw, wantType string) (*Claims, error) {
 	claims := &Claims{}
@@ -84,6 +95,9 @@ func (t *Tokens) Parse(raw, wantType string) (*Claims, error) {
 		func(tok *jwt.Token) (any, error) { return t.key, nil },
 		jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired(),
 		jwt.WithTimeFunc(t.now))
+	if errors.Is(err, jwt.ErrTokenExpired) {
+		return nil, ErrExpired
+	}
 	if err != nil {
 		return nil, fmt.Errorf("auth: invalid token: %w", err)
 	}

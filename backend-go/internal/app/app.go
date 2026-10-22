@@ -14,6 +14,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 )
 
 // Build wires config, logger and pool into the HTTP handler.
@@ -21,9 +22,13 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	queries := db.New(pool)
 	tokens := auth.NewTokens(cfg.SigningKey(), cfg.AccessTTL, cfg.RefreshTTL)
 	authn := auth.NewAuthenticator(tokens, accounts.NewPrincipalLoader(queries))
+	limiter := throttle.New(throttle.NewMemory())
+
+	authSvc := accounts.NewAuthService(pool, tokens, cfg)
 
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn},
 		health.New(pool),
+		accounts.NewModule(accounts.NewAuthHandler(authSvc), limiter),
 	)
 }

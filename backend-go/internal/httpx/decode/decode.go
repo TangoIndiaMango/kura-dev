@@ -5,6 +5,7 @@ package decode
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -77,8 +78,9 @@ func Struct(dst any) error {
 	return apperr.Validation(details)
 }
 
-// message turns a validator tag into the DRF-style sentence.
+// message turns a validator tag into DRF's exact sentence.
 func message(fe validator.FieldError) string {
+	isString := fe.Kind() == reflect.String
 	switch fe.Tag() {
 	case "required":
 		return "This field is required."
@@ -87,13 +89,19 @@ func message(fe validator.FieldError) string {
 	case "uuid", "uuid4", "uuid7":
 		return "Must be a valid UUID."
 	case "min":
-		return "Ensure this value is at least " + fe.Param() + "."
+		if isString {
+			return "Ensure this field has at least " + fe.Param() + " characters."
+		}
+		return "Ensure this value is greater than or equal to " + fe.Param() + "."
 	case "max":
-		return "Ensure this value is at most " + fe.Param() + "."
+		if isString {
+			return "Ensure this field has no more than " + fe.Param() + " characters."
+		}
+		return "Ensure this value is less than or equal to " + fe.Param() + "."
 	case "len":
 		return "Ensure this field has exactly " + fe.Param() + " characters."
 	case "oneof":
-		return "Must be one of: " + strings.ReplaceAll(fe.Param(), " ", ", ") + "."
+		return fmt.Sprintf("\"%v\" is not a valid choice.", fe.Value())
 	case "numeric":
 		return "Must contain digits only."
 	default:

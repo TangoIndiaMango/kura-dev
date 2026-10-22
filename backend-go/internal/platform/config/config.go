@@ -33,6 +33,7 @@ type Config struct {
 	CORSOrigins  []string `env:"CORS_ORIGINS" envSeparator:","`
 
 	OTPDevCode     string `env:"OTP_DEV_CODE" envDefault:"123456"`
+	OTPPepper      string `env:"OTP_PEPPER"`
 	CronSecret     string `env:"CRON_SECRET"`
 	DefaultPSP     string `env:"DEFAULT_PSP" envDefault:"PAYSTACK"`
 	PaystackSecret string `env:"PAYSTACK_SECRET_KEY"`
@@ -51,6 +52,14 @@ func (c Config) IsProduction() bool {
 func (c Config) SigningKey() []byte {
 	if c.JWTSigningKey != "" {
 		return []byte(c.JWTSigningKey)
+	}
+	return []byte(c.SecretKey)
+}
+
+// Pepper keys the OTP HMAC: OTP_PEPPER, else the Django secret key.
+func (c Config) Pepper() []byte {
+	if c.OTPPepper != "" {
+		return []byte(c.OTPPepper)
 	}
 	return []byte(c.SecretKey)
 }

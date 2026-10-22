@@ -114,6 +114,19 @@ translated to the envelope in exactly one place (`respond.Error`).
   (per-package test DB from schema.sql, truncate between tests, user
   fixtures). **Next:** throttles (`core/throttles.py`), then the auth
   endpoints in `internal/accounts/` (see AuthViewSet + AuthService in Django).
+- 2026-10-22 — **10/317 endpoints done** (auth: login, login/begin,
+  otp/request, otp/verify, pin/login, pin/set, pin/verify, token/refresh,
+  logout, onboarding/complete). Throttles ported (DRF sliding log, same
+  rates/scopes/429; router applies auth → permission → throttle). Contract
+  check `scripts/contract/auth.py` passes 15/15 against live Django, incl. a
+  shared refresh blacklist across both backends. Go integration tests in
+  `internal/accounts/auth_test.go` via `internal/apitest`.
+  Known intentional difference: unknown routes return the JSON 404 envelope
+  (Django DEBUG returns an HTML page).
+  **Next:** remaining auth endpoints — `GET /auth/me/` (needs
+  AccountSerializer, IdentityService.kyc_payload, media delivery_url,
+  ConsentService.state, reconcile_onboarding), me/profile, me/consent,
+  password/change, password-setup(+context), devices/heartbeat.
 
 ### How to run
 ```

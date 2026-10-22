@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -37,8 +38,11 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			return
 		}
 		claims, err := a.tokens.Parse(raw, TypeAccess)
-		if err != nil || claims.Scope == ScopePin {
-			respond.Error(w, r, invalidToken())
+		if err == nil && claims.Scope == ScopePin {
+			err = errors.New("auth: pin grant used as bearer")
+		}
+		if err != nil {
+			respond.Error(w, r, invalidAccessToken(TokenErrorDetail(err)))
 			return
 		}
 		p, active, err := a.loader.LoadPrincipal(r.Context(), claims.UserID)
@@ -95,7 +99,18 @@ func bearer(r *http.Request) (string, bool) {
 	return token, true
 }
 
-func invalidToken() *apperr.Error {
-	return apperr.Unauthorized("Given token not valid for any token type").
-		WithDetails(apperr.Details{"code": "token_not_valid"})
+// invalidAccessToken is DRF's 401 body for a bad Bearer token, as rendered
+// by Django's exception handler.
+func invalidAccessToken(detail string) *apperr.Error {
+	return apperr.Unauthorized("Please fix the highlighted fields.").WithDetails(apperr.Details{
+		"detail": "Given token not valid for any token type", "code": "token_not_valid",
+		"messages": []map[string]string{{"token_class": "AccessToken", "token_type": "access",
+			"message": detail}},
+	})
+}
+
+// InvalidRefreshToken is the 401 body for a bad refresh token.
+func InvalidRefreshToken(detail string) *apperr.Error {
+	return apperr.Unauthorized("Please fix the highlighted fields.").
+		WithDetails(apperr.Details{"detail": detail, "code": "token_not_valid"})
 }

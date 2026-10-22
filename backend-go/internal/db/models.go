@@ -6,6 +6,7 @@ package db
 
 import (
 	"net/netip"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,8 +14,8 @@ import (
 
 type AccountsAccount struct {
 	ID                  uuid.UUID
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 	KuraID              string
 	Kind                string
 	DisplayName         string
@@ -29,11 +30,11 @@ type AccountsAccount struct {
 
 type AccountsConsent struct {
 	ID            uuid.UUID
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 	Purpose       string
-	GrantedAt     pgtype.Timestamptz
-	WithdrawnAt   pgtype.Timestamptz
+	GrantedAt     time.Time
+	WithdrawnAt   *time.Time
 	Channel       string
 	PolicyVersion string
 	AccountID     uuid.UUID
@@ -41,8 +42,8 @@ type AccountsConsent struct {
 
 type AccountsCooperative struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	Name           string
 	Region         string
 	Status         string
@@ -51,8 +52,8 @@ type AccountsCooperative struct {
 
 type AccountsDriver struct {
 	ID                  uuid.UUID
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 	LicenseNumber       string
 	Status              string
 	AccountID           uuid.UUID
@@ -64,14 +65,14 @@ type AccountsDriver struct {
 
 type AccountsIdentitydocument struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	DocType         string
 	NumberEncrypted string
 	NumberLast4     string
 	Status          string
 	VerifiedVia     string
-	VerifiedAt      pgtype.Timestamptz
+	VerifiedAt      *time.Time
 	RejectReason    string
 	AccountID       uuid.UUID
 	BackImageID     *uuid.UUID
@@ -82,33 +83,33 @@ type AccountsIdentitydocument struct {
 
 type AccountsOtpchallenge struct {
 	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	Phone      string
 	Purpose    string
 	CodeHash   string
-	ExpiresAt  pgtype.Timestamptz
+	ExpiresAt  time.Time
 	Attempts   int16
-	ConsumedAt pgtype.Timestamptz
+	ConsumedAt *time.Time
 	DeviceID   string
 	Channel    string
 }
 
 type AccountsPasswordsetuptoken struct {
 	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	Purpose    string
 	TokenHash  string
-	ExpiresAt  pgtype.Timestamptz
-	ConsumedAt pgtype.Timestamptz
+	ExpiresAt  time.Time
+	ConsumedAt *time.Time
 	UserID     uuid.UUID
 }
 
 type AccountsPermission struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Code        string
 	Name        string
 	Module      string
@@ -117,8 +118,8 @@ type AccountsPermission struct {
 
 type AccountsRole struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Code        string
 	Name        string
 	Description string
@@ -134,8 +135,8 @@ type AccountsRolePermission struct {
 
 type AccountsStaffmembership struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	Role      string
 	HubID     string
 	UserID    uuid.UUID
@@ -143,24 +144,24 @@ type AccountsStaffmembership struct {
 
 type AccountsTrusteddevice struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	DeviceKey   string
 	Label       string
 	UserAgent   string
-	FirstSeenAt pgtype.Timestamptz
-	LastSeenAt  pgtype.Timestamptz
+	FirstSeenAt time.Time
+	LastSeenAt  time.Time
 	Status      string
 	AccountID   uuid.UUID
 }
 
 type AccountsUser struct {
 	Password          string
-	LastLogin         pgtype.Timestamptz
+	LastLogin         *time.Time
 	IsSuperuser       bool
 	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	Email             *string
 	Phone             *string
 	FirstName         string
@@ -171,7 +172,7 @@ type AccountsUser struct {
 	IsStaff           bool
 	AssignedRoleID    *uuid.UUID
 	PinFailedAttempts int16
-	PinLockedUntil    pgtype.Timestamptz
+	PinLockedUntil    *time.Time
 	OnboardingStep    string
 	PublicID          *string
 	AvatarID          *uuid.UUID
@@ -193,8 +194,8 @@ type AccountsUserUserPermission struct {
 
 type AnalyticsDailyaccountmetric struct {
 	ID                     uuid.UUID
-	CreatedAt              pgtype.Timestamptz
-	UpdatedAt              pgtype.Timestamptz
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 	Date                   pgtype.Date
 	SwapsCompleted         int32
 	FuelSavingsKobo        int64
@@ -206,8 +207,8 @@ type AnalyticsDailyaccountmetric struct {
 
 type AnalyticsDailyhubmetric struct {
 	ID                   uuid.UUID
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 	Date                 pgtype.Date
 	Swaps                int32
 	RevenueKoboByChannel []byte
@@ -220,23 +221,23 @@ type AnalyticsDailyhubmetric struct {
 
 type AnalyticsImpactstory struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Title           string
 	Region          string
 	MetricHighlight string
 	Partners        string
 	Summary         string
 	Status          string
-	PublishedAt     pgtype.Timestamptz
+	PublishedAt     *time.Time
 	Raw             []byte
 	CreatedByID     *uuid.UUID
 }
 
 type AnalyticsMonthlyimpactmetric struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Period          string
 	OperatorsServed int32
 	Swaps           int32
@@ -248,13 +249,13 @@ type AnalyticsMonthlyimpactmetric struct {
 
 type AnalyticsReportjob struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	Kind           string
 	Params         []byte
 	Status         string
 	FilePublicID   string
-	ExpiresAt      pgtype.Timestamptz
+	ExpiresAt      *time.Time
 	Raw            []byte
 	RequestedByID  *uuid.UUID
 	IdempotencyKey string
@@ -262,8 +263,8 @@ type AnalyticsReportjob struct {
 
 type AuditAuditevent struct {
 	ID           uuid.UUID
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	ActorEmail   string
 	ActorRole    string
 	Action       string
@@ -300,8 +301,8 @@ type AuthPermission struct {
 
 type CoreAuditevent struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ActorEmail  string
 	Action      string
 	TargetModel string
@@ -312,13 +313,13 @@ type CoreAuditevent struct {
 
 type CoreConfigversion struct {
 	ID            uuid.UUID
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 	Namespace     string
 	Key           string
 	Value         []byte
 	Status        string
-	EffectiveFrom pgtype.Timestamptz
+	EffectiveFrom *time.Time
 	Note          string
 	ApprovedByID  *uuid.UUID
 	CreatedByID   *uuid.UUID
@@ -326,8 +327,8 @@ type CoreConfigversion struct {
 
 type CoreMediaasset struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	Provider         string
 	StorageKey       string
 	Kind             string
@@ -343,8 +344,8 @@ type CoreMediaasset struct {
 
 type CoreQueuedtask struct {
 	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	ResultID   string
 	TaskPath   string
 	Args       []byte
@@ -352,14 +353,14 @@ type CoreQueuedtask struct {
 	Status     string
 	Attempts   int16
 	Error      string
-	StartedAt  pgtype.Timestamptz
-	FinishedAt pgtype.Timestamptz
+	StartedAt  *time.Time
+	FinishedAt *time.Time
 }
 
 type CreditCreditapplication struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	AmountKobo      int64
 	TenorDays       int16
 	InterestRateBps int32
@@ -374,8 +375,8 @@ type CreditCreditapplication struct {
 
 type CreditCreditline struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	LimitKobo int64
 	Status    string
 	AccountID uuid.UUID
@@ -384,32 +385,32 @@ type CreditCreditline struct {
 
 type CreditCreditscore struct {
 	ID                   uuid.UUID
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 	Score                int16
 	Factors              []byte
 	RecommendedLimitKobo int64
 	Version              string
 	ComputedBy           string
 	OverrideReason       string
-	ComputedAt           pgtype.Timestamptz
+	ComputedAt           time.Time
 	AccountID            uuid.UUID
 	OverrideByID         *uuid.UUID
 }
 
 type CreditLoan struct {
 	ID                      uuid.UUID
-	CreatedAt               pgtype.Timestamptz
-	UpdatedAt               pgtype.Timestamptz
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 	PrincipalKobo           int64
 	InterestKobo            int64
 	TotalDueKobo            int64
 	RepaidKobo              int64
 	DailyInstallmentKobo    int64
 	SwapCreditRemainingKobo int64
-	StartsAt                pgtype.Timestamptz
-	DueAt                   pgtype.Timestamptz
-	GraceUntil              pgtype.Timestamptz
+	StartsAt                time.Time
+	DueAt                   time.Time
+	GraceUntil              *time.Time
 	Status                  string
 	AccountID               uuid.UUID
 	ApplicationID           uuid.UUID
@@ -417,8 +418,8 @@ type CreditLoan struct {
 
 type CreditLoanrepayment struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	AmountKobo     int64
 	Kind           string
 	Status         string
@@ -429,8 +430,8 @@ type CreditLoanrepayment struct {
 
 type CreditOfferassignment struct {
 	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	Status     string
 	AmountKobo *int64
 	Channel    string
@@ -440,8 +441,8 @@ type CreditOfferassignment struct {
 
 type CreditProductoffer struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Name            string
 	OfferType       string
 	Summary         string
@@ -452,18 +453,18 @@ type CreditProductoffer struct {
 
 type CreditSegment struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Name            string
 	Criteria        []byte
 	Status          string
 	LastCount       int32
-	LastEvaluatedAt pgtype.Timestamptz
+	LastEvaluatedAt *time.Time
 }
 
 type DjangoAdminLog struct {
 	ID            int32
-	ActionTime    pgtype.Timestamptz
+	ActionTime    time.Time
 	ObjectID      *string
 	ObjectRepr    string
 	ActionFlag    int16
@@ -482,19 +483,19 @@ type DjangoMigration struct {
 	ID      int64
 	App     string
 	Name    string
-	Applied pgtype.Timestamptz
+	Applied time.Time
 }
 
 type DjangoSession struct {
 	SessionKey  string
 	SessionData string
-	ExpireDate  pgtype.Timestamptz
+	ExpireDate  time.Time
 }
 
 type FinanceLedgeraccount struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Code        string
 	AccountType string
 	BalanceKobo int64
@@ -502,8 +503,8 @@ type FinanceLedgeraccount struct {
 
 type FinanceLedgerentry struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	DebitKobo       int64
 	CreditKobo      int64
 	LedgerAccountID uuid.UUID
@@ -512,18 +513,18 @@ type FinanceLedgerentry struct {
 
 type FinanceLedgertransaction struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Kind        string
 	Reference   string
 	Description string
-	PostedAt    pgtype.Timestamptz
+	PostedAt    time.Time
 }
 
 type FinancePayment struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	Channel        string
 	AmountKobo     int64
 	VatKobo        int64
@@ -538,24 +539,24 @@ type FinancePayment struct {
 
 type FinanceVirtualaccount struct {
 	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	Nuban             *string
 	BankName          string
 	AccountName       string
 	Status            string
 	AccountID         uuid.UUID
 	PspReference      string
-	LastAttemptAt     pgtype.Timestamptz
+	LastAttemptAt     *time.Time
 	LastError         string
-	NextAttemptAt     pgtype.Timestamptz
+	NextAttemptAt     *time.Time
 	ProvisionAttempts int16
 }
 
 type FinanceWallet struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	BalanceKobo int64
 	HoldKobo    int64
 	Status      string
@@ -564,8 +565,8 @@ type FinanceWallet struct {
 
 type IntegrationsPspwebhookevent struct {
 	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	Psp        string
 	PspEventID string
 	EventKind  string
@@ -576,8 +577,8 @@ type IntegrationsPspwebhookevent struct {
 
 type MobilityBattery struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	Serial           string
 	Status           string
 	ChargePct        int32
@@ -587,18 +588,18 @@ type MobilityBattery struct {
 	CurrentHubID     *uuid.UUID
 	CustodianID      *uuid.UUID
 	CustodianType    string
-	ExpectedReturnBy pgtype.Timestamptz
-	IssuedAt         pgtype.Timestamptz
+	ExpectedReturnBy *time.Time
+	IssuedAt         *time.Time
 	QrSecret         string
 	ChargeSource     string
 	ManufacturedAt   pgtype.Date
-	ChargeObservedAt pgtype.Timestamptz
+	ChargeObservedAt *time.Time
 }
 
 type MobilityBatteryevent struct {
 	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	Event             string
 	FromCustodianType string
 	FromCustodianID   *uuid.UUID
@@ -606,8 +607,8 @@ type MobilityBatteryevent struct {
 	ToCustodianID     *uuid.UUID
 	ChargePct         *int32
 	Meta              []byte
-	OccurredAt        pgtype.Timestamptz
-	RecordedAt        pgtype.Timestamptz
+	OccurredAt        time.Time
+	RecordedAt        time.Time
 	Source            string
 	ActorID           *uuid.UUID
 	BatteryID         uuid.UUID
@@ -619,8 +620,8 @@ type MobilityBatteryevent struct {
 
 type MobilityBatterytype struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	Name           string
 	Manufacturer   string
 	CapacityKwh    pgtype.Numeric
@@ -636,16 +637,16 @@ type MobilityBatterytype struct {
 
 type MobilityBayholdpolicy struct {
 	ID                 uuid.UUID
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 	DefaultHoldMinutes int32
 	MaxExtendMinutes   int32
 }
 
 type MobilityDiscountcampaign struct {
 	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	Name              string
 	Code              string
 	ValueType         string
@@ -662,16 +663,16 @@ type MobilityDiscountcampaign struct {
 	MaxRedemptions    *int32
 	RedemptionsCount  int32
 	MaxPerAccount     int32
-	StartsAt          pgtype.Timestamptz
-	EndsAt            pgtype.Timestamptz
+	StartsAt          *time.Time
+	EndsAt            *time.Time
 	ApprovedByID      *uuid.UUID
 	CreatedByID       *uuid.UUID
 }
 
 type MobilityDiscountredemption struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	ListPriceKobo  int64
 	DiscountKobo   int64
 	DueKobo        int64
@@ -686,8 +687,8 @@ type MobilityDiscountredemption struct {
 
 type MobilityEboarder struct {
 	ID                 uuid.UUID
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 	Serial             string
 	Make               string
 	Model              string
@@ -696,7 +697,7 @@ type MobilityEboarder struct {
 	NominalVoltageV    int16
 	ShaftLength        string
 	Status             string
-	IssuedAt           pgtype.Timestamptz
+	IssuedAt           *time.Time
 	Raw                []byte
 	AccountID          *uuid.UUID
 	BatteryTypeID      uuid.UUID
@@ -706,8 +707,8 @@ type MobilityEboarder struct {
 
 type MobilityHub struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Code            string
 	Name            string
 	Address         string
@@ -716,15 +717,15 @@ type MobilityHub struct {
 	SlotCount       int32
 	SolarCapacityKw pgtype.Numeric
 	Status          string
-	LastSyncAt      pgtype.Timestamptz
+	LastSyncAt      *time.Time
 	OperatingHours  []byte
 	Timezone        string
 }
 
 type MobilityHubslot struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	SlotNo    int32
 	State     string
 	BatteryID *uuid.UUID
@@ -733,8 +734,8 @@ type MobilityHubslot struct {
 
 type MobilityPetrolengine struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	Tag              string
 	Make             string
 	Model            string
@@ -743,7 +744,7 @@ type MobilityPetrolengine struct {
 	IntakePhotos     []byte
 	Status           string
 	IntakeSignature  string
-	ReleasedAt       pgtype.Timestamptz
+	ReleasedAt       *time.Time
 	ReleasePhotos    []byte
 	Raw              []byte
 	AccountID        uuid.UUID
@@ -756,8 +757,8 @@ type MobilityPetrolengine struct {
 
 type MobilityPlan struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	Code             string
 	Name             string
 	VehicleType      string
@@ -773,8 +774,8 @@ type MobilityPlan struct {
 
 type MobilityPricematrix struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	VehicleType    string
 	DailyKobo      int64
 	WeeklyKobo     int64
@@ -788,12 +789,12 @@ type MobilityPricematrix struct {
 
 type MobilityReservation struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Code            string
 	Status          string
 	PaymentMode     string
-	ExpiresAt       pgtype.Timestamptz
+	ExpiresAt       time.Time
 	AccountID       uuid.UUID
 	BatteryID       *uuid.UUID
 	DriverID        uuid.UUID
@@ -810,13 +811,13 @@ type MobilityReservation struct {
 
 type MobilityRetrofit struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	EboarderSerial string
 	Checklist      []byte
 	Status         string
 	Photos         []byte
-	ActivatedAt    pgtype.Timestamptz
+	ActivatedAt    *time.Time
 	Raw            []byte
 	AccountID      uuid.UUID
 	AgentID        *uuid.UUID
@@ -827,10 +828,10 @@ type MobilityRetrofit struct {
 
 type MobilitySubscription struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	StartsAt       pgtype.Timestamptz
-	EndsAt         pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	StartsAt       time.Time
+	EndsAt         time.Time
 	SwapsUsed      int32
 	SwapsAllowance *int32
 	Status         string
@@ -849,8 +850,8 @@ type MobilitySubscription struct {
 
 type MobilitySwap struct {
 	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	ReturnedChargePct int32
 	IssuedChargePct   int32
 	PaymentMode       string
@@ -868,18 +869,18 @@ type MobilitySwap struct {
 	ReturnedBatteryID *uuid.UUID
 	VehicleID         uuid.UUID
 	Source            string
-	CompletedAt       pgtype.Timestamptz
+	CompletedAt       *time.Time
 	MismatchReason    string
-	StartedAt         pgtype.Timestamptz
+	StartedAt         *time.Time
 	PaymentID         *uuid.UUID
 	SubscriptionID    *uuid.UUID
 }
 
 type MobilityTelemetryevent struct {
 	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	RecordedAt  pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	RecordedAt  time.Time
 	BatteryPct  *int16
 	Lat         *float64
 	Lng         *float64
@@ -894,8 +895,8 @@ type MobilityTelemetryevent struct {
 
 type MobilityVehicle struct {
 	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 	RegistrationPlate string
 	Status            string
 	AccountID         uuid.UUID
@@ -912,10 +913,10 @@ type MobilityVehicle struct {
 
 type MobilityVehicleassignment struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	StartsAt  pgtype.Timestamptz
-	EndsAt    pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	StartsAt  time.Time
+	EndsAt    *time.Time
 	Note      string
 	DriverID  uuid.UUID
 	VehicleID uuid.UUID
@@ -923,21 +924,21 @@ type MobilityVehicleassignment struct {
 
 type MobilityVehiclecommand struct {
 	ID            uuid.UUID
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 	Kind          string
 	Status        string
 	Note          string
 	Error         string
-	AckedAt       pgtype.Timestamptz
+	AckedAt       *time.Time
 	RequestedByID *uuid.UUID
 	VehicleID     uuid.UUID
 }
 
 type MobilityVehiclemodel struct {
 	ID                  uuid.UUID
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 	Make                string
 	Model               string
 	VehicleType         string
@@ -948,8 +949,8 @@ type MobilityVehiclemodel struct {
 
 type NotificationsNotification struct {
 	ID           uuid.UUID
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	Channel      string
 	TemplateCode string
 	Title        string
@@ -960,22 +961,22 @@ type NotificationsNotification struct {
 	Params       []byte
 	LinkPath     string
 	DedupeKey    string
-	ReadAt       pgtype.Timestamptz
+	ReadAt       *time.Time
 	ProviderRef  string
 	UserID       uuid.UUID
 }
 
 type OperationsAlert struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	Kind             string
 	Severity         string
 	Message          string
 	IsResolved       bool
-	ResolvedAt       pgtype.Timestamptz
+	ResolvedAt       *time.Time
 	HubID            *uuid.UUID
-	AcknowledgedAt   pgtype.Timestamptz
+	AcknowledgedAt   *time.Time
 	AcknowledgedByID *uuid.UUID
 	DeliveryChannel  string
 	ResolveNote      string
@@ -985,8 +986,8 @@ type OperationsAlert struct {
 
 type OperationsAlertrule struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Name            string
 	Kind            string
 	Severity        string
@@ -999,8 +1000,8 @@ type OperationsAlertrule struct {
 
 type OperationsCashdeposit struct {
 	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	AmountKobo     int64
 	PspAgentRef    string
 	ReceiptCode    string
@@ -1016,8 +1017,8 @@ type OperationsCashdeposit struct {
 
 type OperationsInventorycount struct {
 	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 	Counted    []byte
 	Expected   []byte
 	Variance   []byte
@@ -1029,8 +1030,8 @@ type OperationsInventorycount struct {
 
 type OperationsOverride struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	Reason    string
 	Note      string
 	AgentID   uuid.UUID
@@ -1039,10 +1040,10 @@ type OperationsOverride struct {
 
 type OperationsShift struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	OpenedAt         pgtype.Timestamptz
-	ClosedAt         pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	OpenedAt         time.Time
+	ClosedAt         *time.Time
 	OpeningCashKobo  int64
 	ClosingCashKobo  *int64
 	Status           string
@@ -1052,14 +1053,14 @@ type OperationsShift struct {
 	VarianceKobo     *int64
 	LodgeRef         string
 	LodgedAmountKobo *int64
-	LodgedAt         pgtype.Timestamptz
+	LodgedAt         *time.Time
 	AutoClosed       bool
 }
 
 type RiskRiskevent struct {
 	ID           uuid.UUID
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	SubjectType  string
 	SubjectID    string
 	Severity     string
@@ -1075,8 +1076,8 @@ type RiskRiskevent struct {
 
 type RiskRiskrule struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	Code      string
 	Name      string
 	Severity  string
@@ -1087,10 +1088,10 @@ type RiskRiskrule struct {
 
 type RiskRiskvelocitygrant struct {
 	ID            uuid.UUID
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 	VehicleID     uuid.UUID
-	ExpiresAt     pgtype.Timestamptz
+	ExpiresAt     time.Time
 	MaxUses       int16
 	UsesRemaining int16
 	Status        string
@@ -1102,8 +1103,8 @@ type RiskRiskvelocitygrant struct {
 
 type SupportCaseevent struct {
 	ID           uuid.UUID
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	Kind         string
 	Body         string
 	ActorID      *uuid.UUID
@@ -1113,14 +1114,14 @@ type SupportCaseevent struct {
 
 type SupportSupportcase struct {
 	ID           uuid.UUID
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	Code         string
 	Kind         string
 	Priority     string
 	Status       string
 	Subject      string
-	SlaDueAt     pgtype.Timestamptz
+	SlaDueAt     *time.Time
 	AccountID    uuid.UUID
 	AssignedToID *uuid.UUID
 	DriverID     *uuid.UUID
@@ -1130,15 +1131,15 @@ type SupportSupportcase struct {
 
 type TokenBlacklistBlacklistedtoken struct {
 	ID            int64
-	BlacklistedAt pgtype.Timestamptz
+	BlacklistedAt time.Time
 	TokenID       int64
 }
 
 type TokenBlacklistOutstandingtoken struct {
 	ID        int64
 	Token     string
-	CreatedAt pgtype.Timestamptz
-	ExpiresAt pgtype.Timestamptz
+	CreatedAt *time.Time
+	ExpiresAt time.Time
 	UserID    *uuid.UUID
 	Jti       string
 }

@@ -6,21 +6,48 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Querier interface {
 	AuditChainTip(ctx context.Context) (string, error)
+	BlacklistToken(ctx context.Context, tokenID int64) error
+	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
+	ClearPinFailures(ctx context.Context, id uuid.UUID) error
+	ConsumeOTP(ctx context.Context, id uuid.UUID) error
+	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
+	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
 	// Live auth state for a token's user_id (role, flags, session version).
 	GetPrincipalUser(ctx context.Context, id uuid.UUID) (GetPrincipalUserRow, error)
+	// Django email__iexact.
+	GetUserByEmail(ctx context.Context, email string) (AccountsUser, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (AccountsUser, error)
+	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
+	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertDriver(ctx context.Context, arg InsertDriverParams) error
+	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
 	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)
+	InsertOTP(ctx context.Context, arg InsertOTPParams) error
+	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
+	IsBlacklisted(ctx context.Context, jti string) (bool, error)
+	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
+	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
+	// simplejwt OutstandingToken.get_or_create(jti=...).
+	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
+	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
 	RolePermissionCodes(ctx context.Context, id uuid.UUID) ([]string, error)
+	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
+	SetPin(ctx context.Context, arg SetPinParams) error
+	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
+	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 }
 

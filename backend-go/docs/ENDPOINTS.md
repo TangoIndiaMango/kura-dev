@@ -213,22 +213,22 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 ## auth (17)
 
 - [ ] `POST   /api/v1/auth/devices/heartbeat/`
-- [ ] `POST   /api/v1/auth/login/`
-- [ ] `POST   /api/v1/auth/login/begin/`
-- [ ] `POST   /api/v1/auth/logout/`
+- [x] `POST   /api/v1/auth/login/`
+- [x] `POST   /api/v1/auth/login/begin/`
+- [x] `POST   /api/v1/auth/logout/`
 - [ ] `GET    /api/v1/auth/me/`
 - [ ] `POST   /api/v1/auth/me/consent/`
 - [ ] `PATCH  /api/v1/auth/me/profile/`
-- [ ] `POST   /api/v1/auth/onboarding/complete/`
-- [ ] `POST   /api/v1/auth/otp/request/`
-- [ ] `POST   /api/v1/auth/otp/verify/`
+- [x] `POST   /api/v1/auth/onboarding/complete/`
+- [x] `POST   /api/v1/auth/otp/request/`
+- [x] `POST   /api/v1/auth/otp/verify/`
 - [ ] `POST   /api/v1/auth/password-setup/`
 - [ ] `POST   /api/v1/auth/password-setup/context/`
 - [ ] `POST   /api/v1/auth/password/change/`
-- [ ] `POST   /api/v1/auth/pin/login/`
-- [ ] `POST   /api/v1/auth/pin/set/`
-- [ ] `POST   /api/v1/auth/pin/verify/`
-- [ ] `POST   /api/v1/auth/token/refresh/`
+- [x] `POST   /api/v1/auth/pin/login/`
+- [x] `POST   /api/v1/auth/pin/set/`
+- [x] `POST   /api/v1/auth/pin/verify/`
+- [x] `POST   /api/v1/auth/token/refresh/`
 
 ## analytics (12)
 

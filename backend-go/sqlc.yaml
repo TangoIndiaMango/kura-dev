@@ -21,6 +21,14 @@ sql:
               import: github.com/google/uuid
               type: UUID
               pointer: true
+          - db_type: pg_catalog.timestamptz
+            go_type: time.Time
+          - db_type: pg_catalog.timestamptz
+            nullable: true
+            go_type:
+              import: time
+              type: Time
+              pointer: true
           - db_type: timestamptz
             go_type: time.Time
           - db_type: timestamptz
