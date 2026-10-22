@@ -53,6 +53,11 @@ func JSON(r *http.Request, dst any) error {
 	if err != nil {
 		return apperr.Field("non_field_errors", "Invalid request body.")
 	}
+	return Bytes(raw, dst)
+}
+
+// Bytes is JSON on an already-read body (or one nested object of it).
+func Bytes(raw []byte, dst any) error {
 	if len(strings.TrimSpace(string(raw))) == 0 {
 		raw = []byte("{}")
 	}

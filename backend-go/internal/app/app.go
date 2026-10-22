@@ -33,6 +33,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/support"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/telemetry"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/webhooks"
 )
@@ -92,6 +93,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		inbox.NewModule(pool, limiter),
 		webhooks.NewModule(pool, pspSettings, cfg.NombaWebhook, log, limiter),
 		auditlog.NewModule(pool, limiter),
+		telemetry.NewModule(pool, limiter),
 	)
 }
 

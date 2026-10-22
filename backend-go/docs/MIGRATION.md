@@ -263,6 +263,13 @@ translated to the envelope in exactly one place (`respond.Error`).
   `scripts/contract/bay.py`: 89 identical incl. pack states, battery
   events, payments, wallet, audit and notifications. All 22 suites
   identical. Battery full-save now persists `charge_observed_at`.
+- Telemetry (`internal/telemetry`): fleet summary (LIVE / STATIONARY /
+  OFFLINE), event feed + detail, staff ingest and device-key IoT ingest
+  (`/api/v1/telemetry/ingest`, sha256 key, hardware id, single reading or
+  batch of up to 100) through one apply path: event row, battery SoC
+  write-through (older readings never overwrite newer), audit.
+  `scripts/contract/telemetry.py`: 50 identical incl. nested batch errors
+  (DRF reports failing items keyed by index), battery state and audit.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass

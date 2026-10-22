@@ -298,6 +298,7 @@ type Querier interface {
 	InsertStaffUser(ctx context.Context, arg InsertStaffUserParams) error
 	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
 	InsertSwap(ctx context.Context, arg InsertSwapParams) error
+	InsertTelemetryEvent(ctx context.Context, arg InsertTelemetryEventParams) error
 	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
 	InsertVehicle(ctx context.Context, arg InsertVehicleParams) error
 	InsertVehicleCommand(ctx context.Context, arg InsertVehicleCommandParams) error
@@ -377,6 +378,8 @@ type Querier interface {
 	NewestOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
 	NubanTaken(ctx context.Context, arg NubanTakenParams) (bool, error)
+	// _maybe_update_battery_soc: older observations never overwrite newer ones.
+	ObserveBatteryCharge(ctx context.Context, arg ObserveBatteryChargeParams) error
 	OfferByID(ctx context.Context, id uuid.UUID) (CreditProductoffer, error)
 	OffersPage(ctx context.Context, arg OffersPageParams) ([]CreditProductoffer, error)
 	// _open_alert dedupe: same hub + kind, still live, message starting with the prefix.
@@ -575,6 +578,13 @@ type Querier interface {
 	SyncPlanPrice(ctx context.Context, arg SyncPlanPriceParams) error
 	// Owners of vehicles of this type (distinct), for the customer notice.
 	TariffNoticeOwners(ctx context.Context, vehicleType string) ([]TariffNoticeOwnersRow, error)
+	TelemetryBatteryExists(ctx context.Context, id uuid.UUID) (bool, error)
+	TelemetryEventRows(ctx context.Context, ids []uuid.UUID) ([]TelemetryEventRowsRow, error)
+	TelemetryEventsPage(ctx context.Context, arg TelemetryEventsPageParams) ([]uuid.UUID, error)
+	// Telemetry: fleet summary, event feed, ingest (TelemetryService / TelemetryIotService).
+	TelemetryFleetVehicles(ctx context.Context, search *string) ([]TelemetryFleetVehiclesRow, error)
+	TelemetryLatestByVehicle(ctx context.Context, ids []uuid.UUID) ([]TelemetryLatestByVehicleRow, error)
+	TelemetryVehicleByKey(ctx context.Context, arg TelemetryVehicleByKeyParams) (MobilityVehicle, error)
 	TouchHubSync(ctx context.Context, id uuid.UUID) error
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	TouchOverride(ctx context.Context, id uuid.UUID) error

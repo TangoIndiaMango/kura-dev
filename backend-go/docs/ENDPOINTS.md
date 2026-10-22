@@ -104,10 +104,10 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `POST   /api/v1/mobility/swaps/{id}/issue/`
 - [x] `POST   /api/v1/mobility/swaps/{id}/return/`
 - [x] `POST   /api/v1/mobility/swaps/{id}/reverse/`
-- [ ] `GET    /api/v1/mobility/telemetry/events/`
-- [ ] `POST   /api/v1/mobility/telemetry/events/ingest/`
-- [ ] `GET    /api/v1/mobility/telemetry/events/{id}/`
-- [ ] `GET    /api/v1/mobility/telemetry/fleet/`
+- [x] `GET    /api/v1/mobility/telemetry/events/`
+- [x] `POST   /api/v1/mobility/telemetry/events/ingest/`
+- [x] `GET    /api/v1/mobility/telemetry/events/{id}/`
+- [x] `GET    /api/v1/mobility/telemetry/fleet/`
 - [x] `GET    /api/v1/mobility/vehicle-models/`
 - [x] `POST   /api/v1/mobility/vehicle-models/`
 - [x] `GET    /api/v1/mobility/vehicle-models/stats/`
@@ -382,8 +382,8 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## telemetry (2)
 
-- [ ] `POST   /api/v1/telemetry/ingest`
-- [ ] `POST   /api/v1/telemetry/ingest/`
+- [x] `POST   /api/v1/telemetry/ingest`
+- [x] `POST   /api/v1/telemetry/ingest/`
 
 ## media (1)
 
