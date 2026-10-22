@@ -38,6 +38,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/support"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/telemetry"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/uploads"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/webhooks"
 )
 
@@ -99,6 +100,8 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		telemetry.NewModule(pool, limiter),
 		engines.NewModule(pool, cdn, limiter),
 		reports.NewModule(pool, cfg.MediaRoot, limiter),
+		uploads.NewModule(pool, cdn, uploads.Limits{Provider: cfg.MediaProvider, Folder: cfg.CloudinaryFolder,
+			MaxFiles: cfg.MediaMaxFiles, MaxImage: cfg.MediaMaxImageBytes, MaxDocument: cfg.MediaMaxDocumentBytes}, limiter),
 		analytics.NewModule(pool, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
 			KoboPerLitre: cfg.PetrolKoboPerLitre}, limiter),
 	)

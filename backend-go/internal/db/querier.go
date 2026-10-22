@@ -301,6 +301,8 @@ type Querier interface {
 	InsertLedgerTransaction(ctx context.Context, arg InsertLedgerTransactionParams) error
 	InsertLoan(ctx context.Context, arg InsertLoanParams) error
 	InsertMatrix(ctx context.Context, arg InsertMatrixParams) (MobilityPricematrix, error)
+	// MediaService.upload_files: one MediaAsset row per uploaded file.
+	InsertMediaAsset(ctx context.Context, arg InsertMediaAssetParams) (CoreMediaasset, error)
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
 	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)

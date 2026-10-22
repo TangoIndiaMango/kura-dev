@@ -290,6 +290,11 @@ translated to the envelope in exactly one place (`respond.Error`).
   the same text and layout. Files go under `MEDIA_ROOT` (default: working
   directory, like Django's FileSystemStorage). `scripts/contract/reports.py`:
   identical.
+- Media upload (`internal/uploads`, `media.Upload`): multipart only (415
+  otherwise), file / files / file[] / files[], MIME sniffing for generic
+  types, size caps, signed Cloudinary upload (SHA-1, signature v2, same
+  params as the Python SDK), MediaAsset rows, media_upload throttle only.
+  `scripts/contract/media.py` uploads real files: identical.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass

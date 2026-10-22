@@ -387,4 +387,4 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## media (1)
 
-- [ ] `POST   /api/v1/media/upload/`
+- [x] `POST   /api/v1/media/upload/`
