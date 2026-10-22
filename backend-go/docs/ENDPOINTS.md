@@ -1,0 +1,390 @@
+# Endpoint parity checklist
+
+Generated from the Django OpenAPI schema (317 operations).
+Tick an item only when the Go handler exists **and** a contract test compares it with Django.
+
+## mobility (125)
+
+- [ ] `GET    /api/v1/mobility/batteries/`
+- [ ] `POST   /api/v1/mobility/batteries/`
+- [ ] `GET    /api/v1/mobility/batteries/export/`
+- [ ] `POST   /api/v1/mobility/batteries/resolve/`
+- [ ] `GET    /api/v1/mobility/batteries/stats/`
+- [ ] `GET    /api/v1/mobility/batteries/types/`
+- [ ] `GET    /api/v1/mobility/batteries/{id}/`
+- [ ] `PATCH  /api/v1/mobility/batteries/{id}/`
+- [ ] `GET    /api/v1/mobility/batteries/{id}/events/`
+- [ ] `POST   /api/v1/mobility/batteries/{id}/fault/`
+- [ ] `POST   /api/v1/mobility/batteries/{id}/found/`
+- [ ] `GET    /api/v1/mobility/batteries/{id}/label/`
+- [ ] `POST   /api/v1/mobility/batteries/{id}/retire/`
+- [ ] `POST   /api/v1/mobility/batteries/{id}/rotate-qr/`
+- [ ] `POST   /api/v1/mobility/batteries/{id}/status/`
+- [ ] `POST   /api/v1/mobility/batteries/{id}/transfer/`
+- [ ] `GET    /api/v1/mobility/battery-types/`
+- [ ] `POST   /api/v1/mobility/battery-types/`
+- [ ] `GET    /api/v1/mobility/battery-types/{id}/`
+- [ ] `POST   /api/v1/mobility/battery-types/{id}/activate/`
+- [ ] `GET    /api/v1/mobility/discounts/`
+- [ ] `POST   /api/v1/mobility/discounts/`
+- [ ] `POST   /api/v1/mobility/discounts/redeem/`
+- [ ] `GET    /api/v1/mobility/discounts/{id}/`
+- [ ] `PATCH  /api/v1/mobility/discounts/{id}/`
+- [ ] `POST   /api/v1/mobility/discounts/{id}/activate/`
+- [ ] `GET    /api/v1/mobility/discounts/{id}/redemptions/`
+- [ ] `GET    /api/v1/mobility/eboarders/`
+- [ ] `POST   /api/v1/mobility/eboarders/`
+- [ ] `GET    /api/v1/mobility/eboarders/stats/`
+- [ ] `GET    /api/v1/mobility/eboarders/{id}/`
+- [ ] `PATCH  /api/v1/mobility/eboarders/{id}/`
+- [ ] `GET    /api/v1/mobility/engines/`
+- [ ] `GET    /api/v1/mobility/engines/{id}/`
+- [ ] `POST   /api/v1/mobility/engines/{id}/release-request/`
+- [ ] `POST   /api/v1/mobility/engines/{id}/release/`
+- [ ] `GET    /api/v1/mobility/hubs/`
+- [ ] `POST   /api/v1/mobility/hubs/`
+- [ ] `GET    /api/v1/mobility/hubs/discover/`
+- [ ] `GET    /api/v1/mobility/hubs/export/`
+- [ ] `GET    /api/v1/mobility/hubs/stats/`
+- [ ] `GET    /api/v1/mobility/hubs/{id}/`
+- [ ] `PATCH  /api/v1/mobility/hubs/{id}/`
+- [ ] `GET    /api/v1/mobility/hubs/{id}/slots/`
+- [ ] `GET    /api/v1/mobility/hubs/{id}/stats/`
+- [ ] `POST   /api/v1/mobility/hubs/{id}/status/`
+- [ ] `GET    /api/v1/mobility/plans/`
+- [ ] `POST   /api/v1/mobility/plans/`
+- [ ] `GET    /api/v1/mobility/plans/{id}/`
+- [ ] `PATCH  /api/v1/mobility/plans/{id}/`
+- [ ] `POST   /api/v1/mobility/plans/{id}/activate/`
+- [ ] `POST   /api/v1/mobility/plans/{id}/deactivate/`
+- [ ] `GET    /api/v1/mobility/pricing/hold-policy/`
+- [ ] `PUT    /api/v1/mobility/pricing/hold-policy/`
+- [ ] `GET    /api/v1/mobility/pricing/matrices/`
+- [ ] `POST   /api/v1/mobility/pricing/matrices/`
+- [ ] `GET    /api/v1/mobility/pricing/matrices/{id}/`
+- [ ] `POST   /api/v1/mobility/pricing/matrices/{id}/activate/`
+- [ ] `POST   /api/v1/mobility/pricing/matrices/{id}/reject/`
+- [ ] `POST   /api/v1/mobility/pricing/matrices/{id}/schedule/`
+- [ ] `GET    /api/v1/mobility/reservations/`
+- [ ] `POST   /api/v1/mobility/reservations/`
+- [ ] `POST   /api/v1/mobility/reservations/lookup/`
+- [ ] `GET    /api/v1/mobility/reservations/{id}/`
+- [ ] `PUT    /api/v1/mobility/reservations/{id}/`
+- [ ] `PATCH  /api/v1/mobility/reservations/{id}/`
+- [ ] `DELETE /api/v1/mobility/reservations/{id}/`
+- [ ] `POST   /api/v1/mobility/reservations/{id}/cancel/`
+- [ ] `POST   /api/v1/mobility/reservations/{id}/extend/`
+- [ ] `GET    /api/v1/mobility/retrofits/`
+- [ ] `POST   /api/v1/mobility/retrofits/`
+- [ ] `GET    /api/v1/mobility/retrofits/{id}/`
+- [ ] `POST   /api/v1/mobility/retrofits/{id}/activate/`
+- [ ] `POST   /api/v1/mobility/retrofits/{id}/checklist/`
+- [ ] `POST   /api/v1/mobility/retrofits/{id}/engine-intake/`
+- [ ] `POST   /api/v1/mobility/retrofits/{id}/install/`
+- [ ] `GET    /api/v1/mobility/subscriptions/`
+- [ ] `POST   /api/v1/mobility/subscriptions/`
+- [ ] `GET    /api/v1/mobility/subscriptions/{id}/`
+- [ ] `POST   /api/v1/mobility/subscriptions/{id}/auto-renew/`
+- [ ] `PATCH  /api/v1/mobility/subscriptions/{id}/auto-renew/`
+- [ ] `POST   /api/v1/mobility/subscriptions/{id}/cancel/`
+- [ ] `POST   /api/v1/mobility/subscriptions/{id}/renew/`
+- [ ] `POST   /api/v1/mobility/subscriptions/{id}/switch-preview/`
+- [ ] `POST   /api/v1/mobility/subscriptions/{id}/switch/`
+- [ ] `GET    /api/v1/mobility/swaps/`
+- [ ] `POST   /api/v1/mobility/swaps/`
+- [ ] `POST   /api/v1/mobility/swaps/complete/`
+- [ ] `POST   /api/v1/mobility/swaps/identity-mismatch/`
+- [ ] `POST   /api/v1/mobility/swaps/request-velocity-exception/`
+- [ ] `POST   /api/v1/mobility/swaps/start/`
+- [ ] `GET    /api/v1/mobility/swaps/velocity-status/`
+- [ ] `POST   /api/v1/mobility/swaps/verify-rider-pin/`
+- [ ] `GET    /api/v1/mobility/swaps/{id}/`
+- [ ] `POST   /api/v1/mobility/swaps/{id}/abort/`
+- [ ] `POST   /api/v1/mobility/swaps/{id}/complete/`
+- [ ] `POST   /api/v1/mobility/swaps/{id}/issue/`
+- [ ] `POST   /api/v1/mobility/swaps/{id}/return/`
+- [ ] `POST   /api/v1/mobility/swaps/{id}/reverse/`
+- [ ] `GET    /api/v1/mobility/telemetry/events/`
+- [ ] `POST   /api/v1/mobility/telemetry/events/ingest/`
+- [ ] `GET    /api/v1/mobility/telemetry/events/{id}/`
+- [ ] `GET    /api/v1/mobility/telemetry/fleet/`
+- [ ] `GET    /api/v1/mobility/vehicle-models/`
+- [ ] `POST   /api/v1/mobility/vehicle-models/`
+- [ ] `GET    /api/v1/mobility/vehicle-models/stats/`
+- [ ] `GET    /api/v1/mobility/vehicle-models/{id}/`
+- [ ] `PATCH  /api/v1/mobility/vehicle-models/{id}/`
+- [ ] `GET    /api/v1/mobility/vehicles/`
+- [ ] `POST   /api/v1/mobility/vehicles/`
+- [ ] `GET    /api/v1/mobility/vehicles/export/`
+- [ ] `GET    /api/v1/mobility/vehicles/models/`
+- [ ] `POST   /api/v1/mobility/vehicles/resolve/`
+- [ ] `GET    /api/v1/mobility/vehicles/stats/`
+- [ ] `GET    /api/v1/mobility/vehicles/{id}/`
+- [ ] `PATCH  /api/v1/mobility/vehicles/{id}/`
+- [ ] `POST   /api/v1/mobility/vehicles/{id}/assign-driver/`
+- [ ] `GET    /api/v1/mobility/vehicles/{id}/assignments/`
+- [ ] `POST   /api/v1/mobility/vehicles/{id}/command/`
+- [ ] `GET    /api/v1/mobility/vehicles/{id}/commands/`
+- [ ] `GET    /api/v1/mobility/vehicles/{id}/qr/`
+- [ ] `POST   /api/v1/mobility/vehicles/{id}/retire/`
+- [ ] `POST   /api/v1/mobility/vehicles/{id}/rotate-iot-key/`
+- [ ] `POST   /api/v1/mobility/vehicles/{id}/rotate-qr/`
+- [ ] `POST   /api/v1/mobility/vehicles/{id}/status/`
+
+## operations (30)
+
+- [ ] `GET    /api/v1/operations/activity/`
+- [ ] `GET    /api/v1/operations/alert-rules/`
+- [ ] `POST   /api/v1/operations/alert-rules/`
+- [ ] `GET    /api/v1/operations/alert-rules/{id}/`
+- [ ] `PATCH  /api/v1/operations/alert-rules/{id}/`
+- [ ] `GET    /api/v1/operations/alerts/`
+- [ ] `GET    /api/v1/operations/alerts/export/`
+- [ ] `GET    /api/v1/operations/alerts/stats/`
+- [ ] `GET    /api/v1/operations/alerts/{id}/`
+- [ ] `POST   /api/v1/operations/alerts/{id}/ack/`
+- [ ] `POST   /api/v1/operations/alerts/{id}/escalate/`
+- [ ] `POST   /api/v1/operations/alerts/{id}/resolve/`
+- [ ] `GET    /api/v1/operations/cash-deposits/`
+- [ ] `POST   /api/v1/operations/cash-deposits/`
+- [ ] `GET    /api/v1/operations/cash-deposits/{id}/`
+- [ ] `POST   /api/v1/operations/cash-deposits/{id}/flag/`
+- [ ] `GET    /api/v1/operations/cash-deposits/{id}/receipt/`
+- [ ] `GET    /api/v1/operations/command-centre/`
+- [ ] `GET    /api/v1/operations/inventory-counts/`
+- [ ] `POST   /api/v1/operations/inventory-counts/`
+- [ ] `GET    /api/v1/operations/overrides/`
+- [ ] `POST   /api/v1/operations/overrides/`
+- [ ] `GET    /api/v1/operations/overrides/{id}/`
+- [ ] `PATCH  /api/v1/operations/overrides/{id}/`
+- [ ] `GET    /api/v1/operations/shifts/`
+- [ ] `POST   /api/v1/operations/shifts/`
+- [ ] `POST   /api/v1/operations/shifts/open/`
+- [ ] `GET    /api/v1/operations/shifts/{id}/`
+- [ ] `POST   /api/v1/operations/shifts/{id}/close/`
+- [ ] `POST   /api/v1/operations/shifts/{id}/lodge/`
+
+## accounts (22)
+
+- [ ] `GET    /api/v1/accounts/`
+- [ ] `POST   /api/v1/accounts/`
+- [ ] `GET    /api/v1/accounts/export/`
+- [ ] `POST   /api/v1/accounts/identity/`
+- [ ] `POST   /api/v1/accounts/identity/photos/`
+- [ ] `POST   /api/v1/accounts/identity/withdraw/`
+- [ ] `GET    /api/v1/accounts/me/fleet-spend/`
+- [ ] `GET    /api/v1/accounts/me/impact/`
+- [ ] `POST   /api/v1/accounts/register/`
+- [ ] `GET    /api/v1/accounts/stats/`
+- [ ] `GET    /api/v1/accounts/{id}/`
+- [ ] `PATCH  /api/v1/accounts/{id}/`
+- [ ] `GET    /api/v1/accounts/{id}/kyc/`
+- [ ] `POST   /api/v1/accounts/{id}/kyc/reject/`
+- [ ] `POST   /api/v1/accounts/{id}/kyc/request-photos/`
+- [ ] `POST   /api/v1/accounts/{id}/kyc/submit/`
+- [ ] `POST   /api/v1/accounts/{id}/kyc/verify/`
+- [ ] `POST   /api/v1/accounts/{id}/notify/`
+- [ ] `POST   /api/v1/accounts/{id}/reinstate/`
+- [ ] `POST   /api/v1/accounts/{id}/set-cooperative/`
+- [ ] `GET    /api/v1/accounts/{id}/stats/`
+- [ ] `POST   /api/v1/accounts/{id}/suspend/`
+
+## credit (18)
+
+- [ ] `GET    /api/v1/credit/applications/`
+- [ ] `POST   /api/v1/credit/applications/`
+- [ ] `GET    /api/v1/credit/applications/{id}/`
+- [ ] `POST   /api/v1/credit/applications/{id}/approve/`
+- [ ] `POST   /api/v1/credit/applications/{id}/decline/`
+- [ ] `GET    /api/v1/credit/eligibility/`
+- [ ] `GET    /api/v1/credit/loans/`
+- [ ] `GET    /api/v1/credit/loans/{id}/`
+- [ ] `POST   /api/v1/credit/loans/{id}/repay/`
+- [ ] `POST   /api/v1/credit/offer-assignments/{id}/accept/`
+- [ ] `GET    /api/v1/credit/offers/`
+- [ ] `POST   /api/v1/credit/offers/`
+- [ ] `GET    /api/v1/credit/offers/mine/`
+- [ ] `GET    /api/v1/credit/offers/{id}/`
+- [ ] `PATCH  /api/v1/credit/offers/{id}/`
+- [ ] `POST   /api/v1/credit/offers/{id}/assign/`
+- [ ] `GET    /api/v1/credit/scores/`
+- [ ] `POST   /api/v1/credit/scores/{account_id}/override/`
+
+## auth (17)
+
+- [ ] `POST   /api/v1/auth/devices/heartbeat/`
+- [ ] `POST   /api/v1/auth/login/`
+- [ ] `POST   /api/v1/auth/login/begin/`
+- [ ] `POST   /api/v1/auth/logout/`
+- [ ] `GET    /api/v1/auth/me/`
+- [ ] `POST   /api/v1/auth/me/consent/`
+- [ ] `PATCH  /api/v1/auth/me/profile/`
+- [ ] `POST   /api/v1/auth/onboarding/complete/`
+- [ ] `POST   /api/v1/auth/otp/request/`
+- [ ] `POST   /api/v1/auth/otp/verify/`
+- [ ] `POST   /api/v1/auth/password-setup/`
+- [ ] `POST   /api/v1/auth/password-setup/context/`
+- [ ] `POST   /api/v1/auth/password/change/`
+- [ ] `POST   /api/v1/auth/pin/login/`
+- [ ] `POST   /api/v1/auth/pin/set/`
+- [ ] `POST   /api/v1/auth/pin/verify/`
+- [ ] `POST   /api/v1/auth/token/refresh/`
+
+## analytics (12)
+
+- [ ] `GET    /api/v1/analytics/cooperative/me/`
+- [ ] `GET    /api/v1/analytics/cooperative/{cooperative_id}/`
+- [ ] `GET    /api/v1/analytics/dashboard/`
+- [ ] `GET    /api/v1/analytics/demand/hubs/`
+- [ ] `GET    /api/v1/analytics/impact/`
+- [ ] `GET    /api/v1/analytics/revenue/overview/`
+- [ ] `GET    /api/v1/analytics/revenue/streams/`
+- [ ] `GET    /api/v1/analytics/stories/`
+- [ ] `POST   /api/v1/analytics/stories/`
+- [ ] `GET    /api/v1/analytics/stories/{id}/`
+- [ ] `PATCH  /api/v1/analytics/stories/{id}/`
+- [ ] `POST   /api/v1/analytics/stories/{id}/publish/`
+
+## finance (11)
+
+- [ ] `GET    /api/v1/finance/ledger/`
+- [ ] `GET    /api/v1/finance/ledger/{id}/`
+- [ ] `GET    /api/v1/finance/payments/`
+- [ ] `GET    /api/v1/finance/payments/export/`
+- [ ] `GET    /api/v1/finance/payments/stats/`
+- [ ] `GET    /api/v1/finance/payments/{id}/`
+- [ ] `GET    /api/v1/finance/payments/{id}/receipt/`
+- [ ] `GET    /api/v1/finance/wallets/`
+- [ ] `POST   /api/v1/finance/wallets/fund/`
+- [ ] `GET    /api/v1/finance/wallets/mine/`
+- [ ] `GET    /api/v1/finance/wallets/{id}/`
+
+## risk (10)
+
+- [ ] `GET    /api/v1/risk/events/`
+- [ ] `POST   /api/v1/risk/events/`
+- [ ] `GET    /api/v1/risk/events/export/`
+- [ ] `GET    /api/v1/risk/events/stats/`
+- [ ] `GET    /api/v1/risk/events/{id}/`
+- [ ] `POST   /api/v1/risk/events/{id}/review/`
+- [ ] `GET    /api/v1/risk/rules/`
+- [ ] `GET    /api/v1/risk/rules/{id}/`
+- [ ] `PUT    /api/v1/risk/rules/{id}/`
+- [ ] `PATCH  /api/v1/risk/rules/{id}/`
+
+## users (9)
+
+- [ ] `GET    /api/v1/users/`
+- [ ] `POST   /api/v1/users/`
+- [ ] `GET    /api/v1/users/export/`
+- [ ] `GET    /api/v1/users/stats/`
+- [ ] `GET    /api/v1/users/{id}/`
+- [ ] `PATCH  /api/v1/users/{id}/`
+- [ ] `POST   /api/v1/users/{id}/activate/`
+- [ ] `POST   /api/v1/users/{id}/deactivate/`
+- [ ] `POST   /api/v1/users/{id}/resend-invite/`
+
+## roles (8)
+
+- [ ] `GET    /api/v1/roles/`
+- [ ] `POST   /api/v1/roles/`
+- [ ] `GET    /api/v1/roles/export/`
+- [ ] `GET    /api/v1/roles/stats/`
+- [ ] `GET    /api/v1/roles/{id}/`
+- [ ] `PATCH  /api/v1/roles/{id}/`
+- [ ] `POST   /api/v1/roles/{id}/activate/`
+- [ ] `POST   /api/v1/roles/{id}/deactivate/`
+
+## support (8)
+
+- [ ] `GET    /api/v1/support/cases/`
+- [ ] `POST   /api/v1/support/cases/`
+- [ ] `GET    /api/v1/support/cases/export/`
+- [ ] `GET    /api/v1/support/cases/stats/`
+- [ ] `GET    /api/v1/support/cases/{id}/`
+- [ ] `POST   /api/v1/support/cases/{id}/assign/`
+- [ ] `POST   /api/v1/support/cases/{id}/notes/`
+- [ ] `POST   /api/v1/support/cases/{id}/status/`
+
+## offers (7)
+
+- [ ] `GET    /api/v1/offers/`
+- [ ] `POST   /api/v1/offers/`
+- [ ] `POST   /api/v1/offers/assignments/{id}/accept/`
+- [ ] `GET    /api/v1/offers/mine/`
+- [ ] `GET    /api/v1/offers/{id}/`
+- [ ] `PATCH  /api/v1/offers/{id}/`
+- [ ] `POST   /api/v1/offers/{id}/assign/`
+
+## segments (7)
+
+- [ ] `GET    /api/v1/segments/`
+- [ ] `POST   /api/v1/segments/`
+- [ ] `POST   /api/v1/segments/preview/`
+- [ ] `GET    /api/v1/segments/{id}/`
+- [ ] `PATCH  /api/v1/segments/{id}/`
+- [ ] `GET    /api/v1/segments/{id}/members/`
+- [ ] `POST   /api/v1/segments/{id}/refresh/`
+
+## config (5)
+
+- [ ] `GET    /api/v1/config/versions/`
+- [ ] `GET    /api/v1/config/versions/{id}/`
+- [ ] `POST   /api/v1/config/versions/{id}/approve/`
+- [ ] `GET    /api/v1/config/{namespace}/`
+- [ ] `POST   /api/v1/config/{namespace}/`
+
+## notifications (5)
+
+- [ ] `GET    /api/v1/notifications/`
+- [ ] `POST   /api/v1/notifications/read-all/`
+- [ ] `GET    /api/v1/notifications/stats/`
+- [ ] `GET    /api/v1/notifications/{id}/`
+- [ ] `POST   /api/v1/notifications/{id}/read/`
+
+## cooperatives (4)
+
+- [ ] `GET    /api/v1/cooperatives/`
+- [ ] `POST   /api/v1/cooperatives/`
+- [ ] `GET    /api/v1/cooperatives/{id}/`
+- [ ] `PATCH  /api/v1/cooperatives/{id}/`
+
+## drivers (4)
+
+- [ ] `GET    /api/v1/drivers/`
+- [ ] `POST   /api/v1/drivers/attach/`
+- [ ] `GET    /api/v1/drivers/{id}/`
+- [ ] `PATCH  /api/v1/drivers/{id}/`
+
+## webhooks (4)
+
+- [ ] `GET    /api/v1/webhooks/events/`
+- [ ] `GET    /api/v1/webhooks/events/{id}/`
+- [ ] `POST   /api/v1/webhooks/nomba`
+- [ ] `POST   /api/v1/webhooks/paystack`
+
+## audit (3)
+
+- [ ] `GET    /api/v1/audit/`
+- [ ] `GET    /api/v1/audit/stats/`
+- [ ] `GET    /api/v1/audit/{id}/`
+
+## reports (3)
+
+- [ ] `POST   /api/v1/reports/`
+- [ ] `GET    /api/v1/reports/{report_id}/`
+- [ ] `GET    /api/v1/reports/{report_id}/download/`
+
+## permissions (2)
+
+- [ ] `GET    /api/v1/permissions/`
+- [ ] `GET    /api/v1/permissions/{id}/`
+
+## telemetry (2)
+
+- [ ] `POST   /api/v1/telemetry/ingest`
+- [ ] `POST   /api/v1/telemetry/ingest/`
+
+## media (1)
+
+- [ ] `POST   /api/v1/media/upload/`
