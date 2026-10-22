@@ -53,26 +53,26 @@ var PermissionCatalog = []Permission{
 
 // RoleMeta mirrors ROLE_META.
 var RoleMeta = map[string]RoleInfo{
-	"SUPER_ADMIN": {Name: "Super Admin", Description: "Unrestricted platform access"},
-	"OPS_MANAGER": {Name: "Operations Manager", Description: "Network ops and CRM"},
-	"HUB_AGENT": {Name: "Hub Agent", Description: "Station-level swap execution"},
-	"COMMERCIAL_ADMIN": {Name: "Commercial Admin", Description: "Tariffs, credit, partners"},
-	"GOVERNMENT_VIEWER": {Name: "Government Viewer", Description: "Read-only regulatory view"},
-	"PARTNER_VIEWER": {Name: "Partner Viewer", Description: "Read-only partner view"},
+	"SUPER_ADMIN":          {Name: "Super Admin", Description: "Unrestricted platform access"},
+	"OPS_MANAGER":          {Name: "Operations Manager", Description: "Network ops and CRM"},
+	"HUB_AGENT":            {Name: "Hub Agent", Description: "Station-level swap execution"},
+	"COMMERCIAL_ADMIN":     {Name: "Commercial Admin", Description: "Tariffs, credit, partners"},
+	"GOVERNMENT_VIEWER":    {Name: "Government Viewer", Description: "Read-only regulatory view"},
+	"PARTNER_VIEWER":       {Name: "Partner Viewer", Description: "Read-only partner view"},
 	"COOPERATIVE_CHAIRMAN": {Name: "Cooperative Chairman", Description: "Read-only aggregates for one cooperative"},
-	"DRIVER": {Name: "Driver / Operator", Description: "Rider app access"},
-	"FLEET_OWNER": {Name: "Fleet Owner", Description: "Fleet account management"},
+	"DRIVER":               {Name: "Driver / Operator", Description: "Rider app access"},
+	"FLEET_OWNER":          {Name: "Fleet Owner", Description: "Fleet account management"},
 }
 
 // roleGrants mirrors ROLE_CAPABILITIES ("*" = every permission).
 var roleGrants = map[string][]string{
-	"SUPER_ADMIN": {"*"},
-	"OPS_MANAGER": {"accounts:manage", "accounts:read", "alerts:manage", "alerts:read", "analytics:cooperative", "analytics:impact", "analytics:revenue", "audit:read", "batteries:manage", "batteries:read", "battery-types:approve", "cases:manage", "cases:read", "cooperatives:manage", "cooperatives:read", "credit:approve", "engines:manage", "engines:release", "finance:read", "hubs:manage", "hubs:read", "identity:reveal", "impact:manage", "offers:manage", "price:approve", "risk:read", "risk:review", "segments:manage", "shifts:manage", "swaps:complete", "swaps:override", "swaps:read", "swaps:reverse", "telemetry:ingest", "telemetry:read", "users:manage", "users:read", "vehicles:manage", "vehicles:read"},
-	"HUB_AGENT": {"accounts:read", "alerts:read", "batteries:read", "cases:read", "cooperatives:read", "engines:manage", "hubs:read", "shifts:manage", "swaps:complete", "swaps:override", "swaps:read", "telemetry:ingest", "vehicles:read"},
-	"COMMERCIAL_ADMIN": {"accounts:read", "analytics:impact", "analytics:revenue", "audit:read", "cases:read", "cooperatives:read", "credit:approve", "finance:read", "offers:manage", "segments:manage", "tariffs:manage", "users:read", "wallets:manage"},
-	"GOVERNMENT_VIEWER": {"analytics:impact", "analytics:revenue", "hubs:read"},
-	"PARTNER_VIEWER": {"analytics:impact", "analytics:revenue", "batteries:read", "hubs:read"},
+	"SUPER_ADMIN":          {"*"},
+	"OPS_MANAGER":          {"accounts:manage", "accounts:read", "alerts:manage", "alerts:read", "analytics:cooperative", "analytics:impact", "analytics:revenue", "audit:read", "batteries:manage", "batteries:read", "battery-types:approve", "cases:manage", "cases:read", "cooperatives:manage", "cooperatives:read", "credit:approve", "engines:manage", "engines:release", "finance:read", "hubs:manage", "hubs:read", "identity:reveal", "impact:manage", "offers:manage", "price:approve", "risk:read", "risk:review", "segments:manage", "shifts:manage", "swaps:complete", "swaps:override", "swaps:read", "swaps:reverse", "telemetry:ingest", "telemetry:read", "users:manage", "users:read", "vehicles:manage", "vehicles:read"},
+	"HUB_AGENT":            {"accounts:read", "alerts:read", "batteries:read", "cases:read", "cooperatives:read", "engines:manage", "hubs:read", "shifts:manage", "swaps:complete", "swaps:override", "swaps:read", "telemetry:ingest", "vehicles:read"},
+	"COMMERCIAL_ADMIN":     {"accounts:read", "analytics:impact", "analytics:revenue", "audit:read", "cases:read", "cooperatives:read", "credit:approve", "finance:read", "offers:manage", "segments:manage", "tariffs:manage", "users:read", "wallets:manage"},
+	"GOVERNMENT_VIEWER":    {"analytics:impact", "analytics:revenue", "hubs:read"},
+	"PARTNER_VIEWER":       {"analytics:impact", "analytics:revenue", "batteries:read", "hubs:read"},
 	"COOPERATIVE_CHAIRMAN": {"analytics:cooperative", "cooperatives:read"},
-	"DRIVER": {"accounts:write_own", "cases:write_own", "finance:read", "swaps:read", "vehicles:manage"},
-	"FLEET_OWNER": {"accounts:write_own", "cases:write_own", "finance:read", "swaps:read", "users:read", "vehicles:manage"},
+	"DRIVER":               {"accounts:write_own", "cases:write_own", "finance:read", "swaps:read", "vehicles:manage"},
+	"FLEET_OWNER":          {"accounts:write_own", "cases:write_own", "finance:read", "swaps:read", "users:read", "vehicles:manage"},
 }

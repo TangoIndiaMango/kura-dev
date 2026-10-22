@@ -12,13 +12,24 @@ import (
 )
 
 type Querier interface {
+	AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
+	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	AuditChainTip(ctx context.Context) (string, error)
 	BlacklistToken(ctx context.Context, tokenID int64) error
 	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
+	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
+	// Consume this token and every other open one for the same user + purpose.
+	ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokensParams) error
+	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
+	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
+	// RiskService.ensure_rules: get_or_create by code.
+	EnsureRiskRule(ctx context.Context, arg EnsureRiskRuleParams) error
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
+	FirstDriverForAccount(ctx context.Context, accountID uuid.UUID) (FirstDriverForAccountRow, error)
+	FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	// Live auth state for a token's user_id (role, flags, session version).
 	GetPrincipalUser(ctx context.Context, id uuid.UUID) (GetPrincipalUserRow, error)
 	// Django email__iexact.
@@ -28,27 +39,44 @@ type Querier interface {
 	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
 	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertDriver(ctx context.Context, arg InsertDriverParams) error
 	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
 	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)
 	InsertOTP(ctx context.Context, arg InsertOTPParams) error
 	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
+	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
+	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
+	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
+	MediaAssetByID(ctx context.Context, id uuid.UUID) (MediaAssetByIDRow, error)
+	MediaAssetOwner(ctx context.Context, id uuid.UUID) (MediaAssetOwnerRow, error)
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
+	RestampConsent(ctx context.Context, arg RestampConsentParams) error
+	// notify_risk_reviewers: active SUPER_ADMIN / OPS_MANAGER, max 25.
+	RiskReviewers(ctx context.Context) ([]uuid.UUID, error)
 	RolePermissionCodes(ctx context.Context, id uuid.UUID) ([]string, error)
 	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
+	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
+	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
+	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
+	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
+	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
+	WithdrawConsent(ctx context.Context, arg WithdrawConsentParams) error
 }
 
 var _ Querier = (*Queries)(nil)

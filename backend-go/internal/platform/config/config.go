@@ -24,8 +24,8 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL,required"`
 	RedisURL    string `env:"REDIS_URL"`
 
-	SecretKey     string `env:"DJANGO_SECRET_KEY"`
-	JWTSigningKey string `env:"JWT_SIGNING_KEY"`
+	SecretKey     string        `env:"DJANGO_SECRET_KEY"`
+	JWTSigningKey string        `env:"JWT_SIGNING_KEY"`
 	AccessTTL     time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m"`
 	RefreshTTL    time.Duration `env:"JWT_REFRESH_TTL" envDefault:"720h"`
 
@@ -38,6 +38,13 @@ type Config struct {
 	DefaultPSP     string `env:"DEFAULT_PSP" envDefault:"PAYSTACK"`
 	PaystackSecret string `env:"PAYSTACK_SECRET_KEY"`
 	MockIoT        bool   `env:"MOCK_IOT_ENABLED" envDefault:"false"`
+
+	CloudinaryCloudName    string `env:"CLOUDINARY_CLOUD_NAME"`
+	CloudinaryAPIKey       string `env:"CLOUDINARY_API_KEY"`
+	CloudinaryAPISecret    string `env:"CLOUDINARY_API_SECRET"`
+	CloudinaryUploadPreset string `env:"CLOUDINARY_UPLOAD_PRESET"`
+	CloudinaryFolder       string `env:"CLOUDINARY_FOLDER" envDefault:"uploads"`
+	ConsentPolicyVersion   string `env:"CONSENT_POLICY_VERSION" envDefault:"2026-10"`
 
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"20s"`
 }

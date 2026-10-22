@@ -20,6 +20,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/canonjson"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/ids"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
 )
 
 // Actor is who performed the action (nil for system jobs).
@@ -65,7 +66,7 @@ func record(ctx context.Context, q *db.Queries, ev Event) error {
 		"subject_label": ev.SubjectLabel, "actor_email": actorEmail,
 		"before": orEmpty(ev.Before), "after": orEmpty(ev.After),
 		"metadata": orEmpty(ev.Metadata), "prev_hash": prev,
-		"occurred_at": pyISO(now),
+		"occurred_at": jsontime.FormatISO(now),
 	}
 	canon, err := canonjson.Marshal(body)
 	if err != nil {
@@ -84,14 +85,6 @@ func record(ctx context.Context, q *db.Queries, ev Event) error {
 		IpAddress: clientAddr(ctx), RequestID: reqctx.RequestID(ctx),
 		PrevHash: prev, RowHash: hex.EncodeToString(sum[:]),
 	})
-}
-
-// pyISO formats like Python datetime.isoformat() for an aware UTC time.
-func pyISO(t time.Time) string {
-	if t.Nanosecond()/1000 == 0 {
-		return t.Format("2006-01-02T15:04:05") + "+00:00"
-	}
-	return t.Format("2006-01-02T15:04:05.000000") + "+00:00"
 }
 
 func orEmpty(m Map) Map {

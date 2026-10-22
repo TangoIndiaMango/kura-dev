@@ -127,6 +127,16 @@ translated to the envelope in exactly one place (`respond.Error`).
   AccountSerializer, IdentityService.kyc_payload, media delivery_url,
   ConsentService.state, reconcile_onboarding), me/profile, me/consent,
   password/change, password-setup(+context), devices/heartbeat.
+- 2026-10-22 — **All 17 /auth endpoints done (17/317).** /auth/me is
+  byte-identical to Django for 7 users (staff, fleet, verified riders with
+  KYC photos). Added: `media` (Cloudinary delivery URLs, SDK-identical),
+  `risk.Emit` (rule catalogue + risk events + reviewer pages), `jsontime`
+  (DRF field = Lagos ISO µs; DjangoJSONEncoder raw = UTC ms Z; isoformat),
+  `scripts/dev.sh` (runs Go with Django's exact .env). Contract scripts:
+  `scripts/contract/{auth,me,profile}.py` — 15 + 7 + 23 checks identical.
+  Note: re-running auth.py within an hour hits real throttles (429) — expected.
+  **Next:** rest of accounts (users, roles, permissions, drivers,
+  cooperatives, accounts CRUD/identity) then mobility.
 
 ### How to run
 ```

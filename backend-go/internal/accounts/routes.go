@@ -37,6 +37,13 @@ func (m *Module) Register(mux *http.ServeMux) {
 	g.Public("POST", "/token/refresh/", handle(a.refresh))
 	g.User("POST", "/logout/", handle(a.logout))
 	g.User("POST", "/onboarding/complete/", a.completeOnboarding)
+	g.User("GET", "/me/", a.getMe)
+	g.User("PATCH", "/me/profile/", handle(a.updateProfile))
+	g.User("POST", "/me/consent/", handle(a.updateConsent))
+	g.User("POST", "/password/change/", handle(a.changePassword))
+	g.User("POST", "/devices/heartbeat/", handle(a.devicesHeartbeat))
+	g.Throttle(throttle.AnonBurst).Public("POST", "/password-setup/context/", handle(a.setupContext))
+	g.Throttle(throttle.AnonBurst).Public("POST", "/password-setup/", handle(a.passwordSetup))
 }
 
 // otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).

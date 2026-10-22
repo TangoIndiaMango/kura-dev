@@ -12,6 +12,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
@@ -25,10 +26,13 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	limiter := throttle.New(throttle.NewMemory())
 
 	authSvc := accounts.NewAuthService(pool, tokens, cfg)
+	cdn := media.Cloudinary{CloudName: cfg.CloudinaryCloudName, APIKey: cfg.CloudinaryAPIKey,
+		APISecret: cfg.CloudinaryAPISecret, UploadPreset: cfg.CloudinaryUploadPreset}
+	meSvc := accounts.NewMeService(queries, cdn, cfg.ConsentPolicyVersion)
 
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn},
 		health.New(pool),
-		accounts.NewModule(accounts.NewAuthHandler(authSvc), limiter),
+		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), limiter),
 	)
 }

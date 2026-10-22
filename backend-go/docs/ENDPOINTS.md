@@ -212,19 +212,19 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## auth (17)
 
-- [ ] `POST   /api/v1/auth/devices/heartbeat/`
+- [x] `POST   /api/v1/auth/devices/heartbeat/`
 - [x] `POST   /api/v1/auth/login/`
 - [x] `POST   /api/v1/auth/login/begin/`
 - [x] `POST   /api/v1/auth/logout/`
-- [ ] `GET    /api/v1/auth/me/`
-- [ ] `POST   /api/v1/auth/me/consent/`
-- [ ] `PATCH  /api/v1/auth/me/profile/`
+- [x] `GET    /api/v1/auth/me/`
+- [x] `POST   /api/v1/auth/me/consent/`
+- [x] `PATCH  /api/v1/auth/me/profile/`
 - [x] `POST   /api/v1/auth/onboarding/complete/`
 - [x] `POST   /api/v1/auth/otp/request/`
 - [x] `POST   /api/v1/auth/otp/verify/`
-- [ ] `POST   /api/v1/auth/password-setup/`
-- [ ] `POST   /api/v1/auth/password-setup/context/`
-- [ ] `POST   /api/v1/auth/password/change/`
+- [x] `POST   /api/v1/auth/password-setup/`
+- [x] `POST   /api/v1/auth/password-setup/context/`
+- [x] `POST   /api/v1/auth/password/change/`
 - [x] `POST   /api/v1/auth/pin/login/`
 - [x] `POST   /api/v1/auth/pin/set/`
 - [x] `POST   /api/v1/auth/pin/verify/`

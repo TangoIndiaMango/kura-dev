@@ -126,7 +126,7 @@ func (l *Limiter) Check(r *http.Request, rules []Rule) error {
 		if !ok {
 			secs := int(wait.Seconds() + 0.999)
 			return &apperr.Error{Code: "THROTTLED", Status: http.StatusTooManyRequests,
-				Message: fmt.Sprintf("Request was throttled. Expected available in %d seconds.", secs),
+				Message:    fmt.Sprintf("Request was throttled. Expected available in %d seconds.", secs),
 				RetryAfter: secs}
 		}
 	}

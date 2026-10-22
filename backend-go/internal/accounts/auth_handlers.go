@@ -9,15 +9,28 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/decode"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/reqctx"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/respond"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
 )
 
 // AuthHandler is the HTTP layer for /api/v1/auth/* (Django AuthViewSet).
 type AuthHandler struct {
 	svc *AuthService
+	me  *MeService
 	q   *db.Queries
 }
 
-func NewAuthHandler(svc *AuthService) *AuthHandler { return &AuthHandler{svc: svc, q: svc.q} }
+func NewAuthHandler(svc *AuthService, me *MeService) *AuthHandler {
+	return &AuthHandler{svc: svc, me: me, q: svc.q}
+}
+
+func (h *AuthHandler) getMe(w http.ResponseWriter, r *http.Request) {
+	out, err := h.me.Payload(r.Context(), currentUserID(r), reqctx.User(r.Context()).Capabilities)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	respond.OK(w, out)
+}
 
 // handle decodes body into T, then runs fn; any error becomes the envelope.
 func handle[T any](fn func(w http.ResponseWriter, r *http.Request, body T) error) http.HandlerFunc {
@@ -121,7 +134,7 @@ func (h *AuthHandler) pinVerify(w http.ResponseWriter, r *http.Request, b pinVer
 		return err
 	}
 	respond.OK(w, map[string]any{"status": "verified", "pin_grant": grant.Token,
-		"expires_at": grant.ExpiresAt})
+		"expires_at": jsontime.Raw(grant.ExpiresAt)})
 	return nil
 }
 

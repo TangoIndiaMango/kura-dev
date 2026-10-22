@@ -4,31 +4,31 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
 )
 
 // UserDTO is the JSON contract of Django's accounts.serializers.UserSerializer.
 type UserDTO struct {
-	ID               string     `json:"id"`
-	PublicID         *string    `json:"public_id"`
-	Email            *string    `json:"email"`
-	Phone            *string    `json:"phone"`
-	FirstName        string     `json:"first_name"`
-	LastName         string     `json:"last_name"`
-	Name             string     `json:"name"`
-	Role             string     `json:"role"`
-	AssignedRoleCode *string    `json:"assigned_role_code"`
-	AssignedRoleName *string    `json:"assigned_role_name"`
-	HubIDs           []string   `json:"hub_ids"`
-	IsActive         bool       `json:"is_active"`
-	IsStaff          bool       `json:"is_staff"`
-	LastLogin        *time.Time `json:"last_login"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID               string          `json:"id"`
+	PublicID         *string         `json:"public_id"`
+	Email            *string         `json:"email"`
+	Phone            *string         `json:"phone"`
+	FirstName        string          `json:"first_name"`
+	LastName         string          `json:"last_name"`
+	Name             string          `json:"name"`
+	Role             string          `json:"role"`
+	AssignedRoleCode *string         `json:"assigned_role_code"`
+	AssignedRoleName *string         `json:"assigned_role_name"`
+	HubIDs           []string        `json:"hub_ids"`
+	IsActive         bool            `json:"is_active"`
+	IsStaff          bool            `json:"is_staff"`
+	LastLogin        *jsontime.Field `json:"last_login"`
+	CreatedAt        jsontime.Field  `json:"created_at"`
+	UpdatedAt        jsontime.Field  `json:"updated_at"`
 }
 
 // loadUserDTO fetches the user, its role and hub memberships.
@@ -46,8 +46,9 @@ func loadUserDTO(ctx context.Context, q *db.Queries, id uuid.UUID) (UserDTO, err
 		FirstName: u.FirstName, LastName: u.LastName,
 		Name: displayName(u.FirstName, u.LastName, u.Phone, u.Email),
 		Role: u.Role, AssignedRoleCode: u.AssignedRoleCode, AssignedRoleName: u.AssignedRoleName,
-		HubIDs: hubs, IsActive: u.IsActive, IsStaff: u.IsStaff, LastLogin: u.LastLogin,
-		CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt,
+		HubIDs: hubs, IsActive: u.IsActive, IsStaff: u.IsStaff,
+		LastLogin: jsontime.FieldPtr(u.LastLogin),
+		CreatedAt: jsontime.Field(u.CreatedAt), UpdatedAt: jsontime.Field(u.UpdatedAt),
 	}, nil
 }
 
