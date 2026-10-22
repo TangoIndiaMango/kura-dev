@@ -18,6 +18,8 @@ type Querier interface {
 	// Driver.objects.filter(account=...): Driver.Meta.ordering is -created_at.
 	AccountDriversWithUser(ctx context.Context, accountID uuid.UUID) ([]AccountDriversWithUserRow, error)
 	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
+	// Virtual account provisioning (integrations.services.va + WalletService).
+	AccountForVA(ctx context.Context, id uuid.UUID) (AccountForVARow, error)
 	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
 	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
 	// account_stats totals: one row per (status, kyc_status) in the created range.
@@ -26,6 +28,7 @@ type Querier interface {
 	AccountVehicleIDs(ctx context.Context, accountID uuid.UUID) ([]uuid.UUID, error)
 	// TruncWeek in Africa/Lagos (Django TIME_ZONE), Monday-start weeks.
 	AccountWeeklyRegistrations(ctx context.Context, arg AccountWeeklyRegistrationsParams) ([]AccountWeeklyRegistrationsRow, error)
+	ActivateVA(ctx context.Context, arg ActivateVAParams) error
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AuditChainTip(ctx context.Context) (string, error)
@@ -52,10 +55,16 @@ type Querier interface {
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
 	DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error)
+	// retry_pending_virtual_accounts: PENDING NUBANs whose retry is due.
+	DueVirtualAccounts(ctx context.Context, arg DueVirtualAccountsParams) ([]uuid.UUID, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
+	// WalletService.ensure_pending_virtual_account.
+	EnsurePendingVA(ctx context.Context, arg EnsurePendingVAParams) error
 	// RiskService.ensure_rules: get_or_create by code.
 	EnsureRiskRule(ctx context.Context, arg EnsureRiskRuleParams) error
+	// WalletService.get_or_create_wallet (Wallet is one-to-one with Account).
+	EnsureWallet(ctx context.Context, arg EnsureWalletParams) error
 	ExistingHubIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	ExistingPermissionIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
@@ -92,6 +101,7 @@ type Querier interface {
 	InsertStaffUser(ctx context.Context, arg InsertStaffUserParams) error
 	InsertTrustedDevice(ctx context.Context, arg InsertTrustedDeviceParams) (AccountsTrusteddevice, error)
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
+	LatestBVNOrNIN(ctx context.Context, accountID uuid.UUID) (string, error)
 	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
@@ -112,16 +122,21 @@ type Querier interface {
 	MediaAssetOwner(ctx context.Context, id uuid.UUID) (MediaAssetOwnerRow, error)
 	MembershipHubIDs(ctx context.Context, userID uuid.UUID) ([]string, error)
 	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
+	NubanTaken(ctx context.Context, arg NubanTakenParams) (bool, error)
 	OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uuid.UUID, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
+	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
 	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
 	PlanFeesByVehicle(ctx context.Context, arg PlanFeesByVehicleParams) ([]PlanFeesByVehicleRow, error)
 	PlanFeesDaily(ctx context.Context, arg PlanFeesDailyParams) ([]PlanFeesDailyRow, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
 	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
+	RecordVAAttempt(ctx context.Context, arg RecordVAAttemptParams) error
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
+	// notify_risk_reviewers: active super admins / ops managers (User: -created_at).
+	RiskReviewerIDs(ctx context.Context) ([]uuid.UUID, error)
 	// notify_risk_reviewers: active SUPER_ADMIN / OPS_MANAGER, max 25.
 	RiskReviewers(ctx context.Context) ([]uuid.UUID, error)
 	RoleByCode(ctx context.Context, code string) (RoleByCodeRow, error)
@@ -131,12 +146,14 @@ type Querier interface {
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
 	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error
+	SetAccountKycStatus(ctx context.Context, arg SetAccountKycStatusParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
 	SetDriverLimits(ctx context.Context, arg SetDriverLimitsParams) error
 	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
@@ -162,7 +179,9 @@ type Querier interface {
 	UpdateStaffUser(ctx context.Context, arg UpdateStaffUserParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
+	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
+	VirtualAccountRow(ctx context.Context, accountID uuid.UUID) (VirtualAccountRowRow, error)
 	WithdrawConsent(ctx context.Context, arg WithdrawConsentParams) error
 }
 

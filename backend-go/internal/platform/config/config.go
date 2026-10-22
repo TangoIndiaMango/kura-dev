@@ -37,7 +37,14 @@ type Config struct {
 	CronSecret     string `env:"CRON_SECRET"`
 	DefaultPSP     string `env:"DEFAULT_PSP" envDefault:"PAYSTACK"`
 	PaystackSecret string `env:"PAYSTACK_SECRET_KEY"`
-	MockIoT        bool   `env:"MOCK_IOT_ENABLED" envDefault:"false"`
+	PaystackBank   string `env:"PAYSTACK_PREFERRED_BANK" envDefault:"wema-bank"`
+	NombaSecret    string `env:"NOMBA_SECRET_KEY"`
+	NombaWebhook   string `env:"NOMBA_WEBHOOK_SECRET"`
+	NombaAccountID string `env:"NOMBA_ACCOUNT_ID"`
+	// PSP_ALLOW_DEV_VA defaults to DEBUG; staging/production never allow it.
+	PSPAllowDevVA       *bool  `env:"PSP_ALLOW_DEV_VA"`
+	PSPCustomerEmailDom string `env:"PSP_CUSTOMER_EMAIL_DOMAIN" envDefault:"customers.kura.eco"`
+	MockIoT             bool   `env:"MOCK_IOT_ENABLED" envDefault:"false"`
 
 	// Petrol comparison used by savings / fuel-saved estimates.
 	PetrolLitresPerSwap float64 `env:"COOP_PETROL_LITRES_PER_SWAP" envDefault:"1.2"`
@@ -73,6 +80,15 @@ type Config struct {
 // IsProduction is true for production and staging (both run with DEBUG off).
 func (c Config) IsProduction() bool {
 	return c.Env == "production" || c.Env == "staging"
+}
+
+// AllowDevVA is _dev_va_allowed(): DEBUG and PSP_ALLOW_DEV_VA, never on
+// staging / production (their settings modules force it off).
+func (c Config) AllowDevVA() bool {
+	if !c.Debug || c.IsProduction() {
+		return false
+	}
+	return c.PSPAllowDevVA == nil || *c.PSPAllowDevVA
 }
 
 // SigningKey is the HS256 key: JWT_SIGNING_KEY, else the Django secret key —

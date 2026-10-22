@@ -42,9 +42,11 @@ func v() *validator.Validate {
 }
 
 // JSON decodes the body into dst (unknown fields allowed, like DRF) and
-// validates `validate:` tags. Empty body is treated as {}. Like DRF's
-// CharField, strings are trimmed first, and a present-but-blank value for a
-// `required` or `notblank` field reports "This field may not be blank.".
+// validates `validate:` tags, reporting every field's problem at once like a
+// DRF serializer: type errors first (per-field, DRF wording), then blank
+// strings, then validators. Strings are trimmed (CharField), and a
+// present-but-blank `required`/`notblank` field says "This field may not be
+// blank.". Empty body is treated as {}.
 func JSON(r *http.Request, dst any) error {
 	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxBody))
 	if err != nil {
@@ -53,23 +55,52 @@ func JSON(r *http.Request, dst any) error {
 	if len(strings.TrimSpace(string(raw))) == 0 {
 		raw = []byte("{}")
 	}
-	if err := json.Unmarshal(raw, dst); err != nil {
-		var syn *json.SyntaxError
-		var typ *json.UnmarshalTypeError
-		switch {
-		case errors.As(err, &typ):
-			return apperr.Field(typ.Field, "Invalid type.")
-		case errors.As(err, &syn):
-			return apperr.Field("non_field_errors", "Malformed JSON.")
-		default:
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil || obj == nil {
+		var other any
+		if json.Unmarshal(raw, &other) == nil {
+			return apperr.Field("non_field_errors",
+				fmt.Sprintf("Invalid data. Expected a dictionary, but got %s.", pyTypeName(other)))
+		}
+		return apperr.Field("non_field_errors", "Malformed JSON.")
+	}
+	if !isStruct(dst) { // maps etc.: plain decode, nothing to validate
+		if err := json.Unmarshal(raw, dst); err != nil {
 			return apperr.Field("non_field_errors", "Invalid request body.")
 		}
+		return nil
 	}
+	errs := decodeFields(obj, dst)
 	trimStrings(reflect.ValueOf(dst))
-	if blank := blankFields(raw, dst); len(blank) > 0 {
-		return apperr.Validation(blank)
+	merge(errs, blankFields(obj, dst))
+	var verr *apperr.Error
+	if err := Struct(dst); errors.As(err, &verr) {
+		merge(errs, verr.Details)
+	} else if err != nil {
+		return err
 	}
-	return Struct(dst)
+	if len(errs) > 0 {
+		return apperr.Validation(errs)
+	}
+	return nil
+}
+
+func isStruct(dst any) bool {
+	v := reflect.ValueOf(dst)
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
+		v = v.Elem()
+	}
+	return v.Kind() == reflect.Struct
+}
+
+// merge adds field errors for fields that don't have one yet (a field
+// reports only its first failing stage, like DRF).
+func merge(dst, src apperr.Details) {
+	for k, v := range src {
+		if _, ok := dst[k]; !ok {
+			dst[k] = v
+		}
+	}
 }
 
 // Struct validates a struct (or pointer to one) and maps failures to field
@@ -160,11 +191,7 @@ func trimStrings(v reflect.Value) {
 
 // blankFields finds string fields sent as "" (after trimming) whose tags say
 // required or notblank.
-func blankFields(raw []byte, dst any) apperr.Details {
-	var present map[string]json.RawMessage
-	if json.Unmarshal(raw, &present) != nil {
-		return nil
-	}
+func blankFields(present map[string]json.RawMessage, dst any) apperr.Details {
 	v := reflect.ValueOf(dst)
 	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()

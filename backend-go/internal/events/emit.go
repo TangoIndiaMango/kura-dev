@@ -4,8 +4,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
 )
 
 // Event is one auditable mutation plus who should hear about it.
@@ -37,3 +40,13 @@ func Emit(ctx context.Context, q *db.Queries, ev Event) error {
 	}
 	return nil
 }
+
+// EmitTx emits in its own transaction, for callers outside one (Django's
+// emit_event in autocommit). The audit chain lock must span lock → tip →
+// insert, so Emit never runs on a bare pool.
+func EmitTx(ctx context.Context, pool *pgxpool.Pool, ev Event) error {
+	return database.InTx(ctx, pool, func(tx pgx.Tx) error { return Emit(ctx, db.New(tx), ev) })
+}
+
+// Notify sends one notification without an audit row (NotificationService.notify).
+func Notify(ctx context.Context, q *db.Queries, spec NotifySpec) error { return notify(ctx, q, spec) }

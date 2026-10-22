@@ -90,9 +90,10 @@ func (q *Queries) OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uui
 }
 
 const ownedAccountIDs = `-- name: OwnedAccountIDs :many
-SELECT id FROM accounts_account WHERE owner_user_id = $1
+SELECT id FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at DESC
 `
 
+// user.accounts: Account inherits BaseModel ordering (-created_at).
 func (q *Queries) OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, ownedAccountIDs, ownerUserID)
 	if err != nil {

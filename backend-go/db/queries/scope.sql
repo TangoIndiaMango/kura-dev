@@ -14,4 +14,5 @@ SELECT DISTINCT account_id FROM (
 ) t;
 
 -- name: OwnedAccountIDs :many
-SELECT id FROM accounts_account WHERE owner_user_id = $1;
+-- user.accounts: Account inherits BaseModel ordering (-created_at).
+SELECT id FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at DESC;
