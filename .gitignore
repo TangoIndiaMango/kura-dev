@@ -43,3 +43,6 @@ infra/.env
 backend/reports/csv/
 backend/reports/impact/
 backend-go/reports/
+
+# graphify local build output (rebuilt by git hooks)
+graphify-out/
