@@ -13,7 +13,7 @@ ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
 INSERT INTO accounts_identitydocument (id, created_at, updated_at, doc_type, number_encrypted, number_last4,
   status, verified_via, verified_at, reject_reason, account_id, back_image_id, front_image_id,
   photos_requested, request_note)
-VALUES ($1, now(), now(), $2, $3, $4, 'PENDING', '', NULL, '', $5, $6, $7, false, '');
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, 'PENDING', '', NULL, '', $5, $6, $7, false, '');
 
 -- name: ResubmitIdentityDoc :exec
 -- A resubmit resets review state: PENDING, no verification, no requests.
@@ -48,7 +48,7 @@ SELECT * FROM accounts_driver WHERE account_id = $1 ORDER BY created_at LIMIT 1;
 -- name: InsertDriverRow :one
 INSERT INTO accounts_driver (id, created_at, updated_at, license_number, status, account_id, user_id,
   photo_id, daily_spend_kobo_limit, daily_swap_limit)
-VALUES ($1, now(), now(), '', 'ACTIVE', $2, $3, NULL, NULL, NULL)
+VALUES ($1, clock_timestamp(), clock_timestamp(), '', 'ACTIVE', $2, $3, NULL, NULL, NULL)
 RETURNING *;
 
 -- name: SetDriverPhotoAccount :exec
@@ -63,7 +63,7 @@ SELECT * FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at LIMI
 -- name: InsertAccount :one
 INSERT INTO accounts_account (id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status,
   registration_channel, psp, cooperative_id, owner_user_id, risk_status)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, '', $8, $9, 'NORMAL')
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, '', $8, $9, 'NORMAL')
 RETURNING *;
 
 -- name: SetAccountDisplayName :exec
@@ -84,7 +84,7 @@ SELECT * FROM accounts_identitydocument WHERE id = $1;
 INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, email, phone, first_name,
     last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts, onboarding_step, public_id,
     notification_prefs, session_version)
-VALUES ($1, now(), now(), $2, false, $3, $4, $5, $6, 'DRIVER', '', true, false, 0, 'home', $7, '{}'::jsonb, 0);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, false, $3, $4, $5, $6, 'DRIVER', '', true, false, 0, 'home', $7, '{}'::jsonb, 0);
 
 -- name: PhoneTaken :one
 SELECT EXISTS (SELECT 1 FROM accounts_user WHERE phone = $1);

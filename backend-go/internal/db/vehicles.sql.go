@@ -161,7 +161,7 @@ func (q *Queries) HardwareTaken(ctx context.Context, arg HardwareTakenParams) (b
 
 const insertAssignment = `-- name: InsertAssignment :exec
 INSERT INTO mobility_vehicleassignment (id, created_at, updated_at, starts_at, ends_at, note, driver_id, vehicle_id)
-VALUES ($1, now(), now(), $2, NULL, $3, $4, $5)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, NULL, $3, $4, $5)
 `
 
 type InsertAssignmentParams struct {
@@ -187,7 +187,7 @@ const insertVehicle = `-- name: InsertVehicle :exec
 INSERT INTO mobility_vehicle (id, created_at, updated_at, registration_plate, status, account_id, current_battery_id,
   vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash,
   assigned_driver_id)
-VALUES ($1, now(), now(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL)
 `
 
 type InsertVehicleParams struct {
@@ -216,7 +216,7 @@ func (q *Queries) InsertVehicle(ctx context.Context, arg InsertVehicleParams) er
 const insertVehicleCommand = `-- name: InsertVehicleCommand :exec
 INSERT INTO mobility_vehiclecommand (id, created_at, updated_at, kind, status, note, error, acked_at,
   requested_by_id, vehicle_id)
-VALUES ($1, now(), now(), $2, $3, $4, '', NULL, $5, $6)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, '', NULL, $5, $6)
 `
 
 type InsertVehicleCommandParams struct {
@@ -243,7 +243,7 @@ func (q *Queries) InsertVehicleCommand(ctx context.Context, arg InsertVehicleCom
 const insertVehicleModel = `-- name: InsertVehicleModel :exec
 INSERT INTO mobility_vehiclemodel (id, created_at, updated_at, make, model, vehicle_type, battery_type_id,
   service_interval_km, service_interval_days)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7)
 `
 
 type InsertVehicleModelParams struct {

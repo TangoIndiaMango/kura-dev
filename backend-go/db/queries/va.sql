@@ -12,14 +12,14 @@ FROM finance_virtualaccount WHERE account_id = $1;
 -- name: EnsureWallet :exec
 -- WalletService.get_or_create_wallet (Wallet is one-to-one with Account).
 INSERT INTO finance_wallet (id, created_at, updated_at, balance_kobo, hold_kobo, status, account_id)
-VALUES ($1, now(), now(), 0, 0, 'ACTIVE', $2)
+VALUES ($1, clock_timestamp(), clock_timestamp(), 0, 0, 'ACTIVE', $2)
 ON CONFLICT (account_id) DO NOTHING;
 
 -- name: EnsurePendingVA :exec
 -- WalletService.ensure_pending_virtual_account.
 INSERT INTO finance_virtualaccount (id, created_at, updated_at, nuban, bank_name, account_name, status,
   account_id, psp_reference, last_attempt_at, last_error, next_attempt_at, provision_attempts)
-VALUES ($1, now(), now(), NULL, '', '', 'PENDING', $2, '', NULL, '', NULL, 0)
+VALUES ($1, clock_timestamp(), clock_timestamp(), NULL, '', '', 'PENDING', $2, '', NULL, '', NULL, 0)
 ON CONFLICT (account_id) DO NOTHING;
 
 -- name: SetVAReference :exec

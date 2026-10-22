@@ -91,7 +91,7 @@ SELECT EXISTS (SELECT 1 FROM mobility_vehicle WHERE hardware_id = $1 AND id <> s
 INSERT INTO mobility_vehicle (id, created_at, updated_at, registration_plate, status, account_id, current_battery_id,
   vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash,
   assigned_driver_id)
-VALUES ($1, now(), now(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL);
 
 -- name: SaveVehicle :exec
 UPDATE mobility_vehicle SET registration_plate = $2, status = $3, account_id = $4, vehicle_model_id = $5,
@@ -106,7 +106,7 @@ UPDATE mobility_vehicleassignment SET ends_at = $2, updated_at = now() WHERE veh
 
 -- name: InsertAssignment :exec
 INSERT INTO mobility_vehicleassignment (id, created_at, updated_at, starts_at, ends_at, note, driver_id, vehicle_id)
-VALUES ($1, now(), now(), $2, NULL, $3, $4, $5);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, NULL, $3, $4, $5);
 
 -- name: DriverRowByID :one
 SELECT * FROM accounts_driver WHERE id = $1;
@@ -123,7 +123,7 @@ WHERE vehicle_id = $1 ORDER BY created_at DESC LIMIT 40;
 -- name: InsertVehicleCommand :exec
 INSERT INTO mobility_vehiclecommand (id, created_at, updated_at, kind, status, note, error, acked_at,
   requested_by_id, vehicle_id)
-VALUES ($1, now(), now(), $2, $3, $4, '', NULL, $5, $6);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, '', NULL, $5, $6);
 
 -- name: VehicleByIDPlain :one
 SELECT * FROM mobility_vehicle WHERE id = $1;
@@ -160,7 +160,7 @@ SELECT * FROM mobility_vehiclemodel WHERE id = $1 FOR UPDATE;
 -- name: InsertVehicleModel :exec
 INSERT INTO mobility_vehiclemodel (id, created_at, updated_at, make, model, vehicle_type, battery_type_id,
   service_interval_km, service_interval_days)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7);
 
 -- name: SaveVehicleModel :exec
 UPDATE mobility_vehiclemodel SET make = $2, model = $3, vehicle_type = $4, battery_type_id = $5,

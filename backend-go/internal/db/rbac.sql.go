@@ -169,7 +169,7 @@ func (q *Queries) GetRole(ctx context.Context, id uuid.UUID) (GetRoleRow, error)
 
 const insertRole = `-- name: InsertRole :exec
 INSERT INTO accounts_role (id, created_at, updated_at, code, name, description, is_system, is_active)
-VALUES ($1, now(), now(), $2, $3, $4, false, true)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, false, true)
 `
 
 type InsertRoleParams struct {

@@ -88,7 +88,7 @@ SELECT EXISTS (SELECT 1 FROM mobility_battery WHERE upper(serial) = upper(sqlc.a
 INSERT INTO mobility_battery (id, created_at, updated_at, serial, status, charge_pct, health_pct, cycle_count,
   battery_type_id, current_hub_id, custodian_id, custodian_type, expected_return_by, issued_at, qr_secret,
   charge_source, manufactured_at, charge_observed_at)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL, $11, $12, $13, NULL);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL, $11, $12, $13, NULL);
 
 -- name: SaveBattery :exec
 -- Full save (Django model.save()): every mutable column.
@@ -111,7 +111,7 @@ ORDER BY occurred_at DESC, id DESC LIMIT 1 FOR UPDATE;
 INSERT INTO mobility_batteryevent (id, created_at, updated_at, event, from_custodian_type, from_custodian_id,
   to_custodian_type, to_custodian_id, charge_pct, meta, occurred_at, recorded_at, source, actor_id, battery_id,
   hub_id, swap_id, prev_hash, row_hash)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11, $12, $13, $14, $15, $16);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, $8, $9, clock_timestamp(), $10, $11, $12, $13, $14, $15, $16);
 
 -- name: HubExists :one
 SELECT EXISTS (SELECT 1 FROM mobility_hub WHERE id = $1);

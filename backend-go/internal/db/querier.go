@@ -73,6 +73,7 @@ type Querier interface {
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
 	CountVehicleModels(ctx context.Context, arg CountVehicleModelsParams) (int64, error)
 	CountVehicles(ctx context.Context, arg CountVehiclesParams) (int64, error)
+	CountWallets(ctx context.Context, arg CountWalletsParams) (int64, error)
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
 	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
@@ -87,6 +88,7 @@ type Querier interface {
 	DueVirtualAccounts(ctx context.Context, arg DueVirtualAccountsParams) ([]uuid.UUID, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
+	EnsureLedgerAccount(ctx context.Context, arg EnsureLedgerAccountParams) error
 	// WalletService.ensure_pending_virtual_account.
 	EnsurePendingVA(ctx context.Context, arg EnsurePendingVAParams) error
 	// RiskService.ensure_rules: get_or_create by code.
@@ -149,11 +151,14 @@ type Querier interface {
 	InsertHubSlot(ctx context.Context, arg InsertHubSlotParams) error
 	InsertIdentityDoc(ctx context.Context, arg InsertIdentityDocParams) error
 	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
+	InsertLedgerEntry(ctx context.Context, arg InsertLedgerEntryParams) error
+	InsertLedgerTransaction(ctx context.Context, arg InsertLedgerTransactionParams) error
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
 	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)
 	InsertOTP(ctx context.Context, arg InsertOTPParams) error
 	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
+	InsertPayment(ctx context.Context, arg InsertPaymentParams) (FinancePayment, error)
 	// register_operator: a rider created by staff (no PIN yet, invite emailed).
 	InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
@@ -170,6 +175,11 @@ type Querier interface {
 	LatestIdentityDocForUpdate(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
+	LedgerAccountForUpdate(ctx context.Context, code string) (FinanceLedgeraccount, error)
+	// LedgerEntry inherits BaseModel ordering (-created_at).
+	LedgerEntriesFor(ctx context.Context, ids []uuid.UUID) ([]LedgerEntriesForRow, error)
+	LedgerPage(ctx context.Context, arg LedgerPageParams) ([]FinanceLedgertransaction, error)
+	LedgerTxByID(ctx context.Context, id uuid.UUID) (FinanceLedgertransaction, error)
 	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
 	// ?ordering= (OrderingFilter over created_at / display_name); default newest first.
 	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
@@ -192,6 +202,7 @@ type Querier interface {
 	// Scope (vehicles_for): all | hub ids (vehicle_q_for_hubs) | own accounts.
 	ListVehicleIDs(ctx context.Context, arg ListVehicleIDsParams) ([]uuid.UUID, error)
 	ListVehicleModels(ctx context.Context, arg ListVehicleModelsParams) ([]ListVehicleModelsRow, error)
+	ListWallets(ctx context.Context, arg ListWalletsParams) ([]FinanceWallet, error)
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	LockBatteryChain(ctx context.Context, key int64) error
@@ -205,6 +216,14 @@ type Querier interface {
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
+	PaymentByID(ctx context.Context, id uuid.UUID) (PaymentByIDRow, error)
+	PaymentByIdempotency(ctx context.Context, idempotencyKey *string) (FinancePayment, error)
+	PaymentByPSPRef(ctx context.Context, pspReference *string) (FinancePayment, error)
+	PaymentChannelTotals(ctx context.Context, arg PaymentChannelTotalsParams) ([]PaymentChannelTotalsRow, error)
+	PaymentStats(ctx context.Context, arg PaymentStatsParams) (PaymentStatsRow, error)
+	// Finance reads (PaymentViewSet, WalletViewSet, LedgerTransactionViewSet).
+	// payments_for scope + PaymentFilter; cursor on (created_at, id) newest first.
+	PaymentsPage(ctx context.Context, arg PaymentsPageParams) ([]PaymentsPageRow, error)
 	PhoneTaken(ctx context.Context, phone *string) (bool, error)
 	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
 	PlanFeesByVehicle(ctx context.Context, arg PlanFeesByVehicleParams) ([]PlanFeesByVehicleRow, error)
@@ -212,7 +231,11 @@ type Querier interface {
 	PlateTaken(ctx context.Context, arg PlateTakenParams) (bool, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
 	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
+	// _swap_for_payment: newest swap paid by this payment, with pack details.
+	ReceiptSwap(ctx context.Context, paymentID *uuid.UUID) (ReceiptSwapRow, error)
 	RecordVAAttempt(ctx context.Context, arg RecordVAAttemptParams) error
+	RedemptionByKey(ctx context.Context, idempotencyKey *string) (RedemptionByKeyRow, error)
+	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
 	// A resubmit resets review state: PENDING, no verification, no requests.
 	ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityDocParams) error
@@ -230,6 +253,7 @@ type Querier interface {
 	SaveBattery(ctx context.Context, arg SaveBatteryParams) error
 	SaveVehicle(ctx context.Context, arg SaveVehicleParams) error
 	SaveVehicleModel(ctx context.Context, arg SaveVehicleModelParams) error
+	SaveWalletBalances(ctx context.Context, arg SaveWalletBalancesParams) error
 	SerialTaken(ctx context.Context, arg SerialTakenParams) (bool, error)
 	SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error
 	SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error
@@ -243,7 +267,9 @@ type Querier interface {
 	SetIdentityDocPhotoRequest(ctx context.Context, arg SetIdentityDocPhotoRequestParams) error
 	SetIdentityDocPhotos(ctx context.Context, arg SetIdentityDocPhotosParams) error
 	SetIdentityDocReview(ctx context.Context, arg SetIdentityDocReviewParams) error
+	SetLedgerBalance(ctx context.Context, arg SetLedgerBalanceParams) error
 	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
+	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
 	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
@@ -253,6 +279,9 @@ type Querier interface {
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
+	// statement_rows: the same joins as Django's select_related so rows tied on
+	// created_at come back in the same order; swaps are fetched separately.
+	StatementRows(ctx context.Context, arg StatementRowsParams) ([]StatementRowsRow, error)
 	SwapByDriver(ctx context.Context, arg SwapByDriverParams) ([]SwapByDriverRow, error)
 	SwapByDriverTop(ctx context.Context, arg SwapByDriverTopParams) ([]SwapByDriverTopRow, error)
 	SwapByMode(ctx context.Context, arg SwapByModeParams) ([]SwapByModeRow, error)
@@ -267,6 +296,7 @@ type Querier interface {
 	// Account spend (accounts.selectors.spend + account_detail_stats).
 	// Every query reads COMPLETED swaps of one account with completed_at in [from, to).
 	SwapTotals(ctx context.Context, arg SwapTotalsParams) (SwapTotalsRow, error)
+	SwapsForPayments(ctx context.Context, ids []uuid.UUID) ([]SwapsForPaymentsRow, error)
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
@@ -290,7 +320,12 @@ type Querier interface {
 	VehicleStatusCounts(ctx context.Context) ([]VehicleStatusCountsRow, error)
 	VehicleTypeCounts(ctx context.Context) ([]VehicleTypeCountsRow, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
+	VirtualAccountFull(ctx context.Context, accountID uuid.UUID) (FinanceVirtualaccount, error)
 	VirtualAccountRow(ctx context.Context, accountID uuid.UUID) (VirtualAccountRowRow, error)
+	WalletByAccount(ctx context.Context, accountID uuid.UUID) (FinanceWallet, error)
+	WalletByID(ctx context.Context, id uuid.UUID) (WalletByIDRow, error)
+	// Finance core: ledger, payments, wallets, holds (finance.services).
+	WalletForUpdate(ctx context.Context, accountID uuid.UUID) (FinanceWallet, error)
 	WithdrawConsent(ctx context.Context, arg WithdrawConsentParams) error
 }
 

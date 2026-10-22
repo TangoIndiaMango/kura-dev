@@ -67,7 +67,7 @@ SELECT id FROM accounts_permission WHERE id = ANY(sqlc.arg(ids)::uuid[]);
 
 -- name: InsertRole :exec
 INSERT INTO accounts_role (id, created_at, updated_at, code, name, description, is_system, is_active)
-VALUES ($1, now(), now(), $2, $3, $4, false, true);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, false, true);
 
 -- name: UpdateRole :exec
 UPDATE accounts_role SET name = $2, description = $3, is_active = $4, updated_at = now()

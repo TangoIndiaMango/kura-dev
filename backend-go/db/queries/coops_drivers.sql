@@ -27,7 +27,7 @@ SELECT id FROM accounts_account WHERE cooperative_id = $1 ORDER BY created_at, i
 
 -- name: InsertCooperative :exec
 INSERT INTO accounts_cooperative (id, created_at, updated_at, name, region, status)
-VALUES ($1, now(), now(), $2, $3, 'ACTIVE');
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, 'ACTIVE');
 
 -- name: UpdateCooperative :exec
 UPDATE accounts_cooperative SET name = $2, region = $3, status = $4, updated_at = now() WHERE id = $1;
@@ -73,12 +73,12 @@ FROM accounts_driver WHERE user_id = $1 LIMIT 1;
 INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, phone,
     first_name, last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts,
     onboarding_step, public_id, notification_prefs, session_version)
-VALUES ($1, now(), now(), $2, false, $3, $4, $5, 'DRIVER', '', true, false, 0, 'home', $6, '{}'::jsonb, 0);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, false, $3, $4, $5, 'DRIVER', '', true, false, 0, 'home', $6, '{}'::jsonb, 0);
 
 -- name: InsertFleetDriver :exec
 INSERT INTO accounts_driver (id, created_at, updated_at, license_number, status, account_id,
     user_id, daily_swap_limit, daily_spend_kobo_limit)
-VALUES ($1, now(), now(), $2, 'ACTIVE', $3, $4, $5, $6);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, 'ACTIVE', $3, $4, $5, $6);
 
 -- name: ReattachDriver :exec
 UPDATE accounts_driver SET license_number = $2, status = 'ACTIVE', daily_swap_limit = $3,

@@ -170,7 +170,7 @@ func (q *Queries) IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDo
 const insertAccount = `-- name: InsertAccount :one
 INSERT INTO accounts_account (id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status,
   registration_channel, psp, cooperative_id, owner_user_id, risk_status)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, '', $8, $9, 'NORMAL')
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, '', $8, $9, 'NORMAL')
 RETURNING id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status
 `
 
@@ -220,7 +220,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 const insertDriverRow = `-- name: InsertDriverRow :one
 INSERT INTO accounts_driver (id, created_at, updated_at, license_number, status, account_id, user_id,
   photo_id, daily_spend_kobo_limit, daily_swap_limit)
-VALUES ($1, now(), now(), '', 'ACTIVE', $2, $3, NULL, NULL, NULL)
+VALUES ($1, clock_timestamp(), clock_timestamp(), '', 'ACTIVE', $2, $3, NULL, NULL, NULL)
 RETURNING id, created_at, updated_at, license_number, status, account_id, user_id, photo_id, daily_spend_kobo_limit, daily_swap_limit
 `
 
@@ -252,7 +252,7 @@ const insertIdentityDoc = `-- name: InsertIdentityDoc :exec
 INSERT INTO accounts_identitydocument (id, created_at, updated_at, doc_type, number_encrypted, number_last4,
   status, verified_via, verified_at, reject_reason, account_id, back_image_id, front_image_id,
   photos_requested, request_note)
-VALUES ($1, now(), now(), $2, $3, $4, 'PENDING', '', NULL, '', $5, $6, $7, false, '')
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, 'PENDING', '', NULL, '', $5, $6, $7, false, '')
 `
 
 type InsertIdentityDocParams struct {
@@ -282,7 +282,7 @@ const insertRegisteredOperator = `-- name: InsertRegisteredOperator :exec
 INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, email, phone, first_name,
     last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts, onboarding_step, public_id,
     notification_prefs, session_version)
-VALUES ($1, now(), now(), $2, false, $3, $4, $5, $6, 'DRIVER', '', true, false, 0, 'home', $7, '{}'::jsonb, 0)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, false, $3, $4, $5, $6, 'DRIVER', '', true, false, 0, 'home', $7, '{}'::jsonb, 0)
 `
 
 type InsertRegisteredOperatorParams struct {

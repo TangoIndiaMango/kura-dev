@@ -237,7 +237,7 @@ func (q *Queries) GetDriverRow(ctx context.Context, id uuid.UUID) (GetDriverRowR
 
 const insertCooperative = `-- name: InsertCooperative :exec
 INSERT INTO accounts_cooperative (id, created_at, updated_at, name, region, status)
-VALUES ($1, now(), now(), $2, $3, 'ACTIVE')
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, 'ACTIVE')
 `
 
 type InsertCooperativeParams struct {
@@ -254,7 +254,7 @@ func (q *Queries) InsertCooperative(ctx context.Context, arg InsertCooperativePa
 const insertFleetDriver = `-- name: InsertFleetDriver :exec
 INSERT INTO accounts_driver (id, created_at, updated_at, license_number, status, account_id,
     user_id, daily_swap_limit, daily_spend_kobo_limit)
-VALUES ($1, now(), now(), $2, 'ACTIVE', $3, $4, $5, $6)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, 'ACTIVE', $3, $4, $5, $6)
 `
 
 type InsertFleetDriverParams struct {
@@ -282,7 +282,7 @@ const insertFleetDriverUser = `-- name: InsertFleetDriverUser :exec
 INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, phone,
     first_name, last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts,
     onboarding_step, public_id, notification_prefs, session_version)
-VALUES ($1, now(), now(), $2, false, $3, $4, $5, 'DRIVER', '', true, false, 0, 'home', $6, '{}'::jsonb, 0)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, false, $3, $4, $5, 'DRIVER', '', true, false, 0, 'home', $6, '{}'::jsonb, 0)
 `
 
 type InsertFleetDriverUserParams struct {

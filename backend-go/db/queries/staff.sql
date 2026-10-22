@@ -60,7 +60,7 @@ SELECT EXISTS (SELECT 1 FROM accounts_user WHERE upper(email) = upper(sqlc.arg(e
 INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, email, phone,
     first_name, last_name, role, pin_hash, is_active, is_staff, assigned_role_id,
     pin_failed_attempts, onboarding_step, public_id, notification_prefs, session_version)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, $8, '', true, true, $9, 0, 'pin', $10,
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, $8, '', true, true, $9, 0, 'pin', $10,
     '{}'::jsonb, 0);
 
 -- name: UpdateStaffUser :exec
@@ -74,7 +74,7 @@ DELETE FROM accounts_staffmembership WHERE user_id = $1;
 
 -- name: InsertMembership :exec
 INSERT INTO accounts_staffmembership (id, created_at, updated_at, role, hub_id, user_id)
-VALUES ($1, now(), now(), 'HUB_AGENT', $2, $3);
+VALUES ($1, clock_timestamp(), clock_timestamp(), 'HUB_AGENT', $2, $3);
 
 -- name: ExistingHubIDs :many
 SELECT id FROM mobility_hub WHERE id = ANY(sqlc.arg(ids)::uuid[]);
@@ -91,4 +91,4 @@ WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL;
 
 -- name: InsertSetupToken :exec
 INSERT INTO accounts_passwordsetuptoken (id, created_at, updated_at, purpose, token_hash, expires_at, user_id)
-VALUES ($1, now(), now(), $2, $3, $4, $5);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5);

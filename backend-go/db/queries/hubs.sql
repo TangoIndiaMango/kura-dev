@@ -86,7 +86,7 @@ SELECT EXISTS (SELECT 1 FROM mobility_hub WHERE code = $1);
 -- name: InsertHub :exec
 INSERT INTO mobility_hub (id, created_at, updated_at, code, name, address, lat, lng, slot_count,
   solar_capacity_kw, status, last_sync_at, timezone, operating_hours)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, (sqlc.arg(solar)::text)::numeric, $8, NULL, 'Africa/Lagos', '{}'::jsonb);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, (sqlc.arg(solar)::text)::numeric, $8, NULL, 'Africa/Lagos', '{}'::jsonb);
 
 -- name: HubForUpdate :one
 SELECT id, code, name, address, lat, lng, slot_count, solar_capacity_kw::text AS solar_capacity_kw, status,
@@ -103,7 +103,7 @@ SELECT slot_no FROM mobility_hubslot WHERE hub_id = $1;
 
 -- name: InsertHubSlot :exec
 INSERT INTO mobility_hubslot (id, created_at, updated_at, slot_no, state, battery_id, hub_id)
-VALUES ($1, now(), now(), $2, 'EMPTY', NULL, $3);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, 'EMPTY', NULL, $3);
 
 -- name: DiscoverHubs :many
 -- discover_hubs: ready slots overall and, when a pack type is given, of that type.

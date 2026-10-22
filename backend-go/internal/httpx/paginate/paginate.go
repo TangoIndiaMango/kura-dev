@@ -167,3 +167,21 @@ func absolute(r *http.Request, q url.Values) *string {
 	s := u.String()
 	return &s
 }
+
+// Display puts keyset rows into display order (newest first) for
+// BuildCursorPage. A "previous" page is fetched walking ascending from the
+// cursor, so its probe row (size+1th, farthest from the cursor) must stay
+// last after reversing.
+func Display[T any](rows []T, size int, back bool) []T {
+	if !back {
+		return rows
+	}
+	var extra []T
+	if len(rows) > size {
+		extra, rows = rows[size:size+1], rows[:size]
+	}
+	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+		rows[i], rows[j] = rows[j], rows[i]
+	}
+	return append(rows, extra...)
+}

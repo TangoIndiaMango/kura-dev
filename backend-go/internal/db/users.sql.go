@@ -251,7 +251,7 @@ func (q *Queries) HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string
 const insertDriver = `-- name: InsertDriver :exec
 INSERT INTO accounts_driver (id, created_at, updated_at, license_number, status,
     account_id, user_id)
-VALUES ($1, now(), now(), '', 'ACTIVE', $2, $3)
+VALUES ($1, clock_timestamp(), clock_timestamp(), '', 'ACTIVE', $2, $3)
 `
 
 type InsertDriverParams struct {
@@ -268,7 +268,7 @@ func (q *Queries) InsertDriver(ctx context.Context, arg InsertDriverParams) erro
 const insertIndividualAccount = `-- name: InsertIndividualAccount :one
 INSERT INTO accounts_account (id, created_at, updated_at, kura_id, kind, display_name,
     status, kyc_status, owner_user_id, registration_channel, psp, risk_status)
-VALUES ($1, now(), now(), $2, 'INDIVIDUAL', $3, 'ACTIVE', 'NONE', $4, $5, '', 'NORMAL')
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, 'INDIVIDUAL', $3, 'ACTIVE', 'NONE', $4, $5, '', 'NORMAL')
 RETURNING id
 `
 
@@ -297,7 +297,7 @@ const insertOperatorUser = `-- name: InsertOperatorUser :exec
 INSERT INTO accounts_user (id, created_at, updated_at, password, is_superuser, phone,
     first_name, last_name, role, pin_hash, is_active, is_staff, pin_failed_attempts,
     onboarding_step, public_id, notification_prefs, session_version)
-VALUES ($1, now(), now(), '!', false, $2, '', '', 'DRIVER', '', true, false, 0,
+VALUES ($1, clock_timestamp(), clock_timestamp(), '!', false, $2, '', '', 'DRIVER', '', true, false, 0,
     'pin', $3, '{}'::jsonb, 0)
 `
 

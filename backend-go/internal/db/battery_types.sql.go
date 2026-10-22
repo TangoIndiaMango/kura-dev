@@ -100,7 +100,7 @@ func (q *Queries) CountBatteryTypes(ctx context.Context, arg CountBatteryTypesPa
 const insertBatteryType = `-- name: InsertBatteryType :exec
 INSERT INTO mobility_batterytype (id, created_at, updated_at, name, manufacturer, capacity_kwh, nominal_voltage,
   vehicle_type, qr_scheme, status, created_by_id, approved_by_id, usable_energy_wh, wh_per_km)
-VALUES ($1, now(), now(), $2, $3, ($8::text)::numeric, $4, $5, $6, 'PENDING', $7, NULL, 2900, 50)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, ($8::text)::numeric, $4, $5, $6, 'PENDING', $7, NULL, 2900, 50)
 `
 
 type InsertBatteryTypeParams struct {

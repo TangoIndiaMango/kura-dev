@@ -364,14 +364,7 @@ func (h *BatteryHandler) events(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, r, err)
 		return
 	}
-	if p.Back { // walked ascending; show newest first
-		if len(rows) > size {
-			rows = rows[:size+1]
-		}
-		for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
-			rows[i], rows[j] = rows[j], rows[i]
-		}
-	}
+	rows = paginate.Display(rows, size, p.Back)
 	out := make([]batteryEventDTO, len(rows))
 	for i, e := range rows {
 		label := "System"

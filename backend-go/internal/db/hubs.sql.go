@@ -488,7 +488,7 @@ func (q *Queries) HubSwapTotals(ctx context.Context, arg HubSwapTotalsParams) (H
 const insertHub = `-- name: InsertHub :exec
 INSERT INTO mobility_hub (id, created_at, updated_at, code, name, address, lat, lng, slot_count,
   solar_capacity_kw, status, last_sync_at, timezone, operating_hours)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6, $7, ($9::text)::numeric, $8, NULL, 'Africa/Lagos', '{}'::jsonb)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, ($9::text)::numeric, $8, NULL, 'Africa/Lagos', '{}'::jsonb)
 `
 
 type InsertHubParams struct {
@@ -520,7 +520,7 @@ func (q *Queries) InsertHub(ctx context.Context, arg InsertHubParams) error {
 
 const insertHubSlot = `-- name: InsertHubSlot :exec
 INSERT INTO mobility_hubslot (id, created_at, updated_at, slot_no, state, battery_id, hub_id)
-VALUES ($1, now(), now(), $2, 'EMPTY', NULL, $3)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, 'EMPTY', NULL, $3)
 `
 
 type InsertHubSlotParams struct {

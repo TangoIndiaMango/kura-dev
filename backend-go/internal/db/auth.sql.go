@@ -47,7 +47,7 @@ func (q *Queries) ConsumeOTP(ctx context.Context, id uuid.UUID) error {
 const insertOTP = `-- name: InsertOTP :exec
 INSERT INTO accounts_otpchallenge (id, created_at, updated_at, phone, purpose,
     code_hash, expires_at, attempts, device_id, channel)
-VALUES ($1, now(), now(), $2, $3, $4, $5, 0, $6, $7)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, 0, $6, $7)
 `
 
 type InsertOTPParams struct {

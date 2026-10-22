@@ -11,6 +11,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/accounts"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/finance"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/psp"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/va"
@@ -58,6 +59,8 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
 				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity, staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
+		finance.NewModule(finance.NewHandler(pool, firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper,
+			"kura-dev-receipt-secret"), cfg.AllowDevVA()), limiter),
 		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, limiter),
 	)
 }

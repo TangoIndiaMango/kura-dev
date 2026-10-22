@@ -63,7 +63,7 @@ func (q *Queries) ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokens
 const insertConsent = `-- name: InsertConsent :exec
 INSERT INTO accounts_consent (id, created_at, updated_at, purpose, granted_at, channel,
     policy_version, account_id)
-VALUES ($1, now(), now(), $2, $3, $4, $5, $6)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6)
 `
 
 type InsertConsentParams struct {
@@ -90,7 +90,7 @@ func (q *Queries) InsertConsent(ctx context.Context, arg InsertConsentParams) er
 const insertTrustedDevice = `-- name: InsertTrustedDevice :one
 INSERT INTO accounts_trusteddevice (id, created_at, updated_at, device_key, label,
     user_agent, first_seen_at, last_seen_at, status, account_id)
-VALUES ($1, now(), now(), $2, $3, $4, now(), now(), 'ACTIVE', $5)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, clock_timestamp(), clock_timestamp(), 'ACTIVE', $5)
 RETURNING id, created_at, updated_at, device_key, label, user_agent, first_seen_at, last_seen_at, status, account_id
 `
 

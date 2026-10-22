@@ -247,17 +247,17 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## finance (11)
 
-- [ ] `GET    /api/v1/finance/ledger/`
-- [ ] `GET    /api/v1/finance/ledger/{id}/`
-- [ ] `GET    /api/v1/finance/payments/`
-- [ ] `GET    /api/v1/finance/payments/export/`
-- [ ] `GET    /api/v1/finance/payments/stats/`
-- [ ] `GET    /api/v1/finance/payments/{id}/`
-- [ ] `GET    /api/v1/finance/payments/{id}/receipt/`
-- [ ] `GET    /api/v1/finance/wallets/`
-- [ ] `POST   /api/v1/finance/wallets/fund/`
-- [ ] `GET    /api/v1/finance/wallets/mine/`
-- [ ] `GET    /api/v1/finance/wallets/{id}/`
+- [x] `GET    /api/v1/finance/ledger/`
+- [x] `GET    /api/v1/finance/ledger/{id}/`
+- [x] `GET    /api/v1/finance/payments/`
+- [x] `GET    /api/v1/finance/payments/export/`
+- [x] `GET    /api/v1/finance/payments/stats/`
+- [x] `GET    /api/v1/finance/payments/{id}/`
+- [x] `GET    /api/v1/finance/payments/{id}/receipt/`
+- [x] `GET    /api/v1/finance/wallets/`
+- [x] `POST   /api/v1/finance/wallets/fund/`
+- [x] `GET    /api/v1/finance/wallets/mine/`
+- [x] `GET    /api/v1/finance/wallets/{id}/`
 
 ## risk (10)
 
