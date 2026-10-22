@@ -51,20 +51,20 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [x] `GET    /api/v1/mobility/hubs/{id}/slots/`
 - [x] `GET    /api/v1/mobility/hubs/{id}/stats/`
 - [ ] `POST   /api/v1/mobility/hubs/{id}/status/`
-- [ ] `GET    /api/v1/mobility/plans/`
-- [ ] `POST   /api/v1/mobility/plans/`
-- [ ] `GET    /api/v1/mobility/plans/{id}/`
-- [ ] `PATCH  /api/v1/mobility/plans/{id}/`
-- [ ] `POST   /api/v1/mobility/plans/{id}/activate/`
-- [ ] `POST   /api/v1/mobility/plans/{id}/deactivate/`
-- [ ] `GET    /api/v1/mobility/pricing/hold-policy/`
-- [ ] `PUT    /api/v1/mobility/pricing/hold-policy/`
-- [ ] `GET    /api/v1/mobility/pricing/matrices/`
-- [ ] `POST   /api/v1/mobility/pricing/matrices/`
-- [ ] `GET    /api/v1/mobility/pricing/matrices/{id}/`
-- [ ] `POST   /api/v1/mobility/pricing/matrices/{id}/activate/`
-- [ ] `POST   /api/v1/mobility/pricing/matrices/{id}/reject/`
-- [ ] `POST   /api/v1/mobility/pricing/matrices/{id}/schedule/`
+- [x] `GET    /api/v1/mobility/plans/`
+- [x] `POST   /api/v1/mobility/plans/`
+- [x] `GET    /api/v1/mobility/plans/{id}/`
+- [x] `PATCH  /api/v1/mobility/plans/{id}/`
+- [x] `POST   /api/v1/mobility/plans/{id}/activate/`
+- [x] `POST   /api/v1/mobility/plans/{id}/deactivate/`
+- [x] `GET    /api/v1/mobility/pricing/hold-policy/`
+- [x] `PUT    /api/v1/mobility/pricing/hold-policy/`
+- [x] `GET    /api/v1/mobility/pricing/matrices/`
+- [x] `POST   /api/v1/mobility/pricing/matrices/`
+- [x] `GET    /api/v1/mobility/pricing/matrices/{id}/`
+- [x] `POST   /api/v1/mobility/pricing/matrices/{id}/activate/`
+- [x] `POST   /api/v1/mobility/pricing/matrices/{id}/reject/`
+- [x] `POST   /api/v1/mobility/pricing/matrices/{id}/schedule/`
 - [ ] `GET    /api/v1/mobility/reservations/`
 - [ ] `POST   /api/v1/mobility/reservations/`
 - [ ] `POST   /api/v1/mobility/reservations/lookup/`

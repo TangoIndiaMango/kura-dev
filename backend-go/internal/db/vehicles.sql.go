@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const accountVehicleTotal = `-- name: AccountVehicleTotal :one
@@ -22,25 +21,6 @@ func (q *Queries) AccountVehicleTotal(ctx context.Context, accountID uuid.UUID) 
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
-}
-
-const activeMatrixPPS = `-- name: ActiveMatrixPPS :one
-SELECT pay_per_swap_kobo FROM mobility_pricematrix
-WHERE vehicle_type = $1 AND status = 'ACTIVE' AND effective_from <= $2::date
-ORDER BY effective_from DESC, created_at DESC LIMIT 1
-`
-
-type ActiveMatrixPPSParams struct {
-	VehicleType string
-	Today       pgtype.Date
-}
-
-// PricingService.active_matrix(...).pay_per_swap_kobo for today (Lagos).
-func (q *Queries) ActiveMatrixPPS(ctx context.Context, arg ActiveMatrixPPSParams) (int64, error) {
-	row := q.db.QueryRow(ctx, activeMatrixPPS, arg.VehicleType, arg.Today)
-	var pay_per_swap_kobo int64
-	err := row.Scan(&pay_per_swap_kobo)
-	return pay_per_swap_kobo, err
 }
 
 const closeOpenAssignments = `-- name: CloseOpenAssignments :exec

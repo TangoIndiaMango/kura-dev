@@ -87,11 +87,11 @@ func TestDecimalField(t *testing.T) {
 		}
 	}
 	bad := map[string]string{`12.345`: "Ensure that there are no more than 2 decimal places.",
-		`1234.5`: "Ensure that there are no more than 3 digits before the decimal point.",
-		`123456`: "Ensure that there are no more than 5 digits in total.",
+		`1234.5`:   "Ensure that there are no more than 3 digits before the decimal point.",
+		`123456`:   "Ensure that there are no more than 5 digits in total.",
 		`"-0.001"`: "Ensure that there are no more than 2 decimal places.",
-		`1000`:   "Ensure that there are no more than 3 digits before the decimal point.",
-		`"abc"`:  "A valid number is required.", `true`: "A valid number is required."}
+		`1000`:     "Ensure that there are no more than 3 digits before the decimal point.",
+		`"abc"`:    "A valid number is required.", `true`: "A valid number is required."}
 	for in, want := range bad {
 		var x d
 		err := JSON(httptest.NewRequest("POST", "/", strings.NewReader(`{"v":`+in+`}`)), &x)

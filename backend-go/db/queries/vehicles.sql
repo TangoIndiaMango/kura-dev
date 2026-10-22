@@ -64,12 +64,6 @@ LEFT JOIN accounts_driver d ON d.id = v.assigned_driver_id
 LEFT JOIN accounts_user du ON du.id = d.user_id
 WHERE v.id = ANY(sqlc.arg(ids)::uuid[]);
 
--- name: ActiveMatrixPPS :one
--- PricingService.active_matrix(...).pay_per_swap_kobo for today (Lagos).
-SELECT pay_per_swap_kobo FROM mobility_pricematrix
-WHERE vehicle_type = $1 AND status = 'ACTIVE' AND effective_from <= sqlc.arg(today)::date
-ORDER BY effective_from DESC, created_at DESC LIMIT 1;
-
 -- name: VehicleStatusCounts :many
 SELECT status, count(*)::int AS n FROM mobility_vehicle GROUP BY status;
 

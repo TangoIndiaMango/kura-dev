@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/router"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 )
@@ -17,13 +18,16 @@ type Module struct {
 	bats    *BatteryHandler
 	vehs    *VehicleHandler
 	vmodels *VehicleModelHandler
+	pricing *PricingHandler
+	plans   *PlanHandler
 	limiter *throttle.Limiter
 }
 
-func NewModule(pool *pgxpool.Pool, signer qr.Signer, limiter *throttle.Limiter) *Module {
+func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, limiter *throttle.Limiter) *Module {
 	return &Module{hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool),
 		bats: NewBatteryHandler(pool, signer), vehs: NewVehicleHandler(pool, signer),
-		vmodels: NewVehicleModelHandler(pool), limiter: limiter}
+		vmodels: NewVehicleModelHandler(pool), pricing: NewPricingHandler(pool, mailer), plans: NewPlanHandler(pool),
+		limiter: limiter}
 }
 
 // Register mounts the ported routes. Not-yet-ported ones (e.g. hub status,
@@ -91,4 +95,22 @@ func (m *Module) Register(mux *http.ServeMux) {
 	vm.Cap("GET", "/stats/", "vehicles:read", m.vmodels.stats)
 	vm.Cap("GET", "/{id}/", "vehicles:read", m.vmodels.get)
 	vm.Cap("PATCH", "/{id}/", "vehicles:manage", m.vmodels.patch)
+
+	pr := router.New(mux, "/api/v1/mobility/pricing", m.limiter)
+	pr.User("GET", "/hold-policy/", m.pricing.getHold)
+	pr.Cap("PUT", "/hold-policy/", "tariffs:manage", m.pricing.putHold)
+	pr.Cap("GET", "/matrices/", "tariffs:manage", m.pricing.list)
+	pr.Cap("POST", "/matrices/", "tariffs:manage", m.pricing.create)
+	pr.Cap("GET", "/matrices/{id}/", "tariffs:manage", m.pricing.get)
+	pr.Cap("POST", "/matrices/{id}/activate/", "price:approve", m.pricing.activate)
+	pr.Cap("POST", "/matrices/{id}/reject/", "price:approve", m.pricing.reject)
+	pr.Cap("POST", "/matrices/{id}/schedule/", "price:approve", m.pricing.schedule)
+
+	pl := router.New(mux, "/api/v1/mobility/plans", m.limiter) // reads: sign-in only
+	pl.User("GET", "/", m.plans.list)
+	pl.Cap("POST", "/", "tariffs:manage", m.plans.create)
+	pl.User("GET", "/{id}/", m.plans.get)
+	pl.Cap("PATCH", "/{id}/", "tariffs:manage", m.plans.patch)
+	pl.Cap("POST", "/{id}/activate/", "price:approve", m.plans.setActive(true))
+	pl.Cap("POST", "/{id}/deactivate/", "tariffs:manage", m.plans.setActive(false))
 }

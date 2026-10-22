@@ -61,7 +61,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 		finance.NewModule(finance.NewHandler(pool, firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper,
 			"kura-dev-receipt-secret"), cfg.AllowDevVA()), limiter),
-		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, limiter),
+		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, limiter),
 	)
 }
 

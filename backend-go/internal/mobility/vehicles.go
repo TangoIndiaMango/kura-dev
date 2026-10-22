@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,7 +20,6 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/scope"
-	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
 )
 
 // VehicleDTO is VehicleListSerializer.
@@ -106,16 +104,14 @@ func NewVehicleHandler(pool *pgxpool.Pool, signer qr.Signer) *VehicleHandler {
 // serializer's context cache.
 func (h *VehicleHandler) dtos(ctx context.Context, rows []db.VehicleRowsRow) ([]VehicleDetailDTO, error) {
 	pps := map[string]*int64{}
-	today := spend.LagosToday(time.Now())
 	out := make([]VehicleDetailDTO, len(rows))
 	for i, v := range rows {
 		price, seen := pps[v.VehicleType]
 		if !seen && v.VehicleType != "" {
-			n, err := h.q.ActiveMatrixPPS(ctx, db.ActiveMatrixPPSParams{VehicleType: v.VehicleType,
-				Today: dateOf(today)})
+			m, err := activeMatrix(ctx, h.q, v.VehicleType) // ensure_defaults + matrix, like resolve_pps_kobo
 			if err == nil {
-				price = &n
-			} else if !database.IsNoRows(err) {
+				price = &m.PayPerSwapKobo
+			} else if ae, ok := err.(*apperr.Error); !ok || ae.Code != "PRICE_NOT_CONFIGURED" {
 				return nil, err
 			}
 			pps[v.VehicleType] = price
