@@ -13,10 +13,17 @@ import (
 
 type Querier interface {
 	AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
+	AccountChildCounts(ctx context.Context, accountID uuid.UUID) (AccountChildCountsRow, error)
+	AccountDriverIDs(ctx context.Context, accountID uuid.UUID) ([]uuid.UUID, error)
 	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
 	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
+	// account_stats totals: one row per (status, kyc_status) in the created range.
+	AccountStatusCounts(ctx context.Context, arg AccountStatusCountsParams) ([]AccountStatusCountsRow, error)
 	AccountVehicleCount(ctx context.Context, accountID uuid.UUID) (int64, error)
+	AccountVehicleIDs(ctx context.Context, accountID uuid.UUID) ([]uuid.UUID, error)
+	// TruncWeek in Africa/Lagos (Django TIME_ZONE), Monday-start weeks.
+	AccountWeeklyRegistrations(ctx context.Context, arg AccountWeeklyRegistrationsParams) ([]AccountWeeklyRegistrationsRow, error)
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
 	AuditChainTip(ctx context.Context) (string, error)
@@ -32,13 +39,18 @@ type Querier interface {
 	ConsumeSetupTokens(ctx context.Context, arg ConsumeSetupTokensParams) error
 	CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid.UUID) ([]uuid.UUID, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
+	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
 	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
+	// Every CRM column for a set of accounts in one round trip.
+	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
+	// drivers_usage_today: every driver on the account with today's swaps / spend.
+	DriversUsage(ctx context.Context, arg DriversUsageParams) ([]DriversUsageRow, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
 	// RiskService.ensure_rules: get_or_create by code.
@@ -82,6 +94,9 @@ type Querier interface {
 	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
+	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
+	// ?ordering= (OrderingFilter over created_at / display_name); default newest first.
+	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
 	ListCooperatives(ctx context.Context, arg ListCooperativesParams) ([]ListCooperativesRow, error)
 	ListDrivers(ctx context.Context, arg ListDriversParams) ([]ListDriversRow, error)
 	ListPermissions(ctx context.Context, arg ListPermissionsParams) ([]ListPermissionsRow, error)
@@ -100,6 +115,9 @@ type Querier interface {
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
+	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
+	PlanFeesByVehicle(ctx context.Context, arg PlanFeesByVehicleParams) ([]PlanFeesByVehicleRow, error)
+	PlanFeesDaily(ctx context.Context, arg PlanFeesDailyParams) ([]PlanFeesDailyRow, error)
 	PublicIDTaken(ctx context.Context, publicID *string) (bool, error)
 	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
@@ -121,6 +139,14 @@ type Querier interface {
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
+	SwapByDriver(ctx context.Context, arg SwapByDriverParams) ([]SwapByDriverRow, error)
+	SwapByMode(ctx context.Context, arg SwapByModeParams) ([]SwapByModeRow, error)
+	SwapByVehicle(ctx context.Context, arg SwapByVehicleParams) ([]SwapByVehicleRow, error)
+	// Lagos-local days (TruncDate in Django's TIME_ZONE); energy is 3.24 kWh per pack.
+	SwapDaily(ctx context.Context, arg SwapDailyParams) ([]SwapDailyRow, error)
+	// Account spend (accounts.selectors.spend + account_detail_stats).
+	// Every query reads COMPLETED swaps of one account with completed_at in [from, to).
+	SwapTotals(ctx context.Context, arg SwapTotalsParams) (SwapTotalsRow, error)
 	TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)

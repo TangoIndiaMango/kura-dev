@@ -167,11 +167,28 @@ translated to the envelope in exactly one place (`respond.Error`).
   rbac, users, profile, auth, me). Note: running all suites back-to-back
   hits the real 20/min anon throttle on both backends — run auth.py alone.
 
+- 2026-10-22 — Accounts CRM reads: list (CRM vs plain serializer, scoped by
+  accounts_for, q/search/status/kyc/kind/date/ordering filters), detail,
+  kyc, export, stats, detail stats, me/fleet-spend. New `internal/spend`
+  package (windows, fleet money, drivers today, petrol). `scripts/contract/
+  accounts.py`: 179 checks identical across ops/admin/hub agent/owner,
+  covering all 111 completed swaps and plan fees. Next: accounts writes
+  (identity/KYC, suspend/reinstate/notify/set-coop/register/PATCH/create),
+  me/impact, then mobility.
+
 ### Django bugs found while porting (fixed on main too)
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().
 
 ### Django quirks kept for parity (fix in both later)
+- `GET /accounts/stats/` is network-wide and open to any signed-in user
+  (HasCapabilityOrReadOwn lets safe methods through, the stats aren't
+  scoped). A rider can read total operator counts. Should require
+  accounts:read.
+- CRM `active_plan_name` shows the newest subscription of any status
+  (prefetch ignores status=ACTIVE), so an expired plan still shows.
+- Account detail stats default window ends on the UTC date, fleet spend on
+  the Lagos date (00:00–01:00 WAT they differ by a day).
 - List `end_date` filters (django-filters DateFilter on a datetime) stop at
   Lagos *midnight starting* that day, so the end day is excluded. Stats use
   the inclusive day. Unify once Go is primary.

@@ -18,12 +18,13 @@ type Module struct {
 	staff   *StaffHandler
 	coops   *CoopHandler
 	drivers *DriverHandler
+	accts   *AccountHandler
 	limiter *throttle.Limiter
 }
 
 func NewModule(auth *AuthHandler, staff *StaffHandler, coops *CoopHandler, drivers *DriverHandler,
-	limiter *throttle.Limiter) *Module {
-	return &Module{auth: auth, staff: staff, coops: coops, drivers: drivers, limiter: limiter}
+	accts *AccountHandler, limiter *throttle.Limiter) *Module {
+	return &Module{auth: auth, staff: staff, coops: coops, drivers: drivers, accts: accts, limiter: limiter}
 }
 
 // Register mounts /api/v1/auth/* with AuthViewSet's permissions and throttles.
@@ -73,6 +74,16 @@ func (m *Module) Register(mux *http.ServeMux) {
 	d.User("GET", "/{id}/", m.drivers.get)
 	d.AnyCap("POST", "/attach/", []string{"accounts:manage", "accounts:write_own"}, m.drivers.attach)
 	d.AnyCap("PATCH", "/{id}/", []string{"accounts:manage", "accounts:write_own"}, m.drivers.patch)
+
+	// AccountViewSet: GETs are HasCapabilityOrReadOwn safe methods (sign-in, scoped).
+	ac := router.New(mux, "/api/v1/accounts", m.limiter)
+	ac.User("GET", "/", m.accts.list)
+	ac.User("GET", "/stats/", m.accts.stats)
+	ac.User("GET", "/export/", m.accts.export)
+	ac.User("GET", "/{id}/", m.accts.get)
+	ac.User("GET", "/{id}/kyc/", m.accts.kyc)
+	ac.User("GET", "/{id}/stats/", m.accts.detailStats)
+	ac.User("GET", "/me/fleet-spend/", m.accts.fleetSpend)
 }
 
 // otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).

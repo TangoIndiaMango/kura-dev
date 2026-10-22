@@ -17,6 +17,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/throttle"
 )
 
@@ -45,7 +46,9 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
 		health.New(pool),
 		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), accounts.NewStaffHandler(staffSvc),
-			accounts.NewCoopHandler(pool), accounts.NewDriverHandler(pool), limiter),
+			accounts.NewCoopHandler(pool), accounts.NewDriverHandler(pool),
+			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
+				KoboPerLitre: cfg.PetrolKoboPerLitre}), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 	)
 }

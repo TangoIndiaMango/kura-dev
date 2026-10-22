@@ -39,6 +39,10 @@ type Config struct {
 	PaystackSecret string `env:"PAYSTACK_SECRET_KEY"`
 	MockIoT        bool   `env:"MOCK_IOT_ENABLED" envDefault:"false"`
 
+	// Petrol comparison used by savings / fuel-saved estimates.
+	PetrolLitresPerSwap float64 `env:"COOP_PETROL_LITRES_PER_SWAP" envDefault:"1.2"`
+	PetrolKoboPerLitre  int64   `env:"COOP_PETROL_PRICE_KOBO_PER_LITRE" envDefault:"85000"`
+
 	CloudinaryCloudName    string `env:"CLOUDINARY_CLOUD_NAME"`
 	CloudinaryAPIKey       string `env:"CLOUDINARY_API_KEY"`
 	CloudinaryAPISecret    string `env:"CLOUDINARY_API_SECRET"`

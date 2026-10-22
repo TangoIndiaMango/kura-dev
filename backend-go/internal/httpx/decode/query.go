@@ -96,3 +96,23 @@ func (q *Query) Err() error {
 func (q *Query) fail(name, msg string) {
 	q.errs[name] = []string{msg}
 }
+
+// dateTimeLayouts are what Django's parse_datetime / fromisoformat accept.
+var dateTimeLayouts = []string{time.RFC3339Nano, "2006-01-02T15:04:05.999999999", "2006-01-02T15:04",
+	"2006-01-02 15:04:05.999999999Z07:00", "2006-01-02 15:04:05.999999999", "2006-01-02 15:04", time.DateOnly}
+
+// DateTime parses an ISO 8601 value (django-filters IsoDateTimeFilter);
+// naive values are read in loc, like Django's make_aware.
+func (q *Query) DateTime(name string, loc *time.Location) *time.Time {
+	raw := q.String(name)
+	if raw == "" {
+		return nil
+	}
+	for _, l := range dateTimeLayouts {
+		if t, err := time.ParseInLocation(l, raw, loc); err == nil {
+			return &t
+		}
+	}
+	q.fail(name, "Enter a valid date/time.")
+	return nil
+}
