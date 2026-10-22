@@ -224,6 +224,7 @@ type Querier interface {
 	FirstHoldPolicy(ctx context.Context) (MobilityBayholdpolicy, error)
 	FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	FirstOwnedAccountForUpdate(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
+	FleetCsvRows(ctx context.Context, arg FleetCsvRowsParams) ([]FleetCsvRowsRow, error)
 	GetCooperative(ctx context.Context, id uuid.UUID) (GetCooperativeRow, error)
 	GetDriverRow(ctx context.Context, id uuid.UUID) (GetDriverRowRow, error)
 	GetPermission(ctx context.Context, id uuid.UUID) (GetPermissionRow, error)
@@ -316,6 +317,7 @@ type Querier interface {
 	// register_operator: a rider created by staff (no PIN yet, invite emailed).
 	InsertRegisteredOperator(ctx context.Context, arg InsertRegisteredOperatorParams) error
 	InsertRepayment(ctx context.Context, arg InsertRepaymentParams) error
+	InsertReport(ctx context.Context, arg InsertReportParams) error
 	InsertReservation(ctx context.Context, arg InsertReservationParams) error
 	InsertRetrofit(ctx context.Context, arg InsertRetrofitParams) error
 	InsertRiskEvent(ctx context.Context, arg InsertRiskEventParams) error
@@ -420,6 +422,7 @@ type Querier interface {
 	OpenSwapForReservation(ctx context.Context, reservationID *uuid.UUID) (MobilitySwap, error)
 	OpenSwapsForVehicle(ctx context.Context, vehicleID uuid.UUID) ([]uuid.UUID, error)
 	OpenVelocityEvent(ctx context.Context, subjectID string) (RiskRiskevent, error)
+	OpsCsvRows(ctx context.Context, arg OpsCsvRowsParams) ([]OpsCsvRowsRow, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
@@ -463,6 +466,10 @@ type Querier interface {
 	ReleaseRedemptionForReservation(ctx context.Context, idempotencyKey *string) (uuid.UUID, error)
 	ReleaseReservedBattery(ctx context.Context, id uuid.UUID) error
 	RepaymentByKey(ctx context.Context, idempotencyKey string) (CreditLoanrepayment, error)
+	// ReportJob lifecycle + CSV sources (analytics.services.reports / report_csvs).
+	ReportByID(ctx context.Context, id uuid.UUID) (AnalyticsReportjob, error)
+	ReportByKey(ctx context.Context, arg ReportByKeyParams) (AnalyticsReportjob, error)
+	ReportForUpdate(ctx context.Context, id uuid.UUID) (AnalyticsReportjob, error)
 	ReservationByCode(ctx context.Context, upper interface{}) (MobilityReservation, error)
 	ReservationByID(ctx context.Context, id uuid.UUID) (MobilityReservation, error)
 	ReservationCodeTaken(ctx context.Context, code string) (bool, error)
@@ -481,6 +488,7 @@ type Querier interface {
 	RetrofitRows(ctx context.Context, ids []uuid.UUID) ([]RetrofitRowsRow, error)
 	RevenueByChannel(ctx context.Context, arg RevenueByChannelParams) ([]RevenueByChannelRow, error)
 	RevenueByPurpose(ctx context.Context, arg RevenueByPurposeParams) ([]RevenueByPurposeRow, error)
+	RevenueCsvRows(ctx context.Context, arg RevenueCsvRowsParams) ([]RevenueCsvRowsRow, error)
 	RevenueDaily(ctx context.Context, arg RevenueDailyParams) ([]RevenueDailyRow, error)
 	RevenueTotals(ctx context.Context, arg RevenueTotalsParams) (RevenueTotalsRow, error)
 	RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error
@@ -522,6 +530,7 @@ type Querier interface {
 	SaveOffer(ctx context.Context, arg SaveOfferParams) error
 	SavePlan(ctx context.Context, arg SavePlanParams) error
 	SaveRepayment(ctx context.Context, arg SaveRepaymentParams) error
+	SaveReport(ctx context.Context, arg SaveReportParams) error
 	SaveReservation(ctx context.Context, arg SaveReservationParams) error
 	SaveRetrofit(ctx context.Context, arg SaveRetrofitParams) error
 	SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error

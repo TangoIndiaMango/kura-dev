@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 ../restart_go.sh >/dev/null
 fail=0
 for t in auth me profile users rbac coops_drivers accounts account_writes identity hubs battery_types batteries \
-         vehicles finance pricing_plans subscriptions_discounts risk support operations config credit bay inbox_audit webhooks telemetry engines analytics "$@"; do
+         vehicles finance pricing_plans subscriptions_discounts risk support operations config credit bay inbox_audit webhooks telemetry engines analytics reports "$@"; do
   [ -f "$t.py" ] || continue
   ../restart_go.sh >/dev/null; python3 -c "import lib" >/dev/null 2>&1  # fresh throttles per suite
   full=$(python3 "$t.py" 2>&1)

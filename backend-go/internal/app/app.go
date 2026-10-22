@@ -31,6 +31,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platformcfg"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/qr"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/rbac"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/reports"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/risk"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/server"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
@@ -97,6 +98,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		auditlog.NewModule(pool, limiter),
 		telemetry.NewModule(pool, limiter),
 		engines.NewModule(pool, cdn, limiter),
+		reports.NewModule(pool, cfg.MediaRoot, limiter),
 		analytics.NewModule(pool, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
 			KoboPerLitre: cfg.PetrolKoboPerLitre}, limiter),
 	)

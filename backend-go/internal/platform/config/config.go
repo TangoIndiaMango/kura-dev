@@ -58,6 +58,13 @@ type Config struct {
 	CloudinaryUploadPreset string `env:"CLOUDINARY_UPLOAD_PRESET"`
 	CloudinaryFolder       string `env:"CLOUDINARY_FOLDER" envDefault:"uploads"`
 	ConsentPolicyVersion   string `env:"CONSENT_POLICY_VERSION" envDefault:"2026-10"`
+	// MediaRoot is Django's default_storage root (FileSystemStorage, MEDIA_ROOT
+	// unset → the working directory): generated report files live under it.
+	MediaRoot             string `env:"MEDIA_ROOT" envDefault:"."`
+	MediaMaxFiles         int    `env:"MEDIA_MAX_FILES_PER_REQUEST" envDefault:"10"`
+	MediaMaxImageBytes    int64  `env:"MEDIA_MAX_IMAGE_BYTES" envDefault:"8388608"`
+	MediaMaxDocumentBytes int64  `env:"MEDIA_MAX_DOCUMENT_BYTES" envDefault:"10485760"`
+	MediaProvider         string `env:"MEDIA_PROVIDER" envDefault:"cloudinary"`
 
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"20s"`
 

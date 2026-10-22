@@ -283,12 +283,21 @@ translated to the envelope in exactly one place (`respond.Error`).
   Lagos-day windows), government impact snapshot + series, cooperative
   rollups (chairman or cooperative / account managers) and the impact story
   CMS. `scripts/contract/analytics.py`: identical.
+- Reports (`internal/reports`): ReportJob create (idempotent per requester
+  + key, OTHER → 501) with synchronous render, status (READY past TTL reads
+  EXPIRED) and download. CSVs (ops / fleet / revenue, Python csv quoting,
+  CRLF) are byte-identical to Django; the impact PDF uses go-pdf/fpdf with
+  the same text and layout. Files go under `MEDIA_ROOT` (default: working
+  directory, like Django's FileSystemStorage). `scripts/contract/reports.py`:
+  identical.
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
   after swaps.
 
 ### Django bugs found while porting (fixed on main too)
+- Impact PDF printed the disclaimer's em dash as "?" (latin-1 replace);
+  `_ascii` now maps it to "-" (`analytics/services/impact_pdf.py`).
 - Re-assigning an offer to an account that already has it → 500: the
   IntegrityError was caught inside `transaction.atomic`, so the follow-up
   `.get()` hit a broken transaction. Now `get_or_create`

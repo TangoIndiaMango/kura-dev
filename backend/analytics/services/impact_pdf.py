@@ -14,6 +14,7 @@ def _ascii(value: object) -> str:
         str(value or "—")
         .replace("₦", "NGN ")
         .replace("·", "-")
+        .replace("—", "-")
         .encode("latin-1", "replace")
         .decode("latin-1")
     )

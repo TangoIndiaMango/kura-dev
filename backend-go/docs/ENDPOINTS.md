@@ -371,9 +371,9 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## reports (3)
 
-- [ ] `POST   /api/v1/reports/`
-- [ ] `GET    /api/v1/reports/{report_id}/`
-- [ ] `GET    /api/v1/reports/{report_id}/download/`
+- [x] `POST   /api/v1/reports/`
+- [x] `GET    /api/v1/reports/{report_id}/`
+- [x] `GET    /api/v1/reports/{report_id}/download/`
 
 ## permissions (2)
 
