@@ -11,9 +11,17 @@ import (
 )
 
 type Querier interface {
+	AuditChainTip(ctx context.Context) (string, error)
 	// Live auth state for a token's user_id (role, flags, session version).
 	GetPrincipalUser(ctx context.Context, id uuid.UUID) (GetPrincipalUserRow, error)
+	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
+	InsertNotification(ctx context.Context, arg InsertNotificationParams) (uuid.UUID, error)
+	// Same key as Django audit/services.py so both backends serialise appends.
+	LockAuditChain(ctx context.Context) error
+	NotificationByDedupe(ctx context.Context, arg NotificationByDedupeParams) (uuid.UUID, error)
 	RolePermissionCodes(ctx context.Context, id uuid.UUID) ([]string, error)
+	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
 }
 
 var _ Querier = (*Queries)(nil)

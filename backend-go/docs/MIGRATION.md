@@ -108,6 +108,12 @@ translated to the envelope in exactly one place (`respond.Error`).
   **Next: Phase 1** — test harness (test DB from schema.sql), then auth
   endpoints (`/api/v1/auth/*`: login, otp request/verify, pin login, refresh,
   logout, me, pin set/change) with contract tests vs Django.
+- 2026-10-22 — Phase 1 in progress. Done: `events.Emit` (hash-chained audit
+  with Django's advisory lock + canonical JSON byte-identical to Python,
+  notifications with dedupe + rider SMS preference gating), `testkit`
+  (per-package test DB from schema.sql, truncate between tests, user
+  fixtures). **Next:** throttles (`core/throttles.py`), then the auth
+  endpoints in `internal/accounts/` (see AuthViewSet + AuthService in Django).
 
 ### How to run
 ```
