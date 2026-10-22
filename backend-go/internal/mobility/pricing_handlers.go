@@ -224,29 +224,41 @@ func (h *PricingHandler) activate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		err = h.tx(ctx, func(q *db.Queries, who *events.Actor) error {
-			locked, err := q.MatrixForUpdate(ctx, m.ID)
-			if err != nil {
-				return err
-			}
-			if err := q.SupersedeMatrices(ctx, db.SupersedeMatricesParams{VehicleType: locked.VehicleType, ID: locked.ID}); err != nil {
-				return err
-			}
-			if err := q.SetMatrixStatus(ctx, db.SetMatrixStatusParams{ID: locked.ID, Status: "ACTIVE",
-				ApprovedByID: &user.ID, EffectiveFrom: locked.EffectiveFrom}); err != nil {
-				return err
-			}
-			if err := syncPlanPrices(ctx, q, locked); err != nil {
-				return err
-			}
-			return events.Emit(ctx, q, events.Event{Action: "price_matrix.activated", SubjectType: "price_matrix",
-				SubjectID: locked.ID.String(), Actor: who,
-				After: events.Map{"vehicle_type": locked.VehicleType, "pay_per_swap_kobo": locked.PayPerSwapKobo,
-					"effective_from": *dateStr(locked.EffectiveFrom), "approved_by_id": user.ID.String(),
-					"created_by_id": idOrNil(locked.CreatedByID)},
-				Metadata: approval.Metadata(user, locked.CreatedByID)})
+			return activateMatrix(ctx, q, m.ID, &user.ID, approval.Metadata(user, m.CreatedByID), who)
 		})
 	}
 	h.respondMatrix(w, r, m.ID, err)
+}
+
+// activateMatrix is the activate_matrix transaction: supersede the type's
+// ACTIVE tariff, publish this one, re-price the plan catalogue, audit.
+// approver is nil for the worker's scheduled activation.
+func activateMatrix(ctx context.Context, q *db.Queries, id uuid.UUID, approver *uuid.UUID, meta events.Map,
+	who *events.Actor) error {
+	locked, err := q.MatrixForUpdate(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := q.SupersedeMatrices(ctx, db.SupersedeMatricesParams{VehicleType: locked.VehicleType, ID: locked.ID}); err != nil {
+		return err
+	}
+	if err := q.SetMatrixStatus(ctx, db.SetMatrixStatusParams{ID: locked.ID, Status: "ACTIVE",
+		ApprovedByID: approver, EffectiveFrom: locked.EffectiveFrom}); err != nil {
+		return err
+	}
+	if err := syncPlanPrices(ctx, q, locked); err != nil {
+		return err
+	}
+	var by any
+	if approver != nil {
+		by = approver.String()
+	}
+	return events.Emit(ctx, q, events.Event{Action: "price_matrix.activated", SubjectType: "price_matrix",
+		SubjectID: locked.ID.String(), Actor: who,
+		After: events.Map{"vehicle_type": locked.VehicleType, "pay_per_swap_kobo": locked.PayPerSwapKobo,
+			"effective_from": *dateStr(locked.EffectiveFrom), "approved_by_id": by,
+			"created_by_id": idOrNil(locked.CreatedByID)},
+		Metadata: meta})
 }
 
 func (h *PricingHandler) respondMatrix(w http.ResponseWriter, r *http.Request, id uuid.UUID, err error) {

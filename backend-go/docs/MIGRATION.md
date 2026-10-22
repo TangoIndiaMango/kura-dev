@@ -295,12 +295,34 @@ translated to the envelope in exactly one place (`respond.Error`).
   types, size caps, signed Cloudinary upload (SHA-1, signature v2, same
   params as the Python SDK), MediaAsset rows, media_upload throttle only.
   `scripts/contract/media.py` uploads real files: identical.
+- Worker (`cmd/worker`, `internal/jobs`; run with `scripts/worker.sh`):
+  every `run_task_worker` sweep in the same order — unreturned packs
+  (LOST + risk + chairman/owner notice + email + owner suspension), swap
+  lifecycle (expire holds, free orphaned RESERVED packs, abort stale /
+  dead-hold swaps), mock IoT tick (MOCK_IOT_ENABLED), shift auto-close,
+  cash settlement sweep (unlodged float, drawer variance, 24h escalation),
+  subscriptions (expire / queued switch / auto-renew / lapse / price-change
+  warning), scheduled price matrices, virtual-account retries, and the
+  daily credit jobs (score recompute, auto-debit with the miss ladder).
+  Flags mirror Django's (`--once`, `--sleep`, `--no-*`), plus `--only` and
+  `--json`. Mail is sent directly, so there is no QueuedTask queue to drain.
+  `scripts/contract/sweeps/run.py` clones the dev DB twice (template
+  `kura_sweeps_base`), builds the same fixture in both through Django's ORM,
+  runs Django's job on one clone and the Go worker on the other, and
+  compares results plus every touched table, audit row and notification:
+  identical for all 11 jobs (dev NUBANs and timestamps normalised).
 - Known gap (API-only, no frontend use): DRF cursor lists honour
   `?ordering=` via OrderingFilter (any serializer field); Go cursor lists
   (payments, ledger, battery events, risk events) ignore it. Fix in one pass
   after swaps.
 
 ### Django bugs found while porting (fixed on main too)
+- Worker auto-renew never succeeded: the renew idempotency keys
+  `auto-renew:{id}:{ends_at.isoformat()}` / `queued-end:...` are ~80 chars
+  but `subscription.idempotency_key` is varchar(64), so a successful charge
+  raised DataError (not a DomainError), rolled back and crashed the whole
+  subscriptions sweep. Keys now use the Unix second (58 chars)
+  (`mobility/services/plans/jobs.py`).
 - Impact PDF printed the disclaimer's em dash as "?" (latin-1 replace);
   `_ascii` now maps it to "-" (`analytics/services/impact_pdf.py`).
 - Re-assigning an offer to an account that already has it → 500: the

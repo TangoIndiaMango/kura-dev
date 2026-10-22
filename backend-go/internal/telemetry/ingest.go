@@ -28,6 +28,9 @@ type Input struct {
 	BatteryID                      *uuid.UUID
 	IngestBatch                    string
 	Raw                            map[string]any
+	// Provider / Kind / BatterySerial are set by vendor adapters (mock IoT);
+	// otherwise the provider follows Source and the kind follows BatteryPct.
+	Provider, Kind, BatterySerial string
 }
 
 // Ingest is TelemetryService.ingest → apply_normalized_telemetry. Run it in
@@ -40,19 +43,40 @@ func Ingest(ctx context.Context, q *db.Queries, in Input, who *events.Actor) (uu
 	if err != nil {
 		return uuid.Nil, err
 	}
-	provider, source, chargeSource := "IOT", "iot", "TELEMETRY"
-	if in.Source == "" || in.Source == "manual" {
-		provider, source, chargeSource = "MANUAL", "manual", "MANUAL"
+	provider := in.Provider
+	if provider == "" {
+		provider = "IOT"
+		if in.Source == "" || in.Source == "manual" {
+			provider = "MANUAL"
+		}
 	}
-	kind := "HEARTBEAT"
-	if in.BatteryPct != nil {
-		kind = "SOC_UPDATE"
+	source, chargeSource := "iot", "TELEMETRY"
+	switch provider {
+	case "MANUAL":
+		source, chargeSource = "manual", "MANUAL"
+	case "BMS", "OCPP_BSS":
+		chargeSource = "BMS"
+	}
+	kind := in.Kind
+	if kind == "" {
+		kind = "HEARTBEAT"
+		if in.BatteryPct != nil {
+			kind = "SOC_UPDATE"
+		}
 	}
 	recorded := time.Now()
 	if in.RecordedAt != nil {
 		recorded = *in.RecordedAt
 	}
 	battery := vehicle.CurrentBatteryID
+	if in.BatteryID == nil && strings.TrimSpace(in.BatterySerial) != "" {
+		battery = nil
+		if id, err := q.TelemetryBatteryBySerial(ctx, strings.TrimSpace(in.BatterySerial)); err == nil {
+			battery = &id
+		} else if !database.IsNoRows(err) {
+			return uuid.Nil, err
+		}
+	}
 	if in.BatteryID != nil {
 		battery = nil
 		ok, err := q.TelemetryBatteryExists(ctx, *in.BatteryID)

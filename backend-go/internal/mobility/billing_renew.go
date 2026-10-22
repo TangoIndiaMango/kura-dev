@@ -20,6 +20,17 @@ import (
 // Renew is plans.renew: charge the next period at the live price, applying
 // any queued plan first.
 func (b *Billing) Renew(ctx context.Context, subID uuid.UUID, actor *events.Actor, code, key, channel, pinGrant string) error {
+	return b.renew(ctx, subID, actor, code, key, channel, pinGrant, false)
+}
+
+// RenewSystem is renew(skip_pin=True): the worker's auto-renew / queued
+// switch charge.
+func (b *Billing) RenewSystem(ctx context.Context, subID uuid.UUID, key, channel string) error {
+	return b.renew(ctx, subID, nil, "", key, channel, "", true)
+}
+
+func (b *Billing) renew(ctx context.Context, subID uuid.UUID, actor *events.Actor, code, key, channel, pinGrant string,
+	skipPin bool) error {
 	key = strings.TrimSpace(key)
 	q0 := db.New(b.pool)
 	if key != "" {
@@ -42,8 +53,10 @@ func (b *Billing) Renew(ctx context.Context, subID uuid.UUID, actor *events.Acto
 		if err != nil {
 			return err
 		}
-		if err := b.assertPinGrant(pinGrant, acct.OwnerUserID); err != nil {
-			return err
+		if !skipPin {
+			if err := b.assertPinGrant(pinGrant, acct.OwnerUserID); err != nil {
+				return err
+			}
 		}
 		switched, err := applyQueuedPlan(ctx, q, &s)
 		if err != nil {

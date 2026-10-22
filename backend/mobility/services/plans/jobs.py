@@ -46,7 +46,7 @@ def expire_due_subscriptions(*, limit: int = 200) -> dict:
             try:
                 SubscriptionService.renew(
                     subscription=sub,
-                    idempotency_key=f"queued-end:{sub.id}:{sub.ends_at.isoformat()}",
+                    idempotency_key=f"queued-end:{sub.id}:{int(sub.ends_at.timestamp())}",
                     channel="App",
                     skip_pin=True,
                 )
@@ -127,7 +127,7 @@ def renew_due_subscriptions(*, limit: int = 100) -> dict:
         try:
             SubscriptionService.renew(
                 subscription=sub,
-                idempotency_key=f"auto-renew:{sub.id}:{sub.ends_at.isoformat()}",
+                idempotency_key=f"auto-renew:{sub.id}:{int(sub.ends_at.timestamp())}",
                 channel="App",
                 skip_pin=True,
             )

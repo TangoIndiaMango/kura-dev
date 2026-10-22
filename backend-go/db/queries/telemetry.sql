@@ -48,3 +48,18 @@ WHERE id = $1 AND (charge_observed_at IS NULL OR charge_observed_at <= $4);
 
 -- name: TelemetryBatteryExists :one
 SELECT EXISTS (SELECT 1 FROM mobility_battery WHERE id = $1);
+
+-- name: TelemetryBatteryBySerial :one
+SELECT id FROM mobility_battery WHERE serial = $1 ORDER BY id LIMIT 1;
+
+-- name: MockIoTVehicles :many
+SELECT v.id, v.registration_plate, b.id AS battery_id, b.serial, b.charge_pct FROM mobility_vehicle v
+JOIN mobility_battery b ON b.id = v.current_battery_id
+WHERE v.status = 'ACTIVE' AND b.status = 'ISSUED' ORDER BY v.registration_plate LIMIT $1;
+
+-- name: LastVehicleFix :one
+SELECT lat::float8 AS lat, lng::float8 AS lng FROM mobility_telemetryevent
+WHERE vehicle_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY recorded_at DESC LIMIT 1;
+
+-- name: FirstOnlineHub :one
+SELECT lat::float8 AS lat, lng::float8 AS lng FROM mobility_hub WHERE status = 'ONLINE' ORDER BY code LIMIT 1;
