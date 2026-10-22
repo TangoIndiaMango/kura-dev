@@ -1,7 +1,7 @@
 """Accounts CRM reads (AccountViewSet) per role: list, filters, detail, kyc, stats, export."""
 import sys
 
-from lib import DJ, GO, both, call, check, staff_tokens, summary
+from lib import DJ, GO, both, call, check, fresh, staff_tokens, summary
 
 ops = staff_tokens()
 admin = staff_tokens("admin@yopmail.com", "adminpass123")
@@ -19,11 +19,11 @@ for q in ["?page=2&page_size=5", "?q=kur", "?search=080", "?q=lag", "?status=ACT
           "?ordering=bogus", "?start_date=nope", "?created_after=nope", "?page=99"]:
     both(f"list {q}", "GET", A + q, tokens=ops)
 
-_, lst = call(DJ, "GET", A + "?page_size=100", token=ops[0])
+lst = both("list page_size=100", "GET", A + "?page_size=100", tokens=ops)[0][1]  # both: keeps throttle counts equal
 for acct in lst["results"]:
     both(f"detail {acct['kura_id']}", "GET", f"{A}{acct['id']}/", tokens=ops)
     both(f"kyc {acct['kura_id']}", "GET", f"{A}{acct['id']}/kyc/", tokens=ops)
-own = call(DJ, "GET", A, token=owner[0])[1]["results"][0]["id"]
+own = both("list as owner (default)", "GET", A, tokens=owner)[0][1]["results"][0]["id"]
 both("detail as owner", "GET", f"{A}{own}/", tokens=owner)
 both("kyc as owner", "GET", f"{A}{own}/kyc/", tokens=owner)
 other = next(a["id"] for a in lst["results"] if a["id"] != own)
@@ -46,10 +46,12 @@ for label, tok, q in [("ops", ops, ""), ("ops filtered", ops, "?kyc_status=VERIF
           (g[0], {"csv": g[1].decode(), "n": g[2].get("X-Export-Row-Count"), "cd": g[2].get("Content-Disposition")}))
 # Detail stats (+ money breakdown) for every account with swaps, over several windows.
 busy = [a["id"] for a in lst["results"]]
-for q in ["", "?start_date=2026-09-01&end_date=2026-10-22", "?start_date=2026-01-01&end_date=2026-10-22",
-          "?start_date=2026-10-20&end_date=2026-10-01", "?start_date=bad&end_date=2026-10-15", "?end_date=2026-9-30"]:
-    for aid in busy:
-        both(f"detail stats {aid[-6:]} {q or '(default)'}", "GET", f"{A}{aid}/stats/{q}", tokens=ops)
+for n, q in enumerate(["", "?start_date=2026-09-01&end_date=2026-10-22", "?start_date=2026-01-01&end_date=2026-10-22",
+          "?start_date=2026-10-20&end_date=2026-10-01", "?start_date=bad&end_date=2026-10-15", "?end_date=2026-9-30"]):
+    if n % 2 == 0:
+        fresh()  # ~35 reads per window pair stays under the burst limit
+    for i, aid in enumerate(busy):  # alternate users: one would hit the burst throttle
+        both(f"detail stats {aid[-6:]} {q or '(default)'}", "GET", f"{A}{aid}/stats/{q}", tokens=(ops, admin)[i % 2])
 both("detail stats as owner", "GET", f"{A}{own}/stats/", tokens=owner)
 both("detail stats other as owner", "GET", f"{A}{other}/stats/", tokens=owner)
 
@@ -59,4 +61,17 @@ for q in ["", "?start_date=2026-09-01&end_date=2026-10-22", "?start_date=2026-10
     both(f"fleet spend {q or '(default)'}", "GET", F + q, tokens=owner)
 both("fleet spend as staff (403)", "GET", F, tokens=ops)
 both("fleet spend anon", "GET", F)
+
+# Owner impact + fleet spend for riders and fleet drivers (driver ≠ owner).
+def pin(phone):
+    b = {"phone": phone, "pin": "1234"}
+    return (call(DJ, "POST", "/api/v1/auth/pin/login/", b)[1].get("access"),
+            call(GO, "POST", "/api/v1/auth/pin/login/", b)[1].get("access"))
+
+
+fresh()
+for label, tok in [("owner", owner), ("rider", pin("+2348033330001")), ("fleet driver", pin("+2348011110002")),
+                   ("staff", admin)]:
+    both(f"impact as {label}", "GET", "/api/v1/accounts/me/impact/", tokens=tok)
+    both(f"fleet spend as {label}", "GET", F, tokens=tok)
 sys.exit(1 if summary() else 0)

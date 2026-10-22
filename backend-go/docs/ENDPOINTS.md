@@ -173,7 +173,7 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 - [ ] `POST   /api/v1/accounts/identity/photos/`
 - [ ] `POST   /api/v1/accounts/identity/withdraw/`
 - [x] `GET    /api/v1/accounts/me/fleet-spend/`
-- [ ] `GET    /api/v1/accounts/me/impact/`
+- [x] `GET    /api/v1/accounts/me/impact/`
 - [ ] `POST   /api/v1/accounts/register/`
 - [x] `GET    /api/v1/accounts/stats/`
 - [x] `GET    /api/v1/accounts/{id}/`

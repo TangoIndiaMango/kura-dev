@@ -33,6 +33,10 @@ func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg.HealthCheckPeriod = 30 * time.Second
 	// Business day is Lagos, but storage and comparisons stay UTC like Django.
 	cfg.ConnConfig.RuntimeParams["timezone"] = "UTC"
+	// Plan every statement with its real values, like Django (psycopg binds
+	// client-side). A cached generic plan can pick another scan and so a
+	// different order for ties in unordered / equal-key results.
+	cfg.ConnConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

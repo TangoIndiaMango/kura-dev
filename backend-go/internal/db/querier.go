@@ -15,6 +15,8 @@ type Querier interface {
 	AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	AccountChildCounts(ctx context.Context, accountID uuid.UUID) (AccountChildCountsRow, error)
 	AccountDriverIDs(ctx context.Context, accountID uuid.UUID) ([]uuid.UUID, error)
+	// Driver.objects.filter(account=...): Driver.Meta.ordering is -created_at.
+	AccountDriversWithUser(ctx context.Context, accountID uuid.UUID) ([]AccountDriversWithUserRow, error)
 	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
 	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
@@ -49,8 +51,7 @@ type Querier interface {
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
-	// drivers_usage_today: every driver on the account with today's swaps / spend.
-	DriversUsage(ctx context.Context, arg DriversUsageParams) ([]DriversUsageRow, error)
+	DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error)
 	EmailTaken(ctx context.Context, email string) (bool, error)
 	EnabledRiskRule(ctx context.Context, code string) (EnabledRiskRuleRow, error)
 	// RiskService.ensure_rules: get_or_create by code.
@@ -140,10 +141,16 @@ type Querier interface {
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	StaffStats(ctx context.Context, arg StaffStatsParams) (StaffStatsRow, error)
 	SwapByDriver(ctx context.Context, arg SwapByDriverParams) ([]SwapByDriverRow, error)
+	SwapByDriverTop(ctx context.Context, arg SwapByDriverTopParams) ([]SwapByDriverTopRow, error)
 	SwapByMode(ctx context.Context, arg SwapByModeParams) ([]SwapByModeRow, error)
+	// Tie order matters for parity: Django's breakdown sorts with LIMIT 50 (top-N
+	// heapsort) while fleet money takes the unsorted GROUP BY and sorts in Python,
+	// so each has its own query shape.
 	SwapByVehicle(ctx context.Context, arg SwapByVehicleParams) ([]SwapByVehicleRow, error)
+	SwapByVehicleTop(ctx context.Context, arg SwapByVehicleTopParams) ([]SwapByVehicleTopRow, error)
 	// Lagos-local days (TruncDate in Django's TIME_ZONE); energy is 3.24 kWh per pack.
 	SwapDaily(ctx context.Context, arg SwapDailyParams) ([]SwapDailyRow, error)
+	SwapImpact(ctx context.Context, accountID uuid.UUID) (SwapImpactRow, error)
 	// Account spend (accounts.selectors.spend + account_detail_stats).
 	// Every query reads COMPLETED swaps of one account with completed_at in [from, to).
 	SwapTotals(ctx context.Context, arg SwapTotalsParams) (SwapTotalsRow, error)

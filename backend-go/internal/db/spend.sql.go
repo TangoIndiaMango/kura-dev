@@ -32,44 +32,32 @@ func (q *Queries) AccountChildCounts(ctx context.Context, accountID uuid.UUID) (
 	return i, err
 }
 
-const driversUsage = `-- name: DriversUsage :many
-SELECT d.id, u.first_name, u.last_name, u.phone, d.daily_swap_limit, d.daily_spend_kobo_limit,
-  COALESCE(t.swaps, 0)::int AS swaps, COALESCE(t.fees, 0)::bigint AS fees
-FROM accounts_driver d JOIN accounts_user u ON u.id = d.user_id
-LEFT JOIN (SELECT ms.driver_id, count(*) AS swaps, sum(ms.amount_kobo) AS fees FROM mobility_swap ms
-  WHERE ms.account_id = $1 AND ms.status = 'COMPLETED' AND ms.completed_at >= $2::timestamptz
-    AND ms.completed_at < $3::timestamptz
-  GROUP BY ms.driver_id) t ON t.driver_id = d.id
+const accountDriversWithUser = `-- name: AccountDriversWithUser :many
+SELECT d.id, u.first_name, u.last_name, u.phone, d.daily_swap_limit, d.daily_spend_kobo_limit
+FROM accounts_driver d INNER JOIN accounts_user u ON d.user_id = u.id
 WHERE d.account_id = $1
+ORDER BY d.created_at DESC
 `
 
-type DriversUsageParams struct {
-	AccountID uuid.UUID
-	FromAt    time.Time
-	ToAt      time.Time
-}
-
-type DriversUsageRow struct {
+type AccountDriversWithUserRow struct {
 	ID                  uuid.UUID
 	FirstName           string
 	LastName            string
 	Phone               *string
 	DailySwapLimit      *int16
 	DailySpendKoboLimit *int64
-	Swaps               int32
-	Fees                int64
 }
 
-// drivers_usage_today: every driver on the account with today's swaps / spend.
-func (q *Queries) DriversUsage(ctx context.Context, arg DriversUsageParams) ([]DriversUsageRow, error) {
-	rows, err := q.db.Query(ctx, driversUsage, arg.AccountID, arg.FromAt, arg.ToAt)
+// Driver.objects.filter(account=...): Driver.Meta.ordering is -created_at.
+func (q *Queries) AccountDriversWithUser(ctx context.Context, accountID uuid.UUID) ([]AccountDriversWithUserRow, error) {
+	rows, err := q.db.Query(ctx, accountDriversWithUser, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []DriversUsageRow{}
+	items := []AccountDriversWithUserRow{}
 	for rows.Next() {
-		var i DriversUsageRow
+		var i AccountDriversWithUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.FirstName,
@@ -77,9 +65,47 @@ func (q *Queries) DriversUsage(ctx context.Context, arg DriversUsageParams) ([]D
 			&i.Phone,
 			&i.DailySwapLimit,
 			&i.DailySpendKoboLimit,
-			&i.Swaps,
-			&i.Fees,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const driverUsage = `-- name: DriverUsage :many
+SELECT driver_id, count(id)::int AS swaps, COALESCE(sum(amount_kobo), 0)::bigint AS fees
+FROM mobility_swap
+WHERE account_id = $1 AND status = 'COMPLETED' AND completed_at >= $2::timestamptz
+  AND completed_at < $3::timestamptz
+GROUP BY driver_id
+`
+
+type DriverUsageParams struct {
+	AccountID uuid.UUID
+	FromAt    time.Time
+	ToAt      time.Time
+}
+
+type DriverUsageRow struct {
+	DriverID uuid.UUID
+	Swaps    int32
+	Fees     int64
+}
+
+func (q *Queries) DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error) {
+	rows, err := q.db.Query(ctx, driverUsage, arg.AccountID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DriverUsageRow{}
+	for rows.Next() {
+		var i DriverUsageRow
+		if err := rows.Scan(&i.DriverID, &i.Swaps, &i.Fees); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -173,12 +199,12 @@ func (q *Queries) PlanFeesDaily(ctx context.Context, arg PlanFeesDailyParams) ([
 }
 
 const swapByDriver = `-- name: SwapByDriver :many
-SELECT s.driver_id, u.first_name, u.last_name, u.phone, count(*)::int AS swaps,
+SELECT s.driver_id, u.first_name, u.last_name, u.phone, count(s.id)::int AS swaps,
   COALESCE(sum(s.amount_kobo), 0)::bigint AS fees
 FROM mobility_swap s JOIN accounts_driver d ON d.id = s.driver_id JOIN accounts_user u ON u.id = d.user_id
 WHERE s.account_id = $1 AND s.status = 'COMPLETED' AND s.completed_at >= $2::timestamptz AND s.completed_at < $3::timestamptz
 GROUP BY s.driver_id, u.first_name, u.last_name, u.phone
-ORDER BY 6 DESC
+ORDER BY sum(s.amount_kobo) DESC
 `
 
 type SwapByDriverParams struct {
@@ -223,12 +249,63 @@ func (q *Queries) SwapByDriver(ctx context.Context, arg SwapByDriverParams) ([]S
 	return items, nil
 }
 
+const swapByDriverTop = `-- name: SwapByDriverTop :many
+SELECT s.driver_id, u.first_name, u.last_name, u.phone, count(s.id)::int AS swaps,
+  COALESCE(sum(s.amount_kobo), 0)::bigint AS fees
+FROM mobility_swap s JOIN accounts_driver d ON d.id = s.driver_id JOIN accounts_user u ON u.id = d.user_id
+WHERE s.account_id = $1 AND s.status = 'COMPLETED' AND s.completed_at >= $2::timestamptz AND s.completed_at < $3::timestamptz
+GROUP BY s.driver_id, u.first_name, u.last_name, u.phone
+ORDER BY sum(s.amount_kobo) DESC LIMIT 50
+`
+
+type SwapByDriverTopParams struct {
+	AccountID uuid.UUID
+	FromAt    time.Time
+	ToAt      time.Time
+}
+
+type SwapByDriverTopRow struct {
+	DriverID  uuid.UUID
+	FirstName string
+	LastName  string
+	Phone     *string
+	Swaps     int32
+	Fees      int64
+}
+
+func (q *Queries) SwapByDriverTop(ctx context.Context, arg SwapByDriverTopParams) ([]SwapByDriverTopRow, error) {
+	rows, err := q.db.Query(ctx, swapByDriverTop, arg.AccountID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SwapByDriverTopRow{}
+	for rows.Next() {
+		var i SwapByDriverTopRow
+		if err := rows.Scan(
+			&i.DriverID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Phone,
+			&i.Swaps,
+			&i.Fees,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const swapByMode = `-- name: SwapByMode :many
 SELECT payment_mode, count(*)::int AS swaps, COALESCE(sum(amount_kobo), 0)::bigint AS fees
 FROM mobility_swap
 WHERE account_id = $1 AND status = 'COMPLETED' AND completed_at >= $2::timestamptz AND completed_at < $3::timestamptz
 GROUP BY payment_mode
-ORDER BY 3 DESC
+ORDER BY sum(amount_kobo) DESC
 `
 
 type SwapByModeParams struct {
@@ -264,12 +341,12 @@ func (q *Queries) SwapByMode(ctx context.Context, arg SwapByModeParams) ([]SwapB
 }
 
 const swapByVehicle = `-- name: SwapByVehicle :many
-SELECT s.vehicle_id, v.registration_plate AS plate, count(*)::int AS swaps,
+
+SELECT s.vehicle_id, v.registration_plate AS plate, count(s.id)::int AS swaps,
   COALESCE(sum(s.amount_kobo), 0)::bigint AS fees
 FROM mobility_swap s JOIN mobility_vehicle v ON v.id = s.vehicle_id
 WHERE s.account_id = $1 AND s.status = 'COMPLETED' AND s.completed_at >= $2::timestamptz AND s.completed_at < $3::timestamptz
 GROUP BY s.vehicle_id, v.registration_plate
-ORDER BY 4 DESC
 `
 
 type SwapByVehicleParams struct {
@@ -285,6 +362,9 @@ type SwapByVehicleRow struct {
 	Fees      int64
 }
 
+// Tie order matters for parity: Django's breakdown sorts with LIMIT 50 (top-N
+// heapsort) while fleet money takes the unsorted GROUP BY and sorts in Python,
+// so each has its own query shape.
 func (q *Queries) SwapByVehicle(ctx context.Context, arg SwapByVehicleParams) ([]SwapByVehicleRow, error) {
 	rows, err := q.db.Query(ctx, swapByVehicle, arg.AccountID, arg.FromAt, arg.ToAt)
 	if err != nil {
@@ -294,6 +374,53 @@ func (q *Queries) SwapByVehicle(ctx context.Context, arg SwapByVehicleParams) ([
 	items := []SwapByVehicleRow{}
 	for rows.Next() {
 		var i SwapByVehicleRow
+		if err := rows.Scan(
+			&i.VehicleID,
+			&i.Plate,
+			&i.Swaps,
+			&i.Fees,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const swapByVehicleTop = `-- name: SwapByVehicleTop :many
+SELECT s.vehicle_id, v.registration_plate AS plate, count(s.id)::int AS swaps,
+  COALESCE(sum(s.amount_kobo), 0)::bigint AS fees
+FROM mobility_swap s JOIN mobility_vehicle v ON v.id = s.vehicle_id
+WHERE s.account_id = $1 AND s.status = 'COMPLETED' AND s.completed_at >= $2::timestamptz AND s.completed_at < $3::timestamptz
+GROUP BY s.vehicle_id, v.registration_plate
+ORDER BY sum(s.amount_kobo) DESC LIMIT 50
+`
+
+type SwapByVehicleTopParams struct {
+	AccountID uuid.UUID
+	FromAt    time.Time
+	ToAt      time.Time
+}
+
+type SwapByVehicleTopRow struct {
+	VehicleID uuid.UUID
+	Plate     string
+	Swaps     int32
+	Fees      int64
+}
+
+func (q *Queries) SwapByVehicleTop(ctx context.Context, arg SwapByVehicleTopParams) ([]SwapByVehicleTopRow, error) {
+	rows, err := q.db.Query(ctx, swapByVehicleTop, arg.AccountID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SwapByVehicleTopRow{}
+	for rows.Next() {
+		var i SwapByVehicleTopRow
 		if err := rows.Scan(
 			&i.VehicleID,
 			&i.Plate,
@@ -356,6 +483,25 @@ func (q *Queries) SwapDaily(ctx context.Context, arg SwapDailyParams) ([]SwapDai
 		return nil, err
 	}
 	return items, nil
+}
+
+const swapImpact = `-- name: SwapImpact :one
+SELECT count(*)::int AS swaps, (min(completed_at) IS NOT NULL)::bool AS has_first,
+  COALESCE(min(completed_at), 'epoch')::timestamptz AS first_at
+FROM mobility_swap WHERE account_id = $1 AND status = 'COMPLETED'
+`
+
+type SwapImpactRow struct {
+	Swaps    int32
+	HasFirst bool
+	FirstAt  time.Time
+}
+
+func (q *Queries) SwapImpact(ctx context.Context, accountID uuid.UUID) (SwapImpactRow, error) {
+	row := q.db.QueryRow(ctx, swapImpact, accountID)
+	var i SwapImpactRow
+	err := row.Scan(&i.Swaps, &i.HasFirst, &i.FirstAt)
+	return i, err
 }
 
 const swapTotals = `-- name: SwapTotals :one

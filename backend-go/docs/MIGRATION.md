@@ -172,9 +172,16 @@ translated to the envelope in exactly one place (`respond.Error`).
   kyc, export, stats, detail stats, me/fleet-spend. New `internal/spend`
   package (windows, fleet money, drivers today, petrol). `scripts/contract/
   accounts.py`: 179 checks identical across ops/admin/hub agent/owner,
-  covering all 111 completed swaps and plan fees. Next: accounts writes
+  covering all 111 completed swaps and plan fees. Then me/impact (CPython
+  set order reproduced for `_own_account_ids()[0]`). 189 checks identical.
+  Lessons: Go's pool now uses `plan_cache_mode=force_custom_plan` so ties in
+  unordered/equal-key results come back in Django's order (pgx generic
+  plans picked other scans); check model `Meta.ordering` (Driver is
+  -created_at) for querysets without explicit order_by;
+  `scripts/restart_go.sh` kills by port (pkill missed the built binary) and
+  `lib.fresh()` resets both throttles mid-suite. Next: accounts writes
   (identity/KYC, suspend/reinstate/notify/set-coop/register/PATCH/create),
-  me/impact, then mobility.
+  then mobility.
 
 ### Django bugs found while porting (fixed on main too)
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs

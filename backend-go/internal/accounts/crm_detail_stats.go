@@ -84,30 +84,26 @@ func (h *AccountHandler) detailStats(w http.ResponseWriter, r *http.Request) {
 		energy += m.EnergyKWh
 		metrics = append(metrics, m)
 	}
-	vehicles, err := h.q.SwapByVehicle(ctx, db.SwapByVehicleParams(p))
+	vehicles, err := h.q.SwapByVehicleTop(ctx, db.SwapByVehicleTopParams(p))
 	if err != nil {
 		respond.Error(w, r, err)
 		return
 	}
 	byVehicle := []spendVehicle{}
-	for i, v := range vehicles {
-		if i < 50 {
-			id := v.VehicleID.String()
-			byVehicle = append(byVehicle, spendVehicle{VehicleID: &id, Plate: spend.OrDash(v.Plate), Swaps: v.Swaps, Amount: v.Fees})
-		}
+	for _, v := range vehicles {
+		id := v.VehicleID.String()
+		byVehicle = append(byVehicle, spendVehicle{VehicleID: &id, Plate: spend.OrDash(v.Plate), Swaps: v.Swaps, Amount: v.Fees})
 	}
-	drivers, err := h.q.SwapByDriver(ctx, db.SwapByDriverParams(p))
+	drivers, err := h.q.SwapByDriverTop(ctx, db.SwapByDriverTopParams(p))
 	if err != nil {
 		respond.Error(w, r, err)
 		return
 	}
 	byDriver := []spendDriver{}
-	for i, d := range drivers {
-		if i < 50 {
-			id := d.DriverID.String()
-			byDriver = append(byDriver, spendDriver{DriverID: &id,
-				Name: spend.DriverName(d.FirstName, d.LastName, d.Phone), Swaps: d.Swaps, Amount: d.Fees})
-		}
+	for _, d := range drivers {
+		id := d.DriverID.String()
+		byDriver = append(byDriver, spendDriver{DriverID: &id,
+			Name: spend.DriverName(d.FirstName, d.LastName, d.Phone), Swaps: d.Swaps, Amount: d.Fees})
 	}
 	counts, err := h.q.AccountChildCounts(ctx, row.ID)
 	if err != nil {
@@ -156,4 +152,25 @@ func (h *AccountHandler) fleetSpend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond.OK(w, money)
+}
+
+// impact is MeImpactView: the savings estimate for the caller's account.
+func (h *AccountHandler) impact(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid, _ := uuid.Parse(reqctx.User(ctx).UserID)
+	own, err := ownAccountIDs(ctx, h.q, uid)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	if len(own) == 0 {
+		respond.OK(w, spend.NoImpact())
+		return
+	}
+	out, err := spend.AccountImpact(ctx, h.q, own[0], h.petrol, time.Now())
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	respond.OK(w, out)
 }

@@ -187,14 +187,23 @@ func moneyByVehicle(ctx context.Context, q *db.Queries, account uuid.UUID, from,
 func DriversToday(ctx context.Context, q *db.Queries, account uuid.UUID, now time.Time) ([]DriverToday, error) {
 	today := LagosToday(now)
 	from, to := today.Start(), today.AddDays(1).Start()
-	rows, err := q.DriversUsage(ctx, db.DriversUsageParams{AccountID: account, FromAt: from, ToAt: to})
+	usage, err := q.DriverUsage(ctx, db.DriverUsageParams{AccountID: account, FromAt: from, ToAt: to})
+	if err != nil {
+		return nil, err
+	}
+	used := make(map[uuid.UUID]db.DriverUsageRow, len(usage))
+	for _, u := range usage {
+		used[u.DriverID] = u
+	}
+	rows, err := q.AccountDriversWithUser(ctx, account)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]DriverToday, 0, len(rows))
 	for _, r := range rows {
+		u := used[r.ID]
 		out = append(out, DriverToday{DriverID: r.ID.String(), Name: DriverName(r.FirstName, r.LastName, r.Phone),
-			Swaps: r.Swaps, Spend: r.Fees, DailySwapLimit: r.DailySwapLimit, DailySpendKoboLimit: r.DailySpendKoboLimit})
+			Swaps: u.Swaps, Spend: u.Fees, DailySwapLimit: r.DailySwapLimit, DailySpendKoboLimit: r.DailySpendKoboLimit})
 	}
 	return out, nil
 }

@@ -23,6 +23,16 @@ def reset_throttles():
 reset_throttles()
 
 
+def fresh():
+    """Reset both backends' throttles mid-suite (Django: Redis keys; Go:
+    restart, its counters live in memory)."""
+    import os
+    import subprocess
+    reset_throttles()
+    subprocess.run([os.path.join(os.path.dirname(__file__), "..", "restart_go.sh"), "8091",
+                    "/tmp/kura-go-8091.log"], check=True)
+
+
 def call(base, method, path, body=None, token=None, headers=None, raw=False):
     h = {"Content-Type": "application/json", **(headers or {})}
     if token:

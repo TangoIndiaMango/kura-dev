@@ -84,6 +84,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	ac.User("GET", "/{id}/kyc/", m.accts.kyc)
 	ac.User("GET", "/{id}/stats/", m.accts.detailStats)
 	ac.User("GET", "/me/fleet-spend/", m.accts.fleetSpend)
+	ac.User("GET", "/me/impact/", m.accts.impact)
 }
 
 // otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).
