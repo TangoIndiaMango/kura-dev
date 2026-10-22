@@ -7,9 +7,149 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const inboxItem = `-- name: InboxItem :one
+SELECT id, created_at, updated_at, channel, template_code, title, body, severity, source, status, params, link_path, dedupe_key, read_at, provider_ref, user_id FROM notifications_notification WHERE id = $1 AND user_id = $2 AND channel = 'IN_APP'
+`
+
+type InboxItemParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) InboxItem(ctx context.Context, arg InboxItemParams) (NotificationsNotification, error) {
+	row := q.db.QueryRow(ctx, inboxItem, arg.ID, arg.UserID)
+	var i NotificationsNotification
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Channel,
+		&i.TemplateCode,
+		&i.Title,
+		&i.Body,
+		&i.Severity,
+		&i.Source,
+		&i.Status,
+		&i.Params,
+		&i.LinkPath,
+		&i.DedupeKey,
+		&i.ReadAt,
+		&i.ProviderRef,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const inboxPage = `-- name: InboxPage :many
+SELECT id, created_at, updated_at, channel, template_code, title, body, severity, source, status, params, link_path, dedupe_key, read_at, provider_ref, user_id FROM notifications_notification n
+WHERE n.user_id = $1 AND n.channel = 'IN_APP'
+  AND ($2::text IS NULL OR n.title ILIKE '%' || $2 || '%' OR n.body ILIKE '%' || $2 || '%')
+  AND ($3::text IS NULL OR n.title ILIKE '%' || $3 || '%' OR n.body ILIKE '%' || $3 || '%')
+  AND ($4::text IS NULL OR n.source = $4)
+  AND ($5::text IS NULL OR n.severity = $5)
+  AND ($6::text IS NULL OR n.channel = $6)
+  AND ($7::bool IS NULL OR (n.read_at IS NULL) = $7)
+  AND ($8::timestamptz IS NULL OR n.created_at >= $8)
+  AND ($9::timestamptz IS NULL OR n.created_at <= $9)
+  AND ($10::timestamptz IS NULL
+       OR ($11::bool AND (n.created_at, n.id) > ($10, $12::uuid))
+       OR (NOT $11::bool AND (n.created_at, n.id) < ($10, $12::uuid)))
+ORDER BY CASE WHEN $11::bool THEN n.created_at END, CASE WHEN $11::bool THEN n.id END,
+  n.created_at DESC, n.id DESC
+LIMIT $13
+`
+
+type InboxPageParams struct {
+	UserID   uuid.UUID
+	Q        *string
+	Search   *string
+	Source   *string
+	Severity *string
+	Channel  *string
+	Unread   *bool
+	FromAt   *time.Time
+	ToAt     *time.Time
+	AfterAt  *time.Time
+	Back     bool
+	AfterID  uuid.UUID
+	Lim      int32
+}
+
+// notifications_for: the user's IN_APP rows, newest first (keyset).
+func (q *Queries) InboxPage(ctx context.Context, arg InboxPageParams) ([]NotificationsNotification, error) {
+	rows, err := q.db.Query(ctx, inboxPage,
+		arg.UserID,
+		arg.Q,
+		arg.Search,
+		arg.Source,
+		arg.Severity,
+		arg.Channel,
+		arg.Unread,
+		arg.FromAt,
+		arg.ToAt,
+		arg.AfterAt,
+		arg.Back,
+		arg.AfterID,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NotificationsNotification{}
+	for rows.Next() {
+		var i NotificationsNotification
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Channel,
+			&i.TemplateCode,
+			&i.Title,
+			&i.Body,
+			&i.Severity,
+			&i.Source,
+			&i.Status,
+			&i.Params,
+			&i.LinkPath,
+			&i.DedupeKey,
+			&i.ReadAt,
+			&i.ProviderRef,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const inboxStats = `-- name: InboxStats :one
+SELECT count(*)::int AS all_rows, count(*) FILTER (WHERE read_at IS NULL)::int AS unread,
+  count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS last_7d
+FROM notifications_notification WHERE user_id = $1 AND channel = 'IN_APP'
+`
+
+type InboxStatsRow struct {
+	AllRows int32
+	Unread  int32
+	Last7d  int32
+}
+
+func (q *Queries) InboxStats(ctx context.Context, userID uuid.UUID) (InboxStatsRow, error) {
+	row := q.db.QueryRow(ctx, inboxStats, userID)
+	var i InboxStatsRow
+	err := row.Scan(&i.AllRows, &i.Unread, &i.Last7d)
+	return i, err
+}
 
 const insertNotification = `-- name: InsertNotification :one
 INSERT INTO notifications_notification (
@@ -56,6 +196,27 @@ func (q *Queries) InsertNotification(ctx context.Context, arg InsertNotification
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const markAllRead = `-- name: MarkAllRead :execrows
+UPDATE notifications_notification SET read_at = now() WHERE user_id = $1 AND read_at IS NULL
+`
+
+func (q *Queries) MarkAllRead(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markAllRead, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markNotificationRead = `-- name: MarkNotificationRead :exec
+UPDATE notifications_notification SET read_at = now(), updated_at = now() WHERE id = $1 AND read_at IS NULL
+`
+
+func (q *Queries) MarkNotificationRead(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markNotificationRead, id)
+	return err
 }
 
 const notificationByDedupe = `-- name: NotificationByDedupe :one

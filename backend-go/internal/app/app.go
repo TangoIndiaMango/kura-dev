@@ -12,11 +12,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/accounts"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auditlog"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/credit"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/finance"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/inbox"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/psp"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/va"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
@@ -85,6 +87,8 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		platformcfg.NewModule(pool, limiter),
 		credit.NewModule(pool, tokens, limiter),
 		ops,
+		inbox.NewModule(pool, limiter),
+		auditlog.NewModule(pool, limiter),
 	)
 }
 

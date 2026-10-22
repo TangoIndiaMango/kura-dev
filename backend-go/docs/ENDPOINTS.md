@@ -336,11 +336,11 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## notifications (5)
 
-- [ ] `GET    /api/v1/notifications/`
-- [ ] `POST   /api/v1/notifications/read-all/`
-- [ ] `GET    /api/v1/notifications/stats/`
-- [ ] `GET    /api/v1/notifications/{id}/`
-- [ ] `POST   /api/v1/notifications/{id}/read/`
+- [x] `GET    /api/v1/notifications/`
+- [x] `POST   /api/v1/notifications/read-all/`
+- [x] `GET    /api/v1/notifications/stats/`
+- [x] `GET    /api/v1/notifications/{id}/`
+- [x] `POST   /api/v1/notifications/{id}/read/`
 
 ## cooperatives (4)
 
@@ -365,9 +365,9 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## audit (3)
 
-- [ ] `GET    /api/v1/audit/`
-- [ ] `GET    /api/v1/audit/stats/`
-- [ ] `GET    /api/v1/audit/{id}/`
+- [x] `GET    /api/v1/audit/`
+- [x] `GET    /api/v1/audit/stats/`
+- [x] `GET    /api/v1/audit/{id}/`
 
 ## reports (3)
 

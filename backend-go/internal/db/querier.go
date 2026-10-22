@@ -74,6 +74,10 @@ type Querier interface {
 	AssignmentByID(ctx context.Context, id uuid.UUID) (CreditOfferassignment, error)
 	AssignmentsForAccount(ctx context.Context, accountID uuid.UUID) ([]AssignmentsForAccountRow, error)
 	AuditChainTip(ctx context.Context) (string, error)
+	// AuditEventViewSet: subject-type ACL, AuditEventFilter, keyset newest first.
+	AuditPage(ctx context.Context, arg AuditPageParams) ([]uuid.UUID, error)
+	AuditRows(ctx context.Context, ids []uuid.UUID) ([]AuditRowsRow, error)
+	AuditStats(ctx context.Context, arg AuditStatsParams) (AuditStatsRow, error)
 	BatteryBySerial(ctx context.Context, upper interface{}) (BatteryBySerialRow, error)
 	BatteryBySerialForUpdate(ctx context.Context, serial string) (MobilityBattery, error)
 	BatteryChainTip(ctx context.Context, batteryID uuid.UUID) (string, error)
@@ -233,6 +237,10 @@ type Querier interface {
 	// Identity / KYC writes (IdentityService, identity_review, identity_withdraw)
 	// and AccountService.complete_profile.
 	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
+	InboxItem(ctx context.Context, arg InboxItemParams) (NotificationsNotification, error)
+	// notifications_for: the user's IN_APP rows, newest first (keyset).
+	InboxPage(ctx context.Context, arg InboxPageParams) ([]NotificationsNotification, error)
+	InboxStats(ctx context.Context, userID uuid.UUID) (InboxStatsRow, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) (AccountsAccount, error)
 	InsertAlert(ctx context.Context, arg InsertAlertParams) error
 	InsertAlertRule(ctx context.Context, arg InsertAlertRuleParams) error
@@ -355,6 +363,8 @@ type Querier interface {
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	LockBatteryChain(ctx context.Context, key int64) error
+	MarkAllRead(ctx context.Context, userID uuid.UUID) (int64, error)
+	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
 	MatrixByID(ctx context.Context, id uuid.UUID) (MobilityPricematrix, error)
 	MatrixForUpdate(ctx context.Context, id uuid.UUID) (MobilityPricematrix, error)
 	MediaAssetByID(ctx context.Context, id uuid.UUID) (MediaAssetByIDRow, error)
