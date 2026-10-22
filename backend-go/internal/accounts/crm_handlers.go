@@ -17,7 +17,6 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/reqctx"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/httpx/respond"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
-	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/jsontime"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/scope"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/spend"
@@ -29,10 +28,11 @@ type AccountHandler struct {
 	q      *db.Queries
 	cdn    media.Cloudinary
 	petrol spend.Petrol
+	ids    *IdentityService
 }
 
-func NewAccountHandler(pool *pgxpool.Pool, cdn media.Cloudinary, petrol spend.Petrol) *AccountHandler {
-	return &AccountHandler{pool: pool, q: db.New(pool), cdn: cdn, petrol: petrol.WithDefaults()}
+func NewAccountHandler(pool *pgxpool.Pool, cdn media.Cloudinary, petrol spend.Petrol, ids *IdentityService) *AccountHandler {
+	return &AccountHandler{pool: pool, q: db.New(pool), cdn: cdn, petrol: petrol.WithDefaults(), ids: ids}
 }
 
 // accountFilters reads AccountFilter + ?q= + ?ordering= into list params,
@@ -203,27 +203,12 @@ func (h *AccountHandler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountHandler) kyc(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	row, err := h.object(r)
 	if err != nil {
 		respond.Error(w, r, err)
 		return
 	}
-	acct, err := h.q.AccountByID(ctx, row.ID)
-	if err != nil {
-		respond.Error(w, r, err)
-		return
-	}
-	var photoID *uuid.UUID
-	d, err := h.q.FirstDriverForAccount(ctx, acct.ID)
-	hasDriver := err == nil
-	if hasDriver {
-		photoID = d.PhotoID
-	} else if !database.IsNoRows(err) {
-		respond.Error(w, r, err)
-		return
-	}
-	k, err := buildKYC(ctx, h.q, h.cdn, acct, photoID, hasDriver)
+	k, err := kycPayload(r.Context(), h.q, h.cdn, row.ID, nil, nil)
 	if err != nil {
 		respond.Error(w, r, err)
 		return

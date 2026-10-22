@@ -205,7 +205,9 @@ func blankFields(present map[string]json.RawMessage, dst any) apperr.Details {
 		sf := t.Field(i)
 		name := strings.SplitN(sf.Tag.Get("json"), ",", 2)[0]
 		tag := sf.Tag.Get("validate")
-		if name == "" || !(strings.Contains(tag, "required") || strings.Contains(tag, "notblank")) {
+		// ChoiceFields (oneof) report "" as an invalid choice, not as blank.
+		if name == "" || strings.Contains(tag, "oneof") ||
+			!(strings.Contains(tag, "required") || strings.Contains(tag, "notblank")) {
 			continue
 		}
 		if _, ok := present[name]; !ok {

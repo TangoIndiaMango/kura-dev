@@ -118,3 +118,60 @@ def staff_tokens(identifier="ops@yopmail.com", password="opspass123"):
 def summary():
     print("all identical" if not _fails else f"{_fails} difference(s)")
     return _fails
+
+
+PG = "postgres://kura:kura_dev_password@127.0.0.1:5432/kura"
+
+
+def sql(query):
+    """Run SQL on the shared dev database; returns stdout rows (tab-separated)."""
+    import subprocess
+    out = subprocess.run(["psql", PG, "-qAtF", "\t", "-c", query], check=True, capture_output=True, text=True)
+    return [line.split("\t") for line in out.stdout.splitlines() if line]
+
+
+def new_rider(base, phone, pin="1234"):
+    """Sign a brand-new rider up through `base` (OTP dev code + PIN); returns
+    an access token that works on both backends."""
+    call(base, "POST", "/api/v1/auth/otp/request/", {"phone": phone})
+    st, body = call(base, "POST", "/api/v1/auth/otp/verify/", {"phone": phone, "code": "123456"})
+    assert st == 200, (st, body)
+    st, body = call(base, "POST", "/api/v1/auth/pin/set/", {"pin": pin, "pin_confirm": pin}, body["access"])
+    assert st == 200, (st, body)
+    return body.get("access") or call(base, "POST", "/api/v1/auth/pin/login/", {"phone": phone, "pin": pin})[1]["access"]
+
+
+def media_asset(owner_phone=None, kind="KYC", owner_email=None):
+    """Insert a Cloudinary-style asset uploaded by that user; returns its id."""
+    import uuid
+    aid = str(uuid.uuid4())
+    who = f"phone = '{owner_phone}'" if owner_phone else f"email = '{owner_email}'"
+    sql(f"""INSERT INTO core_mediaasset (id, created_at, updated_at, provider, storage_key, kind, content_type,
+        resource_type, byte_size, original_filename, visibility, uploaded_by_id)
+        SELECT '{aid}', now(), now(), 'cloudinary', 'kura/test/{aid}', '{kind}', 'image/jpeg', 'image', 1000,
+        'x.jpg', 'private', id FROM accounts_user WHERE {who}""")
+    return aid
+
+
+def purge_phones(phones):
+    """Remove test riders and everything hanging off them. Audit rows stay
+    (the hash chain covers actor_email, not actor_id), with actor_id nulled."""
+    ph = ", ".join(f"'{p}'" for p in phones)
+    sql(f"""
+      CREATE TEMP TABLE pu AS SELECT id FROM accounts_user WHERE phone IN ({ph});
+      CREATE TEMP TABLE pa AS SELECT id FROM accounts_account WHERE owner_user_id IN (SELECT id FROM pu);
+      UPDATE audit_auditevent SET actor_id = NULL WHERE actor_id IN (SELECT id FROM pu);
+      DELETE FROM notifications_notification WHERE user_id IN (SELECT id FROM pu);
+      DELETE FROM token_blacklist_blacklistedtoken WHERE token_id IN
+        (SELECT id FROM token_blacklist_outstandingtoken WHERE user_id IN (SELECT id FROM pu));
+      DELETE FROM token_blacklist_outstandingtoken WHERE user_id IN (SELECT id FROM pu);
+      DELETE FROM accounts_trusteddevice WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM accounts_consent WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM accounts_identitydocument WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM accounts_driver WHERE user_id IN (SELECT id FROM pu) OR account_id IN (SELECT id FROM pa);
+      DELETE FROM finance_virtualaccount WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM finance_wallet WHERE account_id IN (SELECT id FROM pa);
+      DELETE FROM accounts_account WHERE id IN (SELECT id FROM pa);
+      DELETE FROM core_mediaasset WHERE uploaded_by_id IN (SELECT id FROM pu);
+      DELETE FROM accounts_otpchallenge WHERE phone IN ({ph});
+      DELETE FROM accounts_user WHERE id IN (SELECT id FROM pu);""")

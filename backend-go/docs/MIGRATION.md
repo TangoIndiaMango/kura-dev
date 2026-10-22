@@ -183,6 +183,17 @@ translated to the envelope in exactly one place (`respond.Error`).
   (identity/KYC, suspend/reinstate/notify/set-coop/register/PATCH/create),
   then mobility.
 
+- 2026-10-22 — Identity / KYC writes: rider submit / photos / withdraw and
+  staff kyc submit / verify / reject / request-photos, with complete_profile,
+  consent grant, Paystack + Nomba clients (`internal/integrations/psp`) and
+  VA provisioning with dev NUBAN fallback, retry schedule, staff alerts and
+  the retry sweep (`internal/integrations/va`). `scripts/contract/
+  identity.py` signs up a fresh rider per backend, runs 33 steps, then
+  compares audit trail, notifications, VA and account rows: 40 identical.
+  decode now reports every field error at once with DRF wording/coercions.
+  VA provisioning stays synchronous after commit like Django: a background
+  goroutine killed by a deploy would leave the NUBAN unscheduled forever.
+
 ### Django bugs found while porting (fixed on main too)
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().

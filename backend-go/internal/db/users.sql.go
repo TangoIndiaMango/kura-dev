@@ -389,3 +389,37 @@ func (q *Queries) TouchLastLogin(ctx context.Context, id uuid.UUID) (*time.Time,
 	err := row.Scan(&last_login)
 	return last_login, err
 }
+
+const userRow = `-- name: UserRow :one
+SELECT password, last_login, is_superuser, id, created_at, updated_at, email, phone, first_name, last_name, role, pin_hash, is_active, is_staff, assigned_role_id, pin_failed_attempts, pin_locked_until, onboarding_step, public_id, avatar_id, notification_prefs, session_version FROM accounts_user WHERE id = $1
+`
+
+func (q *Queries) UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error) {
+	row := q.db.QueryRow(ctx, userRow, id)
+	var i AccountsUser
+	err := row.Scan(
+		&i.Password,
+		&i.LastLogin,
+		&i.IsSuperuser,
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.Phone,
+		&i.FirstName,
+		&i.LastName,
+		&i.Role,
+		&i.PinHash,
+		&i.IsActive,
+		&i.IsStaff,
+		&i.AssignedRoleID,
+		&i.PinFailedAttempts,
+		&i.PinLockedUntil,
+		&i.OnboardingStep,
+		&i.PublicID,
+		&i.AvatarID,
+		&i.NotificationPrefs,
+		&i.SessionVersion,
+	)
+	return i, err
+}

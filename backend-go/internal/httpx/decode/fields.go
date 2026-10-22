@@ -73,9 +73,8 @@ func setField(f reflect.Value, raw json.RawMessage) string {
 	}
 	switch {
 	case f.Type() == uuidType:
-		s, ok := val.(string)
-		id, err := uuid.Parse(strings.TrimSpace(s))
-		if !ok || err != nil {
+		id, ok := uuidValue(val)
+		if !ok {
 			return "Must be a valid UUID."
 		}
 		f.Set(reflect.ValueOf(id))
@@ -130,6 +129,28 @@ func setField(f reflect.Value, raw json.RawMessage) string {
 		}
 	}
 	return ""
+}
+
+// uuidValue is UUIDField.to_internal_value: a UUID string, or an integer
+// read as UUID(int=n).
+func uuidValue(v any) (uuid.UUID, bool) {
+	switch x := v.(type) {
+	case string:
+		id, err := uuid.Parse(strings.TrimSpace(x))
+		return id, err == nil
+	case float64:
+		if x < 0 || x != float64(uint64(x)) {
+			return uuid.Nil, false
+		}
+		var id uuid.UUID
+		n := uint64(x)
+		for i := 15; i >= 8; i-- {
+			id[i] = byte(n)
+			n >>= 8
+		}
+		return id, true
+	}
+	return uuid.Nil, false
 }
 
 func boolValue(v any) (bool, bool) {

@@ -32,10 +32,18 @@ type KYC struct {
 	NextAction      string  `json:"next_action"`
 }
 
-// buildKYC derives the identity state and the rider's next step.
-func buildKYC(ctx context.Context, q *db.Queries, cdn media.Cloudinary, acct db.AccountsAccount, photoID *uuid.UUID, hasDriver bool) (KYC, error) {
+// buildKYC derives the identity state and the rider's next step. doc is
+// the document to describe; nil loads the latest (kyc_payload(doc=None)).
+func buildKYC(ctx context.Context, q *db.Queries, cdn media.Cloudinary, acct db.AccountsAccount, photoID *uuid.UUID,
+	hasDriver bool, given ...*db.AccountsIdentitydocument) (KYC, error) {
 	k := KYC{Status: acct.KycStatus, AccountStatus: acct.Status}
-	doc, err := q.LatestIdentityDoc(ctx, acct.ID)
+	var doc db.AccountsIdentitydocument
+	var err error
+	if len(given) > 0 && given[0] != nil {
+		doc = *given[0]
+	} else {
+		doc, err = q.LatestIdentityDoc(ctx, acct.ID)
+	}
 	hasDoc := err == nil
 	if err != nil && !database.IsNoRows(err) {
 		return k, err
@@ -113,6 +121,29 @@ func assetURL(ctx context.Context, q *db.Queries, cdn media.Cloudinary, id *uuid
 	}
 	return cdn.DeliveryURL(&media.Asset{Provider: a.Provider, StorageKey: a.StorageKey,
 		ResourceType: a.ResourceType, Visibility: a.Visibility}), nil
+}
+
+// kycPayload is kyc_payload(account, driver=..., doc=...): a nil driver
+// means the account's first driver, a nil doc the latest document.
+func kycPayload(ctx context.Context, q *db.Queries, cdn media.Cloudinary, accountID uuid.UUID,
+	drv *db.AccountsDriver, doc *db.AccountsIdentitydocument) (KYC, error) {
+	acct, err := q.AccountByID(ctx, accountID)
+	if err != nil {
+		return KYC{}, err
+	}
+	if drv == nil {
+		d, err := q.FirstDriverRow(ctx, accountID)
+		if err == nil {
+			drv = &d
+		} else if !database.IsNoRows(err) {
+			return KYC{}, err
+		}
+	}
+	var photo *uuid.UUID
+	if drv != nil {
+		photo = drv.PhotoID
+	}
+	return buildKYC(ctx, q, cdn, acct, photo, drv != nil, doc)
 }
 
 func strPtr(s string) *string { return &s }

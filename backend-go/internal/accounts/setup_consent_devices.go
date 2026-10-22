@@ -99,47 +99,29 @@ func (s *AuthService) SetConsent(ctx context.Context, actor db.AccountsUser, acc
 	purpose string, granted bool, channel string) error {
 	return database.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
-		row, err := q.ActiveConsentForUpdate(ctx, db.ActiveConsentForUpdateParams{AccountID: acct.ID, Purpose: purpose})
-		hasRow := err == nil
-		if err != nil && !database.IsNoRows(err) {
-			return err
-		}
-		ev := events.Event{SubjectType: "account", SubjectID: acct.ID.String(),
-			SubjectLabel: acct.KuraID, Actor: actorOf(actor)}
-		now := s.now()
-		policy := s.cfg.ConsentPolicyVersion
+		now, policy := s.now(), s.cfg.ConsentPolicyVersion
 		if granted {
-			if hasRow && row.PolicyVersion == policy {
-				return nil
-			}
-			ev.Action = "consent.granted"
-			if hasRow {
-				ev.Before = consentPayload(row.GrantedAt, row.WithdrawnAt, row.Channel, row.PolicyVersion)
-				err = q.RestampConsent(ctx, db.RestampConsentParams{ID: row.ID, GrantedAt: now,
-					Channel: channel, PolicyVersion: policy})
-			} else {
-				err = q.InsertConsent(ctx, db.InsertConsentParams{ID: ids.New(), Purpose: purpose,
-					GrantedAt: now, Channel: channel, PolicyVersion: policy, AccountID: acct.ID})
-			}
-			ev.After = withPurpose(purpose, consentPayload(now, nil, channel, policy))
-		} else {
-			if purpose == "SERVICE" {
-				return apperr.New("CONSENT_NOT_WITHDRAWABLE",
-					"Service consent can only end by closing your account.").
-					WithDetails(apperr.Details{"purpose": []string{"not_withdrawable"}})
-			}
-			if !hasRow {
-				return nil
-			}
-			ev.Action = "consent.withdrawn"
-			ev.Before = consentPayload(row.GrantedAt, row.WithdrawnAt, row.Channel, row.PolicyVersion)
-			err = q.WithdrawConsent(ctx, db.WithdrawConsentParams{ID: row.ID, WithdrawnAt: &now})
-			ev.After = withPurpose(purpose, consentPayload(row.GrantedAt, &now, row.Channel, row.PolicyVersion))
+			return grantConsent(ctx, q, actorOf(actor), acct.ID, acct.KuraID, purpose, channel, policy, now)
+		}
+		if purpose == "SERVICE" {
+			return apperr.New("CONSENT_NOT_WITHDRAWABLE",
+				"Service consent can only end by closing your account.").
+				WithDetails(apperr.Details{"purpose": []string{"not_withdrawable"}})
+		}
+		row, err := q.ActiveConsentForUpdate(ctx, db.ActiveConsentForUpdateParams{AccountID: acct.ID, Purpose: purpose})
+		if database.IsNoRows(err) {
+			return nil
 		}
 		if err != nil {
 			return err
 		}
-		return events.Emit(ctx, q, ev)
+		if err := q.WithdrawConsent(ctx, db.WithdrawConsentParams{ID: row.ID, WithdrawnAt: &now}); err != nil {
+			return err
+		}
+		return events.Emit(ctx, q, events.Event{Action: "consent.withdrawn", SubjectType: "account",
+			SubjectID: acct.ID.String(), SubjectLabel: acct.KuraID, Actor: actorOf(actor),
+			Before: consentPayload(row.GrantedAt, row.WithdrawnAt, row.Channel, row.PolicyVersion),
+			After:  withPurpose(purpose, consentPayload(row.GrantedAt, &now, row.Channel, row.PolicyVersion))})
 	})
 }
 

@@ -70,3 +70,6 @@ VALUES ($1, now(), now(), '', 'ACTIVE', $2, $3);
 -- name: FirstAccountForOwner :one
 SELECT id, kura_id, display_name FROM accounts_account
 WHERE owner_user_id = $1 ORDER BY created_at LIMIT 1;
+
+-- name: UserRow :one
+SELECT * FROM accounts_user WHERE id = $1;

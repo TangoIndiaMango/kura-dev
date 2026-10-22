@@ -41,20 +41,29 @@ func New(pool *pgxpool.Pool, settings psp.Settings, allowDev bool, secret string
 	return s
 }
 
-// Schedule is schedule_va_provision: after the caller's commit, kick the PSP
-// without holding the request. Django runs it in on_commit (the response
-// waits); here it runs in the background, so riders don't wait on the PSP.
-func (s *Service) Schedule(accountID uuid.UUID, bvnOrNIN string) {
-	go func() {
-		ctx := context.Background()
-		va, err := s.q.VirtualAccountRow(ctx, accountID)
-		if err == nil && va.Status == "ACTIVE" && va.Nuban != nil && *va.Nuban != "" {
-			return
+// Job is one NUBAN request (schedule_va_provision's arguments).
+type Job struct {
+	Account  uuid.UUID
+	BVNOrNIN string
+}
+
+// Schedule is schedule_va_provision: called after the caller's commit, it
+// asks the PSP for each NUBAN in order before the response, like Django's
+// on_commit. It runs detached from the request context so a client
+// disconnect can't cut a PSP call short, and it never fails the request:
+// a failed call is recorded on the row and retried by the sweep. Accounts
+// already holding a NUBAN are skipped.
+func (s *Service) Schedule(jobs ...Job) {
+	ctx := context.Background()
+	for _, j := range jobs {
+		v, err := s.q.VirtualAccountRow(ctx, j.Account)
+		if err == nil && v.Status == "ACTIVE" && v.Nuban != nil && *v.Nuban != "" {
+			continue
 		}
-		if err := s.Provision(ctx, accountID, bvnOrNIN); err != nil {
-			s.log.Error("va_schedule_failed", "account_id", accountID.String(), "err", err)
+		if err := s.Provision(ctx, j.Account, j.BVNOrNIN); err != nil {
+			s.log.Error("va_schedule_failed", "account_id", j.Account.String(), "err", err)
 		}
-	}()
+	}
 }
 
 // Provision is provision_virtual_account_for.
@@ -100,7 +109,7 @@ func (s *Service) Provision(ctx context.Context, accountID uuid.UUID, bvnOrNIN s
 		}
 		return events.EmitTx(ctx, s.pool, events.Event{Action: "virtual_account.assigned",
 			SubjectType: "virtual_account", SubjectID: acct.ID.String(), SubjectLabel: acct.KuraID,
-			After: events.Map{"nuban": v.NUBAN, "bank_name": v.BankName, "status": "ACTIVE", "provider": code},
+			After:    events.Map{"nuban": v.NUBAN, "bank_name": v.BankName, "status": "ACTIVE", "provider": code},
 			Metadata: events.Map{"psp_reference": v.Reference}})
 	}
 	if s.allowDev {

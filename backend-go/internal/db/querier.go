@@ -52,8 +52,10 @@ type Querier interface {
 	CountStaffUsers(ctx context.Context, arg CountStaffUsersParams) (int64, error)
 	// Every CRM column for a set of accounts in one round trip.
 	CrmRows(ctx context.Context, ids []uuid.UUID) ([]CrmRowsRow, error)
+	DeleteIdentityDocs(ctx context.Context, accountID uuid.UUID) (int64, error)
 	DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByUserRow, error)
 	DriverForUser(ctx context.Context, userID uuid.UUID) (DriverForUserRow, error)
+	DriverRowByUser(ctx context.Context, userID uuid.UUID) (AccountsDriver, error)
 	DriverUsage(ctx context.Context, arg DriverUsageParams) ([]DriverUsageRow, error)
 	// retry_pending_virtual_accounts: PENDING NUBANs whose retry is due.
 	DueVirtualAccounts(ctx context.Context, arg DueVirtualAccountsParams) ([]uuid.UUID, error)
@@ -70,7 +72,9 @@ type Querier interface {
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
 	FirstDriverForAccount(ctx context.Context, accountID uuid.UUID) (FirstDriverForAccountRow, error)
+	FirstDriverRow(ctx context.Context, accountID uuid.UUID) (AccountsDriver, error)
 	FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
+	FirstOwnedAccountForUpdate(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	GetCooperative(ctx context.Context, id uuid.UUID) (GetCooperativeRow, error)
 	GetDriverRow(ctx context.Context, id uuid.UUID) (GetDriverRowRow, error)
 	GetPermission(ctx context.Context, id uuid.UUID) (GetPermissionRow, error)
@@ -83,12 +87,19 @@ type Querier interface {
 	GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	GetUserByPhone(ctx context.Context, phone *string) (AccountsUser, error)
 	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
+	IdentityDocByID(ctx context.Context, id uuid.UUID) (AccountsIdentitydocument, error)
+	// Identity / KYC writes (IdentityService, identity_review, identity_withdraw)
+	// and AccountService.complete_profile.
+	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
+	InsertAccount(ctx context.Context, arg InsertAccountParams) (AccountsAccount, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
 	InsertDriver(ctx context.Context, arg InsertDriverParams) error
+	InsertDriverRow(ctx context.Context, arg InsertDriverRowParams) (AccountsDriver, error)
 	InsertFleetDriver(ctx context.Context, arg InsertFleetDriverParams) error
 	InsertFleetDriverUser(ctx context.Context, arg InsertFleetDriverUserParams) error
+	InsertIdentityDoc(ctx context.Context, arg InsertIdentityDocParams) error
 	InsertIndividualAccount(ctx context.Context, arg InsertIndividualAccountParams) (uuid.UUID, error)
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
 	// ON CONFLICT absorbs concurrent dedupe races (unique user + dedupe_key).
@@ -103,6 +114,7 @@ type Querier interface {
 	IsBlacklisted(ctx context.Context, jti string) (bool, error)
 	LatestBVNOrNIN(ctx context.Context, accountID uuid.UUID) (string, error)
 	LatestIdentityDoc(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
+	LatestIdentityDocForUpdate(ctx context.Context, accountID uuid.UUID) (AccountsIdentitydocument, error)
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
 	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
@@ -135,6 +147,8 @@ type Querier interface {
 	ReattachDriver(ctx context.Context, arg ReattachDriverParams) error
 	RecordVAAttempt(ctx context.Context, arg RecordVAAttemptParams) error
 	RestampConsent(ctx context.Context, arg RestampConsentParams) error
+	// A resubmit resets review state: PENDING, no verification, no requests.
+	ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityDocParams) error
 	// notify_risk_reviewers: active super admins / ops managers (User: -created_at).
 	RiskReviewerIDs(ctx context.Context) ([]uuid.UUID, error)
 	// notify_risk_reviewers: active SUPER_ADMIN / OPS_MANAGER, max 25.
@@ -145,13 +159,21 @@ type Querier interface {
 	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
+	SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error
 	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error
 	SetAccountKycStatus(ctx context.Context, arg SetAccountKycStatusParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
 	SetDriverLimits(ctx context.Context, arg SetDriverLimitsParams) error
+	SetDriverPhoto(ctx context.Context, arg SetDriverPhotoParams) error
+	SetDriverPhotoAccount(ctx context.Context, arg SetDriverPhotoAccountParams) error
+	SetIdentityDocPhotoRequest(ctx context.Context, arg SetIdentityDocPhotoRequestParams) error
+	SetIdentityDocPhotos(ctx context.Context, arg SetIdentityDocPhotosParams) error
+	SetIdentityDocReview(ctx context.Context, arg SetIdentityDocReviewParams) error
 	SetOnboardingStep(ctx context.Context, arg SetOnboardingStepParams) error
 	SetPin(ctx context.Context, arg SetPinParams) error
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
+	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
+	SetUserOnboardingStep(ctx context.Context, arg SetUserOnboardingStepParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
@@ -179,6 +201,7 @@ type Querier interface {
 	UpdateStaffUser(ctx context.Context, arg UpdateStaffUserParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 	UserNotificationPrefs(ctx context.Context, id uuid.UUID) ([]byte, error)
+	UserRow(ctx context.Context, id uuid.UUID) (AccountsUser, error)
 	VAForUpdate(ctx context.Context, accountID uuid.UUID) (uuid.UUID, error)
 	VirtualAccountFor(ctx context.Context, accountID uuid.UUID) (VirtualAccountForRow, error)
 	VirtualAccountRow(ctx context.Context, accountID uuid.UUID) (VirtualAccountRowRow, error)

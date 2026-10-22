@@ -12,6 +12,8 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/db"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/health"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/psp"
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/integrations/va"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/media"
 	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/config"
@@ -36,6 +38,10 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		User: cfg.EmailUser, Password: cfg.EmailPassword, UseSSL: cfg.MailSSL(), UseTLS: cfg.MailTLS(),
 		From: cfg.DefaultFromEmail, ReplyTo: cfg.DefaultReplyTo, SupportEmail: cfg.SupportEmail}, log)
 	staffSvc := accounts.NewStaffService(pool, cfg, mailer, authSvc)
+	vaSvc := va.New(pool, psp.Settings{DefaultPSP: cfg.DefaultPSP, PaystackSecret: cfg.PaystackSecret,
+		PaystackBank: cfg.PaystackBank, CustomerEmailDomain: cfg.PSPCustomerEmailDom, NombaSecret: cfg.NombaSecret,
+		NombaAccountID: cfg.NombaAccountID}, cfg.AllowDevVA(), cfg.SecretKey, log)
+	identity := accounts.NewIdentityService(pool, cdn, vaSvc, cfg.ConsentPolicyVersion, cfg.SecretKey)
 
 	upstream, err := server.Upstream(cfg.DjangoUpstreamURL, log)
 	if err != nil {
@@ -48,7 +54,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		accounts.NewModule(accounts.NewAuthHandler(authSvc, meSvc), accounts.NewStaffHandler(staffSvc),
 			accounts.NewCoopHandler(pool), accounts.NewDriverHandler(pool),
 			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
-				KoboPerLitre: cfg.PetrolKoboPerLitre}), limiter),
+				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
 	)
 }

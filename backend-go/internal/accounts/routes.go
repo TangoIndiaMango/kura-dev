@@ -85,6 +85,13 @@ func (m *Module) Register(mux *http.ServeMux) {
 	ac.User("GET", "/{id}/stats/", m.accts.detailStats)
 	ac.User("GET", "/me/fleet-spend/", m.accts.fleetSpend)
 	ac.User("GET", "/me/impact/", m.accts.impact)
+	ac.Cap("POST", "/identity/", "accounts:write_own", m.accts.identity)
+	ac.Cap("POST", "/identity/withdraw/", "accounts:write_own", m.accts.identityWithdraw)
+	ac.Cap("POST", "/identity/photos/", "accounts:write_own", m.accts.identityPhotos)
+	ac.Cap("POST", "/{id}/kyc/submit/", "accounts:manage", m.accts.submitKYC)
+	ac.Cap("POST", "/{id}/kyc/verify/", "accounts:manage", m.accts.verifyKYC())
+	ac.Cap("POST", "/{id}/kyc/reject/", "accounts:manage", m.accts.rejectKYC())
+	ac.Cap("POST", "/{id}/kyc/request-photos/", "accounts:manage", m.accts.requestKYCPhotos())
 }
 
 // otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).
