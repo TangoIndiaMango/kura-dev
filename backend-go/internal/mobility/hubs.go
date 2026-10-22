@@ -41,13 +41,13 @@ type HubDTO struct {
 // HubDetailDTO is HubDetailSerializer.
 type HubDetailDTO struct {
 	HubDTO
-	Lat            float64          `json:"lat"`
-	Lng            float64          `json:"lng"`
-	Timezone       string           `json:"timezone"`
-	OperatingHours json.RawMessage  `json:"operating_hours"`
-	LastSyncAt     *jsontime.Field  `json:"last_sync_at"`
-	BatteryTypes   []string         `json:"battery_types"`
-	UpdatedAt      jsontime.Field   `json:"updated_at"`
+	Lat            float64         `json:"lat"`
+	Lng            float64         `json:"lng"`
+	Timezone       string          `json:"timezone"`
+	OperatingHours json.RawMessage `json:"operating_hours"`
+	LastSyncAt     *jsontime.Field `json:"last_sync_at"`
+	BatteryTypes   []string        `json:"battery_types"`
+	UpdatedAt      jsontime.Field  `json:"updated_at"`
 }
 
 func hubDTO(h db.HubRowsRow) HubDTO {

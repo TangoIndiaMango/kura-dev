@@ -32,14 +32,24 @@ type Querier interface {
 	ActivateVA(ctx context.Context, arg ActivateVAParams) error
 	ActiveConsentForUpdate(ctx context.Context, arg ActiveConsentForUpdateParams) (ActiveConsentForUpdateRow, error)
 	AddRolePermissions(ctx context.Context, arg AddRolePermissionsParams) error
+	AllBatteryTypes(ctx context.Context) ([]MobilityBatterytype, error)
 	AuditChainTip(ctx context.Context) (string, error)
+	BatteryBySerial(ctx context.Context, upper interface{}) (BatteryBySerialRow, error)
+	BatteryChainTip(ctx context.Context, batteryID uuid.UUID) (string, error)
+	// Newest first by (occurred_at, id); after_* is the cursor position.
+	BatteryEventsPage(ctx context.Context, arg BatteryEventsPageParams) ([]BatteryEventsPageRow, error)
+	BatteryForUpdate(ctx context.Context, id uuid.UUID) (MobilityBattery, error)
+	BatteryRows(ctx context.Context, ids []uuid.UUID) ([]BatteryRowsRow, error)
+	BatteryStatusCounts(ctx context.Context, arg BatteryStatusCountsParams) ([]BatteryStatusCountsRow, error)
 	BatteryTypeByID(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
+	BatteryTypeCounts(ctx context.Context, arg BatteryTypeCountsParams) ([]BatteryTypeCountsRow, error)
 	BatteryTypeForUpdate(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
 	BlacklistToken(ctx context.Context, tokenID int64) error
 	BumpOTPAttempts(ctx context.Context, id uuid.UUID) (int16, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
+	ClearSlotOfBattery(ctx context.Context, batteryID *uuid.UUID) error
 	ConsentRows(ctx context.Context, accountID uuid.UUID) ([]ConsentRowsRow, error)
 	ConsumeOTP(ctx context.Context, id uuid.UUID) error
 	ConsumeOpenSetupTokens(ctx context.Context, arg ConsumeOpenSetupTokensParams) error
@@ -49,6 +59,7 @@ type Querier interface {
 	CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
 	CountAccounts(ctx context.Context, arg CountAccountsParams) (int64, error)
+	CountBatteries(ctx context.Context, arg CountBatteriesParams) (int64, error)
 	CountBatteryTypes(ctx context.Context, arg CountBatteryTypesParams) (int64, error)
 	CountCooperatives(ctx context.Context, arg CountCooperativesParams) (int64, error)
 	CountDrivers(ctx context.Context, arg CountDriversParams) (int64, error)
@@ -97,6 +108,7 @@ type Querier interface {
 	// Pack types physically at the hub now (sorted, distinct).
 	HubBatteryTypeNames(ctx context.Context, hubID uuid.UUID) ([]string, error)
 	HubCodeExists(ctx context.Context, code string) (bool, error)
+	HubExists(ctx context.Context, id uuid.UUID) (bool, error)
 	HubForUpdate(ctx context.Context, id uuid.UUID) (HubForUpdateRow, error)
 	HubIDsForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
 	HubInventory(ctx context.Context, arg HubInventoryParams) (HubInventoryRow, error)
@@ -115,6 +127,8 @@ type Querier interface {
 	IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDocByTypeForUpdateParams) (AccountsIdentitydocument, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) (AccountsAccount, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertBattery(ctx context.Context, arg InsertBatteryParams) error
+	InsertBatteryEvent(ctx context.Context, arg InsertBatteryEventParams) error
 	InsertBatteryType(ctx context.Context, arg InsertBatteryTypeParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
@@ -147,6 +161,8 @@ type Querier interface {
 	// Account CRM (AccountViewSet). Scope: all / ids / owner (accounts_for).
 	// ?ordering= (OrderingFilter over created_at / display_name); default newest first.
 	ListAccountIDs(ctx context.Context, arg ListAccountIDsParams) ([]uuid.UUID, error)
+	// Batteries (BatteryViewSet, BatteryService, custody verbs, QR).
+	ListBatteryIDs(ctx context.Context, arg ListBatteryIDsParams) ([]uuid.UUID, error)
 	// Battery types (BatteryTypeViewSet).
 	ListBatteryTypes(ctx context.Context, arg ListBatteryTypesParams) ([]MobilityBatterytype, error)
 	ListCooperatives(ctx context.Context, arg ListCooperativesParams) ([]ListCooperativesRow, error)
@@ -162,6 +178,7 @@ type Querier interface {
 	ListStaffUsers(ctx context.Context, arg ListStaffUsersParams) ([]uuid.UUID, error)
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
+	LockBatteryChain(ctx context.Context, key int64) error
 	MediaAssetByID(ctx context.Context, id uuid.UUID) (MediaAssetByIDRow, error)
 	MediaAssetOwner(ctx context.Context, id uuid.UUID) (MediaAssetOwnerRow, error)
 	MembershipHubIDs(ctx context.Context, userID uuid.UUID) ([]string, error)
@@ -192,6 +209,9 @@ type Querier interface {
 	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
+	// Full save (Django model.save()): every mutable column.
+	SaveBattery(ctx context.Context, arg SaveBatteryParams) error
+	SerialTaken(ctx context.Context, arg SerialTakenParams) (bool, error)
 	SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error
 	SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error
 	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error

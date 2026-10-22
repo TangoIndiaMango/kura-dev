@@ -5,22 +5,22 @@ Tick an item only when the Go handler exists **and** a contract test compares it
 
 ## mobility (125)
 
-- [ ] `GET    /api/v1/mobility/batteries/`
-- [ ] `POST   /api/v1/mobility/batteries/`
-- [ ] `GET    /api/v1/mobility/batteries/export/`
-- [ ] `POST   /api/v1/mobility/batteries/resolve/`
-- [ ] `GET    /api/v1/mobility/batteries/stats/`
-- [ ] `GET    /api/v1/mobility/batteries/types/`
-- [ ] `GET    /api/v1/mobility/batteries/{id}/`
-- [ ] `PATCH  /api/v1/mobility/batteries/{id}/`
-- [ ] `GET    /api/v1/mobility/batteries/{id}/events/`
-- [ ] `POST   /api/v1/mobility/batteries/{id}/fault/`
-- [ ] `POST   /api/v1/mobility/batteries/{id}/found/`
-- [ ] `GET    /api/v1/mobility/batteries/{id}/label/`
-- [ ] `POST   /api/v1/mobility/batteries/{id}/retire/`
-- [ ] `POST   /api/v1/mobility/batteries/{id}/rotate-qr/`
-- [ ] `POST   /api/v1/mobility/batteries/{id}/status/`
-- [ ] `POST   /api/v1/mobility/batteries/{id}/transfer/`
+- [x] `GET    /api/v1/mobility/batteries/`
+- [x] `POST   /api/v1/mobility/batteries/`
+- [x] `GET    /api/v1/mobility/batteries/export/`
+- [x] `POST   /api/v1/mobility/batteries/resolve/`
+- [x] `GET    /api/v1/mobility/batteries/stats/`
+- [x] `GET    /api/v1/mobility/batteries/types/`
+- [x] `GET    /api/v1/mobility/batteries/{id}/`
+- [x] `PATCH  /api/v1/mobility/batteries/{id}/`
+- [x] `GET    /api/v1/mobility/batteries/{id}/events/`
+- [x] `POST   /api/v1/mobility/batteries/{id}/fault/`
+- [x] `POST   /api/v1/mobility/batteries/{id}/found/`
+- [x] `GET    /api/v1/mobility/batteries/{id}/label/`
+- [x] `POST   /api/v1/mobility/batteries/{id}/retire/`
+- [x] `POST   /api/v1/mobility/batteries/{id}/rotate-qr/`
+- [x] `POST   /api/v1/mobility/batteries/{id}/status/`
+- [x] `POST   /api/v1/mobility/batteries/{id}/transfer/`
 - [x] `GET    /api/v1/mobility/battery-types/`
 - [x] `POST   /api/v1/mobility/battery-types/`
 - [x] `GET    /api/v1/mobility/battery-types/{id}/`

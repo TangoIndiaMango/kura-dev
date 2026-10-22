@@ -34,6 +34,7 @@ type Config struct {
 
 	OTPDevCode     string `env:"OTP_DEV_CODE" envDefault:"123456"`
 	OTPPepper      string `env:"OTP_PEPPER"`
+	QRPepper       string `env:"QR_HMAC_PEPPER"` // signed QR labels; falls back to the secret key
 	CronSecret     string `env:"CRON_SECRET"`
 	DefaultPSP     string `env:"DEFAULT_PSP" envDefault:"PAYSTACK"`
 	PaystackSecret string `env:"PAYSTACK_SECRET_KEY"`

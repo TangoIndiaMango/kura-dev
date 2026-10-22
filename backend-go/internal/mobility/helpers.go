@@ -4,6 +4,8 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+
+	"github.com/TangoIndiaMango/kura-dev/backend-go/internal/platform/database"
 )
 
 func contains(ids []uuid.UUID, id uuid.UUID) bool {
@@ -24,3 +26,11 @@ func pyRound(x float64, n int) float64 {
 }
 
 func parseFloat(s string) (float64, error) { return strconv.ParseFloat(s, 64) }
+
+// ignoreNoRows turns "no rows" into nil (for existence checks).
+func ignoreNoRows(err error) error {
+	if database.IsNoRows(err) {
+		return nil
+	}
+	return err
+}

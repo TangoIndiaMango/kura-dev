@@ -203,6 +203,10 @@ translated to the envelope in exactly one place (`respond.Error`).
   backends for the browser-made rider. Next: mobility (125).
 
 ### Django bugs found while porting (fixed on main too)
+- Battery stats totals were all 1: `batteries_queryset()` orders by
+  -created_at and that column joined the GROUP BY. Fixed in
+  `mobility/selectors.py` with `.order_by()` (go-backend branch; cherry-pick
+  to main).
 - Role update/activate/deactivate → 500: audit JSON got raw UUIDs
   (`accounts/services/roles.py`). Fixed with str().
 

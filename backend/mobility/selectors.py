@@ -229,9 +229,11 @@ def batteries_queryset(user=None) -> QuerySet[Battery]:
 
 def battery_stats(user=None) -> dict[str, Any]:
     qs = batteries_queryset(user)
+    # order_by() drops the queryset's -created_at, which would otherwise join
+    # the GROUP BY and turn every count into 1.
     by_status = {
         row["status"]: row["count"]
-        for row in qs.values("status").annotate(count=Count("id"))
+        for row in qs.order_by().values("status").annotate(count=Count("id"))
     }
     return {
         "totals": {
