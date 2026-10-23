@@ -11,8 +11,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kura_dev_password}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # A brand-new volume starts with the full schema (backend/db/schema.sql).
-      - ../backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -59,6 +57,8 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${API_PORT:-8001}:8000"
+    # Apply migrations, load demo data into an empty DB, then serve.
+    command: ["sh", "-c", "/app/migrate up && /app/migrate seed && exec /app/api"]
     profiles: ["full", "api"]
 
   worker:

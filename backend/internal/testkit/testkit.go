@@ -1,6 +1,6 @@
 // Package testkit gives tests a real Postgres with the Django schema.
 //
-// The database (default kura_go_test) is created from db/schema.sql once per
+// The database (default kura_go_test) is built by the goose migrations once per
 // test binary; every test starts from empty tables. Set TEST_DATABASE_URL to
 // point elsewhere. Tests skip (not fail) when Postgres is unreachable.
 package testkit
@@ -8,16 +8,19 @@ package testkit
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/migrate"
 )
 
 const defaultURL = "postgres://kura:kura_dev_password@127.0.0.1:5432/kura_go_test"
@@ -64,18 +67,18 @@ func setup(ctx context.Context) error {
 	if pool, err = pgxpool.New(ctx, target); err != nil {
 		return err
 	}
-	schema, err := os.ReadFile(schemaPath())
+	// Same path production uses: the embedded goose migrations.
+	conn, err := migrate.Open(target)
 	if err != nil {
 		return err
 	}
-	// pg_dump empties search_path for its session; keep ours on public.
-	ddl := strings.Replace(string(schema),
-		"SELECT pg_catalog.set_config('search_path', '', false);", "", 1)
-	if _, err := pool.Exec(ctx, ddl); err != nil {
-		return fmt.Errorf("load schema: %w", err)
+	err = migrate.Up(ctx, conn, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	conn.Close()
+	if err != nil {
+		return fmt.Errorf("migrate: %w", err)
 	}
-	rows, err := pool.Query(ctx,
-		`SELECT quote_ident(tablename) FROM pg_tables WHERE schemaname = 'public'`)
+	rows, err := pool.Query(ctx, `SELECT quote_ident(tablename) FROM pg_tables
+		WHERE schemaname = 'public' AND tablename <> 'goose_db_version'`)
 	if err != nil {
 		return err
 	}
@@ -113,10 +116,4 @@ func binarySuffix() string {
 		return "pkg"
 	}
 	return b.String()
-}
-
-// schemaPath finds db/schema.sql relative to this source file.
-func schemaPath() string {
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "db", "schema.sql")
 }

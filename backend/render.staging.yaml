@@ -79,6 +79,8 @@ services:
     plan: starter
     region: frankfurt
     healthCheckPath: /readyz
+    # Schema first; staging also loads the demo data once (skipped when users exist).
+    preDeployCommand: sh -c "/app/migrate up && /app/migrate seed"
     autoDeploy: true
     envVars:
       - fromGroup: kura-go-staging

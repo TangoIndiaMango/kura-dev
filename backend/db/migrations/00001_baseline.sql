@@ -1,3 +1,8 @@
+-- Baseline: the full schema as of the Django -> Go switch (Django migration
+-- finance.0014 / operations.0011). Existing databases are marked as already at
+-- this version by `migrate up`; new databases are built from it.
+
+-- +goose Up
 --
 -- PostgreSQL database dump
 --
@@ -12,7 +17,6 @@ SET idle_in_transaction_session_timeout = 0;
 SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -7430,3 +7434,7 @@ ALTER TABLE ONLY public.token_blacklist_outstandingtoken
 --
 
 
+
+-- +goose Down
+-- The baseline is not reversible.
+SELECT 1;

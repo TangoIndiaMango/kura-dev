@@ -10,7 +10,7 @@ the bottom — always update it before stopping.**
    codes, same error envelope. The rider and admin apps must not change.
 2. **Same database.** Go runs against the Django-migrated Postgres schema.
    Django migrations stay the source of truth until cutover; Go reads the schema
-   from `db/schema.sql` (a `pg_dump --schema-only`). After cutover, goose takes
+   from the goose baseline migration (`db/migrations/00001_baseline.sql`). Goose now
    over with that dump as the baseline.
 3. **Same auth.** Go verifies Django's Argon2/PBKDF2 hashes and issues/accepts
    simplejwt-compatible HS256 tokens (`user_id`, `jti`, `token_type`,
@@ -44,7 +44,8 @@ the bottom — always update it before stopping.**
 backend/
   cmd/api/            main: config → db → router → graceful shutdown
   cmd/worker/         background sweeps (replaces run_task_worker)
-  db/schema.sql       schema dump (sqlc input)
+  db/migrations/      goose migrations (00001_baseline = the inherited schema; sqlc input)
+  db/seed.sql         demo dataset for an empty DB (`migrate seed`)
   db/queries/<mod>/   *.sql for sqlc
   internal/
     platform/         cross-cutting, no business logic
@@ -415,6 +416,20 @@ translated to the envelope in exactly one place (`respond.Error`).
   the inclusive day. Unify once Go is primary.
 - Plain-text emails HTML-escape `&` (Django autoescapes .txt templates). Go
   sends the correct `&` (golden test documents the one difference).
+
+### Schema and data (Go owns it now)
+- `cmd/migrate` embeds `db/migrations` (goose) and `db/seed.sql`.
+  - `migrate up` applies pending migrations. On a database Django built (it has tables but no goose table), it first records `00001_baseline` as already applied, so production and dev adopt it without any DDL running. Verified: the dev DB schema is byte-identical before and after.
+  - `migrate seed` loads the demo data only when `accounts_user` is empty. A second run is a no-op.
+  - `migrate status` lists applied and pending migrations. `migrate create NAME` adds the next numbered SQL file.
+- **Changing the schema:**
+  1. `just migration add_x`
+  2. Write the Up/Down SQL.
+  3. `just migrate`
+  4. Edit `db/queries`, then `just sqlc`.
+- **Render:** the API runs `/app/migrate up` before each deploy (staging also runs `seed`). docker-compose runs `migrate up && migrate seed` before starting the API.
+- **Tests:** `internal/testkit` builds the test database with the same migrations. Previously it loaded `schema.sql`, and a missing file made the DB tests skip quietly.
+- **Verified on a fresh database with no Django:** `migrate up` (82 tables), `migrate seed` (19 users, 9 roles, 130 role permissions). Then the Go API: ops/admin and rider PIN logins, dashboard, roles, wallet and hubs, plus a full worker pass.
 
 ### How to run
 ```

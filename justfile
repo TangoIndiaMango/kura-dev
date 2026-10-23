@@ -9,23 +9,36 @@ install:
     cd backend && go mod download
     cd frontend && npm install
 
-# Create the schema in an EMPTY database (DATABASE_URL from infra/.env)
-db-init:
+# Apply database migrations (DATABASE_URL from infra/.env; adopts Django-built DBs)
+migrate:
     #!/usr/bin/env bash
     set -euo pipefail
     source backend/scripts/env.sh
-    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backend/db/schema.sql
+    cd backend && go run ./cmd/migrate up
 
-# Seed sample data + RBAC roles. The seed commands live on the `django` branch:
-#   git worktree add ../kura-django django   (once)
+# Show applied / pending migrations
+migrate-status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source backend/scripts/env.sh
+    cd backend && go run ./cmd/migrate status
+
+# New SQL migration: just migration add_widget_table  (then edit it, run `just migrate`, `just sqlc`)
+migration name:
+    cd backend && go run ./cmd/migrate create {{name}}
+
+# Regenerate typed queries after changing db/queries or db/migrations
+sqlc:
+    cd backend && $(go env GOPATH)/bin/sqlc generate
+
+# Load demo data (hubs, batteries, plans, roles, test users) into an EMPTY database
 seed:
-    cd ../kura-django/backend && uv run python manage.py seed_kura && uv run python manage.py seed_roles
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source backend/scripts/env.sh
+    cd backend && go run ./cmd/migrate seed
 
-# Wipe operational history and reseed (from the django branch checkout)
-seed-fresh:
-    cd ../kura-django/backend && uv run python manage.py seed_kura --fresh && uv run python manage.py seed_roles
-
-# Go API on :8001 (the port the frontends use). `just docker-deps` first.
+# Go API on :8001 (the port the frontends use). `just docker-deps` + `just migrate` first.
 backend:
     backend/scripts/dev.sh 8001
 
