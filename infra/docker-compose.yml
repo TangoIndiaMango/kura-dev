@@ -45,9 +45,11 @@ services:
     env_file:
       - .env
     environment:
-      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.local}
+      KURA_ENV: ${KURA_ENV:-local}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-kura-dev-only-change-me}
       DATABASE_URL: postgres://${POSTGRES_USER:-kura}:${POSTGRES_PASSWORD:-kura_dev_password}@db:5432/${POSTGRES_DB:-kura}
       REDIS_URL: redis://redis:6379/0
+      PORT: "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -55,20 +57,8 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${API_PORT:-8001}:8000"
-    command:
-      - sh
-      - -c
-      - >-
-        python manage.py migrate --noinput &&
-        gunicorn config.wsgi:application
-        --bind 0.0.0.0:8000
-        --workers 1
-        --reload
-        --reload-engine poll
-        --timeout 30
-        --access-logfile -
-    volumes:
-      - ../backend:/app
+    # Apply migrations, load demo data into an empty DB, then serve.
+    command: ["sh", "-c", "/app/migrate up && /app/migrate seed && exec /app/api"]
     profiles: ["full", "api"]
 
   worker:
@@ -78,16 +68,14 @@ services:
     env_file:
       - .env
     environment:
-      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.local}
+      KURA_ENV: ${KURA_ENV:-local}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-kura-dev-only-change-me}
       DATABASE_URL: postgres://${POSTGRES_USER:-kura}:${POSTGRES_PASSWORD:-kura_dev_password}@db:5432/${POSTGRES_DB:-kura}
       REDIS_URL: redis://redis:6379/0
-      TASKS_BACKEND: database
     depends_on:
       db:
         condition: service_healthy
-    command: ["python", "manage.py", "run_task_worker"]
-    volumes:
-      - ../backend:/app
+    command: ["/app/worker"]
     profiles: ["full"]
 
   caddy:

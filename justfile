@@ -4,31 +4,47 @@ set dotenv-load := false
 default:
     @just --list
 
-# Install all backend and frontend dependencies
+# Install backend (Go) and frontend dependencies
 install:
-    cd backend && uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
+    cd backend && go mod download
     cd frontend && npm install
 
-# Run migrations for all apps
-makemigrations:
-    cd backend && source .venv/bin/activate && python manage.py makemigrations
-
-# Run database migrations (DATABASE_URL from infra/.env → Docker Postgres)
+# Apply database migrations (DATABASE_URL from infra/.env; adopts Django-built DBs)
 migrate:
-    cd backend && source .venv/bin/activate && python manage.py migrate
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source backend/scripts/env.sh
+    cd backend && go run ./cmd/migrate up
 
-# Seed sample mobility, fleet, and dynamic RBAC roles
+# Show applied / pending migrations
+migrate-status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source backend/scripts/env.sh
+    cd backend && go run ./cmd/migrate status
+
+# New SQL migration: just migration add_widget_table  (then edit it, run `just migrate`, `just sqlc`)
+migration name:
+    cd backend && go run ./cmd/migrate create {{name}}
+
+# Regenerate typed queries after changing db/queries or db/migrations
+sqlc:
+    cd backend && $(go env GOPATH)/bin/sqlc generate
+
+# Load demo data (hubs, batteries, plans, roles, test users) into an EMPTY database
 seed:
-    cd backend && source .venv/bin/activate && python manage.py seed_kura && python manage.py seed_roles
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source backend/scripts/env.sh
+    cd backend && go run ./cmd/migrate seed
 
-# Wipe operational history and reseed fresh clean mobility state
-seed-fresh:
-    cd backend && source .venv/bin/activate && python manage.py seed_kura --fresh && python manage.py seed_roles
-
-# Host Django on :8001 (Postgres via infra/.env). Use `just docker-deps` first;
-# don't run alongside `just docker-up` (same port).
+# Go API on :8001 (the port the frontends use). `just docker-deps` + `just migrate` first.
 backend:
-    cd backend && source .venv/bin/activate && python manage.py runserver 0.0.0.0:8001
+    backend/scripts/dev.sh 8001
+
+# Background worker (sweeps every 15s)
+worker:
+    backend/scripts/worker.sh
 
 # Run Client Vite frontend on port 5175
 client:
@@ -47,10 +63,11 @@ admin:
 frontend:
     cd frontend && npm run dev
 
-# Run full development stack (backend + client + admin)
+# Run full development stack (API + worker + client + admin)
 dev:
-    npx concurrently -k -n "backend,client,admin" -c "blue,green,magenta" \
-        "cd backend && source .venv/bin/activate && python manage.py runserver 0.0.0.0:8001" \
+    npx concurrently -k -n "api,worker,client,admin" -c "blue,yellow,green,magenta" \
+        "backend/scripts/dev.sh 8001" \
+        "backend/scripts/worker.sh" \
         "cd frontend && npm run dev:client" \
         "cd frontend && npm run dev:admin"
 
@@ -65,7 +82,7 @@ docker-env:
       echo "Created infra/.env from example"
     fi
 
-# Postgres + Redis only (API still via `just backend` against DATABASE_URL)
+# Postgres + Redis only (API via `just backend` against DATABASE_URL)
 docker-deps: docker-env
     docker compose -f infra/docker-compose.yml up -d db redis
 
@@ -81,20 +98,16 @@ docker-logs:
 
 # Run tests
 test:
-    cd backend && source .venv/bin/activate && python manage.py test
+    cd backend && go vet ./... && go test ./...
     cd frontend && npm run build
 
-# One-shot: flag packs past 48h return window (also POST /api/v1/internal/jobs/flag-unreturned/)
+# One-shot: flag packs past 48h return window
 flag-unreturned:
-    cd backend && source .venv/bin/activate && python manage.py flag_unreturned_batteries
+    backend/scripts/worker.sh --once --only=unreturned
 
-# Durable task worker (TASKS_BACKEND=database). Drains QueuedTask + unreturned + cash settlement.
-worker:
-    cd backend && source .venv/bin/activate && TASKS_BACKEND=database python manage.py run_task_worker
-
-# Test IOT mocks
+# One mock IoT tick (SoC drain + GPS for issued packs)
 iot-mocks:
-    cd backend && source .venv/bin/activate && python manage.py feed_mock_iot
+    MOCK_IOT_ENABLED=true backend/scripts/worker.sh --once --only=mock_iot
 
 # Build production bundles for both frontends
 build:

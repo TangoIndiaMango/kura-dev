@@ -1,0 +1,8 @@
+You are in, Ada
+
+Someone on the ops team invited you to the Kura admin console as Operations Manager.
+
+Create your password here (one time use, expires in 72 hours):
+https://admin.kura.test/create-password?token=abc&amp;email=a%40b.c
+
+Need a hand? Write help@kura.test

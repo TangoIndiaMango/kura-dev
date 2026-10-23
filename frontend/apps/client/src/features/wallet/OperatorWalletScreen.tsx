@@ -59,7 +59,7 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
   const { session } = useOperatorSession()
   const { isAuthenticated } = useAuth()
   const liveWallet = useOperatorWallet({ enabled: isAuthenticated })
-  const livePayments = useOperatorPayments({ enabled: isAuthenticated })
+  const livePayments = useOperatorPayments({ enabled: isAuthenticated, page_size: 10 })
   const eligibilityQ = useCreditEligibility({ enabled: isAuthenticated })
   const loansQ = useOperatorLoans({
     enabled: isAuthenticated && Boolean(eligibilityQ.eligibility?.credit_enabled),
@@ -274,7 +274,7 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
       {walletUsable ? (
         <TransactionList
           items={txItems}
-          pageSize={25}
+          pageSize={10}
           loading={livePayments.isLoading}
           onSeeAll={onSeeHistory}
           onItemClick={(id, itemReceiptId) => {

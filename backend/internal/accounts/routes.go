@@ -1,0 +1,126 @@
+package accounts
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/router"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/throttle"
+)
+
+// Module mounts the accounts endpoints.
+type Module struct {
+	auth    *AuthHandler
+	staff   *StaffHandler
+	coops   *CoopHandler
+	drivers *DriverHandler
+	accts   *AccountHandler
+	limiter *throttle.Limiter
+}
+
+func NewModule(auth *AuthHandler, staff *StaffHandler, coops *CoopHandler, drivers *DriverHandler,
+	accts *AccountHandler, limiter *throttle.Limiter) *Module {
+	return &Module{auth: auth, staff: staff, coops: coops, drivers: drivers, accts: accts, limiter: limiter}
+}
+
+// Register mounts /api/v1/auth/* with AuthViewSet's permissions and throttles.
+func (m *Module) Register(mux *http.ServeMux) {
+	g := router.New(mux, "/api/v1/auth", m.limiter)
+	a := m.auth
+
+	g.Public("POST", "/login/", handle(a.login))
+	g.Throttle(throttle.AnonBurst).Public("POST", "/login/begin/", handle(a.loginBegin))
+	g.Throttle(otpPhone, throttle.OTPIP).Public("POST", "/otp/request/", handle(a.otpRequest))
+	g.Public("POST", "/otp/verify/", handle(a.otpVerify))
+	g.Throttle(throttle.PIN).Public("POST", "/pin/login/", handle(a.pinLogin))
+	g.Throttle(throttle.PIN).User("POST", "/pin/set/", handle(a.pinSet))
+	g.Throttle(throttle.PIN).User("POST", "/pin/verify/", handle(a.pinVerify))
+	g.Public("POST", "/token/refresh/", handle(a.refresh))
+	g.User("POST", "/logout/", handle(a.logout))
+	g.User("POST", "/onboarding/complete/", a.completeOnboarding)
+	g.User("GET", "/me/", a.getMe)
+	g.User("PATCH", "/me/profile/", handle(a.updateProfile))
+	g.User("POST", "/me/consent/", handle(a.updateConsent))
+	g.User("POST", "/password/change/", handle(a.changePassword))
+	g.User("POST", "/devices/heartbeat/", handle(a.devicesHeartbeat))
+	g.Throttle(throttle.AnonBurst).Public("POST", "/password-setup/context/", handle(a.setupContext))
+	g.Throttle(throttle.AnonBurst).Public("POST", "/password-setup/", handle(a.passwordSetup))
+
+	// StaffUserViewSet capability_map.
+	u, st := router.New(mux, "/api/v1/users", m.limiter), m.staff
+	u.Cap("GET", "/", "users:read", st.list)
+	u.Cap("POST", "/", "users:manage", st.create)
+	u.Cap("GET", "/stats/", "users:read", st.stats)
+	u.Cap("GET", "/export/", "users:read", st.export)
+	u.Cap("GET", "/{id}/", "users:read", st.get)
+	u.Cap("PATCH", "/{id}/", "users:manage", st.patch)
+	u.Cap("POST", "/{id}/activate/", "users:manage", st.setActive(true))
+	u.Cap("POST", "/{id}/deactivate/", "users:manage", st.setActive(false))
+	u.Cap("POST", "/{id}/resend-invite/", "users:manage", st.resendInvite)
+
+	c := router.New(mux, "/api/v1/cooperatives", m.limiter)
+	c.Cap("GET", "/", "cooperatives:read", m.coops.list)
+	c.Cap("POST", "/", "cooperatives:manage", m.coops.create)
+	c.Cap("GET", "/{id}/", "cooperatives:read", m.coops.get)
+	c.Cap("PATCH", "/{id}/", "cooperatives:manage", m.coops.patch)
+
+	// HasCapabilityOrReadOwn: reads need only sign-in (scoped); writes are any-of.
+	d := router.New(mux, "/api/v1/drivers", m.limiter)
+	d.User("GET", "/", m.drivers.list)
+	d.User("GET", "/{id}/", m.drivers.get)
+	d.AnyCap("POST", "/attach/", []string{"accounts:manage", "accounts:write_own"}, m.drivers.attach)
+	d.AnyCap("PATCH", "/{id}/", []string{"accounts:manage", "accounts:write_own"}, m.drivers.patch)
+
+	// AccountViewSet: GETs are HasCapabilityOrReadOwn safe methods (sign-in, scoped).
+	ac := router.New(mux, "/api/v1/accounts", m.limiter)
+	ac.User("GET", "/", m.accts.list)
+	ac.Cap("POST", "/", "accounts:write_own", m.accts.create)
+	ac.Cap("POST", "/register/", "accounts:manage", m.accts.register)
+	ac.AnyCap("PATCH", "/{id}/", []string{"accounts:manage", "accounts:write_own"}, m.accts.patch)
+	ac.Cap("POST", "/{id}/suspend/", "accounts:manage", m.accts.suspend())
+	ac.Cap("POST", "/{id}/reinstate/", "accounts:manage", m.accts.reinstate)
+	ac.Cap("POST", "/{id}/notify/", "accounts:manage", m.accts.notifyRider())
+	ac.Cap("POST", "/{id}/set-cooperative/", "accounts:manage", m.accts.setCooperative)
+	ac.User("GET", "/stats/", m.accts.stats)
+	ac.User("GET", "/export/", m.accts.export)
+	ac.User("GET", "/{id}/", m.accts.get)
+	ac.User("GET", "/{id}/kyc/", m.accts.kyc)
+	ac.User("GET", "/{id}/stats/", m.accts.detailStats)
+	ac.User("GET", "/me/fleet-spend/", m.accts.fleetSpend)
+	ac.User("GET", "/me/impact/", m.accts.impact)
+	ac.Cap("POST", "/identity/", "accounts:write_own", m.accts.identity)
+	ac.Cap("POST", "/identity/withdraw/", "accounts:write_own", m.accts.identityWithdraw)
+	ac.Cap("POST", "/identity/photos/", "accounts:write_own", m.accts.identityPhotos)
+	ac.Cap("POST", "/{id}/kyc/submit/", "accounts:manage", m.accts.submitKYC)
+	ac.Cap("POST", "/{id}/kyc/verify/", "accounts:manage", m.accts.verifyKYC())
+	ac.Cap("POST", "/{id}/kyc/reject/", "accounts:manage", m.accts.rejectKYC())
+	ac.Cap("POST", "/{id}/kyc/request-photos/", "accounts:manage", m.accts.requestKYCPhotos())
+}
+
+// otpPhone keys OTP requests by the phone in the body (OtpPhoneThrottle).
+var otpPhone = func() throttle.Rule {
+	r := throttle.MustRule("otp_phone", "5/hour")
+	r.Ident = phoneIdent
+	return r
+}()
+
+// phoneIdent reads "phone" from the JSON body and restores the body for the
+// handler. Empty phone = rule skipped (DRF returns no cache key).
+func phoneIdent(r *http.Request) string {
+	raw, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	if err != nil {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	var b struct {
+		Phone any `json:"phone"`
+	}
+	if json.Unmarshal(raw, &b) != nil || b.Phone == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(b.Phone))
+}
