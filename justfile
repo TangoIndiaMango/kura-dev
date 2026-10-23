@@ -4,31 +4,34 @@ set dotenv-load := false
 default:
     @just --list
 
-# Install all backend and frontend dependencies
+# Install backend (Go) and frontend dependencies
 install:
-    cd backend && uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
+    cd backend && go mod download
     cd frontend && npm install
 
-# Run migrations for all apps
-makemigrations:
-    cd backend && source .venv/bin/activate && python manage.py makemigrations
+# Create the schema in an EMPTY database (DATABASE_URL from infra/.env)
+db-init:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source backend/scripts/env.sh
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backend/db/schema.sql
 
-# Run database migrations (DATABASE_URL from infra/.env → Docker Postgres)
-migrate:
-    cd backend && source .venv/bin/activate && python manage.py migrate
-
-# Seed sample mobility, fleet, and dynamic RBAC roles
+# Seed sample data + RBAC roles. The seed commands live on the `django` branch:
+#   git worktree add ../kura-django django   (once)
 seed:
-    cd backend && source .venv/bin/activate && python manage.py seed_kura && python manage.py seed_roles
+    cd ../kura-django/backend && uv run python manage.py seed_kura && uv run python manage.py seed_roles
 
-# Wipe operational history and reseed fresh clean mobility state
+# Wipe operational history and reseed (from the django branch checkout)
 seed-fresh:
-    cd backend && source .venv/bin/activate && python manage.py seed_kura --fresh && python manage.py seed_roles
+    cd ../kura-django/backend && uv run python manage.py seed_kura --fresh && uv run python manage.py seed_roles
 
-# Host Django on :8001 (Postgres via infra/.env). Use `just docker-deps` first;
-# don't run alongside `just docker-up` (same port).
+# Go API on :8001 (the port the frontends use). `just docker-deps` first.
 backend:
-    cd backend && source .venv/bin/activate && python manage.py runserver 0.0.0.0:8001
+    backend/scripts/dev.sh 8001
+
+# Background worker (sweeps every 15s)
+worker:
+    backend/scripts/worker.sh
 
 # Run Client Vite frontend on port 5175
 client:
@@ -47,10 +50,11 @@ admin:
 frontend:
     cd frontend && npm run dev
 
-# Run full development stack (backend + client + admin)
+# Run full development stack (API + worker + client + admin)
 dev:
-    npx concurrently -k -n "backend,client,admin" -c "blue,green,magenta" \
-        "cd backend && source .venv/bin/activate && python manage.py runserver 0.0.0.0:8001" \
+    npx concurrently -k -n "api,worker,client,admin" -c "blue,yellow,green,magenta" \
+        "backend/scripts/dev.sh 8001" \
+        "backend/scripts/worker.sh" \
         "cd frontend && npm run dev:client" \
         "cd frontend && npm run dev:admin"
 
@@ -65,7 +69,7 @@ docker-env:
       echo "Created infra/.env from example"
     fi
 
-# Postgres + Redis only (API still via `just backend` against DATABASE_URL)
+# Postgres + Redis only (API via `just backend` against DATABASE_URL)
 docker-deps: docker-env
     docker compose -f infra/docker-compose.yml up -d db redis
 
@@ -81,20 +85,16 @@ docker-logs:
 
 # Run tests
 test:
-    cd backend && source .venv/bin/activate && python manage.py test
+    cd backend && go vet ./... && go test ./...
     cd frontend && npm run build
 
-# One-shot: flag packs past 48h return window (also POST /api/v1/internal/jobs/flag-unreturned/)
+# One-shot: flag packs past 48h return window
 flag-unreturned:
-    cd backend && source .venv/bin/activate && python manage.py flag_unreturned_batteries
+    backend/scripts/worker.sh --once --only=unreturned
 
-# Durable task worker (TASKS_BACKEND=database). Drains QueuedTask + unreturned + cash settlement.
-worker:
-    cd backend && source .venv/bin/activate && TASKS_BACKEND=database python manage.py run_task_worker
-
-# Test IOT mocks
+# One mock IoT tick (SoC drain + GPS for issued packs)
 iot-mocks:
-    cd backend && source .venv/bin/activate && python manage.py feed_mock_iot
+    MOCK_IOT_ENABLED=true backend/scripts/worker.sh --once --only=mock_iot
 
 # Build production bundles for both frontends
 build:

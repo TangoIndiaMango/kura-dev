@@ -42,7 +42,7 @@ infra/.env
 # Generated report outputs (CSV/PDF jobs)
 backend/reports/csv/
 backend/reports/impact/
-backend-go/reports/
+backend/reports/
 
 # graphify local build output (rebuilt by git hooks)
 graphify-out/

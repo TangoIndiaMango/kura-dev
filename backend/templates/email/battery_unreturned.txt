@@ -1,6 +1,0 @@
-Battery still out
-
-Pack {{ serial }} passed the 48 hour return window.
-We paused account {{ account_label }} until the pack comes back.
-{% if cooperative_name %}Cooperative: {{ cooperative_name }}{% endif %}
-{% if link_url %}{{ link_url }}{% endif %}
