@@ -4,12 +4,12 @@ import { formatNaira } from './currency'
 const PURPOSE: Record<string, string> = {
   SWAP: 'Battery swap',
   PLAN: 'Plan payment',
-  FUND: 'Wallet top-up',
+  FUND: 'Payment received',
   CREDIT_REPAY: 'Credit repayment',
 }
 
 const CHANNEL: Record<string, string> = {
-  WALLET_DEBIT: 'Wallet',
+  WALLET_DEBIT: 'From Kura balance',
   NUBAN_TRANSFER: 'Bank transfer',
   CARD: 'Card',
   AGENT_CASH: 'Cash at hub',

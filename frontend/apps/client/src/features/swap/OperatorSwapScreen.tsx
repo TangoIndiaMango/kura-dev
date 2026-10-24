@@ -208,12 +208,12 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     effectiveMode === 'PLAN'
       ? `Included · ${vehicle?.plan} plan`
       : effectiveMode === 'PAYSTACK'
-        ? `₦${listPriceNaira.toLocaleString()} · Paystack at swap`
+        ? `₦${listPriceNaira.toLocaleString()} · Paystack at the bay`
         : effectiveMode === 'CASH_AT_HUB'
         ? `₦${listPriceNaira.toLocaleString()} · cash at hub`
         : effectiveMode === 'CREDIT'
           ? `₦${listPriceNaira.toLocaleString()} · credit`
-          : `₦${listPriceNaira.toLocaleString()} · wallet`
+          : `₦${listPriceNaira.toLocaleString()} · Kura balance`
 
   const vehiclesAvailableToBook = vehicles.filter(
     (v) => !holds.some((h) => h.vehicleId === v.id),
@@ -239,8 +239,8 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     }, 2200)
   }
 
-  // Wallet top-ups are coming soon: pay-per-swap defaults to Paystack at the
-  // bay, so there is no balance shortfall to route around.
+  // Pay-per-swap defaults to Paystack at the bay (a balance that covers the
+  // fee is offered too), so there is no shortfall to route around.
   const goConfirmOrShortfall = () => {
     if (!covered) setPaymentMode('PAYSTACK')
     setBookStep('confirm')
@@ -499,7 +499,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
             ? 'Pay cash at the bay when you swap'
             : hold.paymentMode === 'PLAN'
               ? 'Covered by your plan'
-              : 'Paid from wallet'
+              : 'Held from your Kura balance'
         }
         cancelBusy={cancelBusy}
         onDone={() => {
@@ -753,7 +753,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
           <PinStep
             subtitle={
               effectiveMode === 'WALLET'
-                ? 'Wallet debit needs your 4-digit PIN.'
+                ? 'Confirm the Kura balance hold with your 4-digit PIN.'
                 : 'Enter your 4-digit PIN to confirm this booking.'
             }
             pin={pin}

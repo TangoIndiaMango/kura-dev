@@ -78,7 +78,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
 
   const balanceNaira = liveWallet.balanceNaira ?? 0
   const nuban = liveWallet.wallet ? liveWallet.nuban : null
-  /** Wallet top-ups are coming soon — the strip only shows an existing balance. */
+  /** Payments are made with Paystack when due — the strip only shows a balance the rider holds. */
   const showWalletStrip = balanceNaira > 0
   const hasLivePass = holds.length > 0
   const swapsSettled = !liveSwaps.isLoading

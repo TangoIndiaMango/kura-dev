@@ -13,6 +13,13 @@ import {
   type SwitchPreviewApi,
 } from './use-operator-plans'
 import { newIdempotencyKey } from './plan-live-map'
+import { coverShortfall, type CoverOutcome } from '../../payments/cover-shortfall'
+
+const SHORTFALL_COPY: Record<Exclude<CoverOutcome, 'covered'>, string> = {
+  cancelled: 'Payment cancelled — your plan was not changed.',
+  failed: 'Payment failed — you were not charged. Try again.',
+  pending: 'Payment received — still confirming with Paystack. Try again in a minute.',
+}
 
 function apiErrorMessage(err: unknown): string {
   const ax = err as {
@@ -49,8 +56,10 @@ export function useLivePlanActions(input: {
   } | null>(null)
   const [preview, setPreview] = useState<SwitchPreviewApi | null>(null)
   const [sheetError, setSheetError] = useState<string | null>(null)
+  const [paying, setPaying] = useState(false)
 
   const busy =
+    paying ||
     purchaseMut.isPending ||
     renewMut.isPending ||
     switchMut.isPending ||
@@ -109,9 +118,24 @@ export function useLivePlanActions(input: {
         pending.kind === 'renew' ||
         (pending.kind === 'upgrade' && (preview?.due_kobo ?? 1) > 0)
 
+      // PIN first (a wrong PIN fails before anyone pays), then Paystack covers
+      // whatever the balance is short, then the plan change is charged.
       if (needsPin && target.id !== 'pps') {
         const grant = await verifyPin.mutateAsync({ pin: payload.pin })
         pinGrant = grant.pin_grant
+      }
+      const dueKobo = Math.round(payload.dueNaira * 100)
+      if (target.id !== 'pps' && pending.kind !== 'downgrade' && dueKobo > 0) {
+        const pinAt = Date.now()
+        setPaying(true)
+        const outcome = await coverShortfall(dueKobo).finally(() => setPaying(false))
+        if (outcome !== 'covered') {
+          setSheetError(SHORTFALL_COPY[outcome])
+          return
+        }
+        if (pinGrant && Date.now() - pinAt > 90_000) {
+          pinGrant = (await verifyPin.mutateAsync({ pin: payload.pin })).pin_grant // grants last 2 min
+        }
       }
 
       if (target.id === 'pps') {

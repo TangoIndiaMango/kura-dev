@@ -13,6 +13,7 @@ export type SwapCheckout = {
   access_code: string
   authorization_url: string
   paid: boolean
+  emailed?: boolean
 }
 
 const naira = (kobo: number) => `₦${Math.round(kobo / 100).toLocaleString()}`
@@ -30,7 +31,7 @@ export function useSwapPayment(onPaid?: () => void) {
   const confirm = useCallback(
     async (swapId: string) => {
       for (let attempt = 0; attempt < 5; attempt++) {
-        const { data } = await axiosInstance.get<SwapCheckout>(SWAP_API.swapCheckout(swapId))
+        const { data } = await axiosInstance.get<SwapCheckout>(SWAP_API.swapCheckout(swapId), { silentError: true })
         if (data.paid) return data
         if (data.status === 'FAILED') return data
         await sleep(2500)
@@ -44,7 +45,7 @@ export function useSwapPayment(onPaid?: () => void) {
     async (swapId: string) => {
       setBusy(true)
       try {
-        const { data } = await axiosInstance.post<SwapCheckout>(SWAP_API.swapCheckout(swapId), {})
+        const { data } = await axiosInstance.post<SwapCheckout>(SWAP_API.swapCheckout(swapId), {}, { silentError: true })
         let result: SwapCheckout | null = data
         if (!data.paid) {
           const outcome = await openPaystackPopup(data.access_code)
@@ -64,6 +65,7 @@ export function useSwapPayment(onPaid?: () => void) {
           notify({ title: 'Payment received — confirming with Paystack', tone: 'info' })
         }
         void queryClient.invalidateQueries({ queryKey: [SWAP_API.swaps] })
+        void queryClient.invalidateQueries({ queryKey: [SWAP_API.swapCheckout(swapId)] })
       } catch (err) {
         notify({ title: apiErrorMessage(err, 'Could not start payment'), tone: 'error' })
       } finally {

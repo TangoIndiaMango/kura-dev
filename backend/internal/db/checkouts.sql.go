@@ -85,7 +85,7 @@ type InsertCheckoutParams struct {
 	SwapID           *uuid.UUID
 }
 
-// Paystack Checkout wallet top-ups (finance_walletcheckout).
+// Paystack Checkout payments (finance_walletcheckout): top-ups and pay-at-swap.
 func (q *Queries) InsertCheckout(ctx context.Context, arg InsertCheckoutParams) (FinanceWalletcheckout, error) {
 	row := q.db.QueryRow(ctx, insertCheckout,
 		arg.ID,
@@ -147,7 +147,7 @@ func (q *Queries) LatestSwapCheckout(ctx context.Context, swapID *uuid.UUID) (Fi
 }
 
 const paidSwapCheckout = `-- name: PaidSwapCheckout :one
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE swap_id = $1 AND status = 'SUCCESS'
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE swap_id = $1 AND status = 'SUCCESS' ORDER BY created_at LIMIT 1
 `
 
 func (q *Queries) PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error) {
@@ -173,6 +173,20 @@ func (q *Queries) PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (Fina
 	return i, err
 }
 
+const setCheckoutPayment = `-- name: SetCheckoutPayment :exec
+UPDATE finance_walletcheckout SET payment_id = $2, updated_at = now() WHERE id = $1
+`
+
+type SetCheckoutPaymentParams struct {
+	ID        uuid.UUID
+	PaymentID *uuid.UUID
+}
+
+func (q *Queries) SetCheckoutPayment(ctx context.Context, arg SetCheckoutPaymentParams) error {
+	_, err := q.db.Exec(ctx, setCheckoutPayment, arg.ID, arg.PaymentID)
+	return err
+}
+
 const settleCheckout = `-- name: SettleCheckout :exec
 UPDATE finance_walletcheckout SET status = $2, payment_id = $3, failure_reason = $4, channel = $5, updated_at = now()
 WHERE id = $1
@@ -195,4 +209,45 @@ func (q *Queries) SettleCheckout(ctx context.Context, arg SettleCheckoutParams) 
 		arg.Channel,
 	)
 	return err
+}
+
+const unrecordedSwapCheckouts = `-- name: UnrecordedSwapCheckouts :many
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE swap_id = $1 AND status = 'SUCCESS' AND payment_id IS NULL
+ORDER BY created_at FOR UPDATE
+`
+
+func (q *Queries) UnrecordedSwapCheckouts(ctx context.Context, swapID *uuid.UUID) ([]FinanceWalletcheckout, error) {
+	rows, err := q.db.Query(ctx, unrecordedSwapCheckouts, swapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FinanceWalletcheckout{}
+	for rows.Next() {
+		var i FinanceWalletcheckout
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Reference,
+			&i.AmountKobo,
+			&i.Status,
+			&i.AccessCode,
+			&i.AuthorizationUrl,
+			&i.FailureReason,
+			&i.AccountID,
+			&i.UserID,
+			&i.PaymentID,
+			&i.Purpose,
+			&i.Channel,
+			&i.SwapID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -4,6 +4,7 @@ import { OperatorPwaChrome } from './OperatorPwaChrome'
 import { OperatorHeader } from './OperatorHeader'
 import { OperatorHomeScreen } from '../home/OperatorHomeScreen'
 import { OperatorSwapScreen } from '../swap/OperatorSwapScreen'
+import { PaySwapBanner } from '../swap/components/PaySwapBanner'
 import { OperatorPlansScreen } from '../plans/OperatorPlansScreen'
 import { OperatorWalletScreen } from '../wallet/OperatorWalletScreen'
 import { OperatorAccountScreen } from '../account/OperatorAccountScreen'
@@ -110,6 +111,7 @@ export const OperatorShell: React.FC = () => {
         ) : null}
 
         <main className="flex-1 overflow-y-auto px-4 py-4 pb-28">
+          {!overlay ? <PaySwapBanner enabled={isAuthenticated} fastPoll={holds.length > 0} /> : null}
           <div key={contentKey} className="kura-screen-enter">
             {overlay?.type === 'history' ? (
               <OperatorHistoryScreen

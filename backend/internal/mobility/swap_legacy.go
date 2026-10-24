@@ -271,13 +271,13 @@ func reverseMoney(ctx context.Context, q *db.Queries, s db.MobilitySwap) error {
 		}
 	}
 	switch mode {
-	case "WALLET":
+	case "WALLET", "PAYSTACK": // Paystack swaps were captured from the balance too
 		acct, _, err := acctOf(ctx, q, s.AccountID)
 		if err != nil {
 			return err
 		}
 		return finance.ReverseCapture(ctx, q, acct, s.AmountKobo, s.ID.String()[:20], pay)
-	case "CASH", "PAYSTACK": // a Paystack refund is issued from the Paystack dashboard
+	case "CASH":
 		if pay != nil && pay.Status == "SUCCESS" {
 			return q.SetPaymentStatus(ctx, db.SetPaymentStatusParams{ID: pay.ID, Status: "REVERSED"})
 		}

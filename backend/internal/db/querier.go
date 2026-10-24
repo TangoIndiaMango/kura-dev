@@ -296,7 +296,7 @@ type Querier interface {
 	InsertCase(ctx context.Context, arg InsertCaseParams) error
 	InsertCaseEvent(ctx context.Context, arg InsertCaseEventParams) error
 	InsertCataloguePlan(ctx context.Context, arg InsertCataloguePlanParams) error
-	// Paystack Checkout wallet top-ups (finance_walletcheckout).
+	// Paystack Checkout payments (finance_walletcheckout): top-ups and pay-at-swap.
 	InsertCheckout(ctx context.Context, arg InsertCheckoutParams) (FinanceWalletcheckout, error)
 	InsertConfig(ctx context.Context, arg InsertConfigParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
@@ -595,6 +595,7 @@ type Querier interface {
 	SetAccountStatusOnly(ctx context.Context, arg SetAccountStatusOnlyParams) error
 	SetBatteryAvailable(ctx context.Context, id uuid.UUID) error
 	SetBatteryStatus(ctx context.Context, arg SetBatteryStatusParams) error
+	SetCheckoutPayment(ctx context.Context, arg SetCheckoutPaymentParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
 	SetCreditLineStatus(ctx context.Context, arg SetCreditLineStatusParams) error
 	SetCreditLinesStatus(ctx context.Context, arg SetCreditLinesStatusParams) error
@@ -614,6 +615,7 @@ type Querier interface {
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
 	SetPspEventStatus(ctx context.Context, arg SetPspEventStatusParams) error
 	SetSlot(ctx context.Context, arg SetSlotParams) error
+	SetSwapPaymentMode(ctx context.Context, arg SetSwapPaymentModeParams) error
 	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
 	SetUserOnboardingStep(ctx context.Context, arg SetUserOnboardingStepParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
@@ -692,6 +694,7 @@ type Querier interface {
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
 	TrustedDeviceSeen(ctx context.Context, accountID uuid.UUID) ([]TrustedDeviceSeenRow, error)
+	UnrecordedSwapCheckouts(ctx context.Context, swapID *uuid.UUID) ([]FinanceWalletcheckout, error)
 	UpdateCooperative(ctx context.Context, arg UpdateCooperativeParams) error
 	UpdateHoldPolicy(ctx context.Context, arg UpdateHoldPolicyParams) error
 	UpdateHub(ctx context.Context, arg UpdateHubParams) error

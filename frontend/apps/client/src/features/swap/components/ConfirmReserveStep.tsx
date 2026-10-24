@@ -35,9 +35,10 @@ const MODES: Array<{
   needsCredit?: boolean
   needsWallet?: boolean
 }> = [
-  { id: 'PAYSTACK', label: 'Pay at swap', hint: 'Card, transfer, USSD' },
-  { id: 'CREDIT', label: 'Credit', hint: 'Draw on confirm', needsCredit: true },
-  { id: 'CASH_AT_HUB', label: 'Cash at hub', hint: 'Pay at the bay' },
+  { id: 'PAYSTACK', label: 'Paystack', hint: 'Card, transfer or USSD at the bay' },
+  { id: 'WALLET', label: 'Kura balance', hint: 'Held now, used at swap', needsWallet: true },
+  { id: 'CREDIT', label: 'Swap credit', hint: 'Drawn at swap', needsCredit: true },
+  { id: 'CASH_AT_HUB', label: 'Cash', hint: 'Pay the agent at the bay' },
 ]
 
 export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
@@ -47,7 +48,6 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
   paymentMode,
   onPaymentModeChange,
   creditAvailable,
-  creditEligible = false,
   walletBalanceNaira,
   vehicleCount,
   onConfirm,
@@ -62,6 +62,10 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
 
   const due = coveredByPlan ? 0 : (discount?.dueNaira ?? listPriceNaira)
   const walletOk = walletBalanceNaira >= due
+  // Only offer what can actually be used right now — no greyed-out dead ends.
+  const visibleModes = MODES.filter(
+    (m) => !(m.needsCredit && !creditAvailable) && !(m.needsWallet && !walletOk),
+  )
 
   const settleHint =
     paymentMode === 'PAYSTACK'
@@ -72,7 +76,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
         ? 'Charges your open credit line — wallet balance stays the same. Daily repay continues as scheduled.'
         : coveredByPlan
           ? 'Covered by your plan — no extra charge.'
-          : 'We hold this amount in your wallet now and take it when the hub completes your swap. Cancel and it is released.'
+          : 'We hold this from your Kura balance now and take it when the hub completes your swap. Cancel and it is released.'
 
   const paymentRows = coveredByPlan
     ? rows
@@ -91,12 +95,12 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
           label: 'Payment',
           value:
             paymentMode === 'PAYSTACK'
-              ? `${formatNaira(due)} · Paystack at swap`
+              ? `${formatNaira(due)} · Paystack at the bay`
               : paymentMode === 'CASH_AT_HUB'
               ? `${formatNaira(due)} · cash at hub`
               : paymentMode === 'CREDIT'
                 ? `${formatNaira(due)} · credit`
-                : `${formatNaira(due)} · wallet`,
+                : `${formatNaira(due)} · Kura balance`,
         },
       ]
 
@@ -164,47 +168,23 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--kura-muted)]">
             How you pay
           </p>
-          <div className="grid grid-cols-3 gap-2">
-            {MODES.map((m) => {
-              const disabled =
-                (m.needsCredit && !creditAvailable) ||
-                (m.needsWallet && !walletOk)
-              const selected = paymentMode === m.id && !disabled
-              const hint = disabled
-                ? m.needsCredit
-                  ? creditEligible
-                    ? 'Apply for credit'
-                    : 'Not eligible'
-                  : 'Low balance'
-                : m.hint
+          <div className="grid grid-cols-2 gap-2">
+            {visibleModes.map((m) => {
+              const selected = paymentMode === m.id
               return (
                 <button
                   key={m.id}
                   type="button"
-                  disabled={disabled}
-                  aria-disabled={disabled}
-                  onClick={() => {
-                    if (disabled) return
-                    onPaymentModeChange(m.id)
-                  }}
-                  className={`rounded-xl border px-2 py-2.5 text-left transition ${
+                  aria-pressed={selected}
+                  onClick={() => onPaymentModeChange(m.id)}
+                  className={`rounded-xl border px-3 py-2.5 text-left transition ${
                     selected
                       ? 'border-[var(--kura-teal)] bg-[var(--kura-teal)]/10'
                       : 'border-[var(--kura-border)] bg-[var(--kura-bg-elevated)]'
-                  } ${disabled ? 'cursor-not-allowed opacity-45' : ''}`}
+                  }`}
                 >
-                  <span className="block text-[12px] font-bold text-[var(--kura-text)]">
-                    {m.label}
-                  </span>
-                  <span
-                    className={`mt-0.5 block text-[10px] ${
-                      disabled
-                        ? 'font-semibold text-[var(--kura-muted)]'
-                        : 'text-[var(--kura-muted)]'
-                    }`}
-                  >
-                    {hint}
-                  </span>
+                  <span className="block text-[13px] font-bold text-[var(--kura-text)]">{m.label}</span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-[var(--kura-muted)]">{m.hint}</span>
                 </button>
               )
             })}

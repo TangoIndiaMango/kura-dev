@@ -101,3 +101,6 @@ SELECT * FROM finance_payment WHERE id = $1 FOR UPDATE;
 
 -- name: SetHubStatus :exec
 UPDATE mobility_hub SET status = $2, updated_at = now() WHERE id = $1;
+
+-- name: SetSwapPaymentMode :exec
+UPDATE mobility_swap SET payment_mode = $2, updated_at = now() WHERE id = $1;

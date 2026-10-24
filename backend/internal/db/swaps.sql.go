@@ -350,6 +350,20 @@ func (q *Queries) SetSlot(ctx context.Context, arg SetSlotParams) error {
 	return err
 }
 
+const setSwapPaymentMode = `-- name: SetSwapPaymentMode :exec
+UPDATE mobility_swap SET payment_mode = $2, updated_at = now() WHERE id = $1
+`
+
+type SetSwapPaymentModeParams struct {
+	ID          uuid.UUID
+	PaymentMode string
+}
+
+func (q *Queries) SetSwapPaymentMode(ctx context.Context, arg SetSwapPaymentModeParams) error {
+	_, err := q.db.Exec(ctx, setSwapPaymentMode, arg.ID, arg.PaymentMode)
+	return err
+}
+
 const setVehicleBattery = `-- name: SetVehicleBattery :exec
 UPDATE mobility_vehicle SET current_battery_id = $2, updated_at = now() WHERE id = $1
 `

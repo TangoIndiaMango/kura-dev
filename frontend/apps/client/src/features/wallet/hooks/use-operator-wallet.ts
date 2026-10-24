@@ -4,6 +4,8 @@ export const WALLET_API = {
   mine: '/finance/wallets/mine/',
   payments: '/finance/payments/',
   fund: '/finance/wallets/fund/',
+  checkout: '/finance/wallets/checkout/',
+  checkoutVerify: '/finance/wallets/checkout/verify/',
 } as const
 
 export type VirtualAccountApi = {

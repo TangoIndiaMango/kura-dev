@@ -983,7 +983,7 @@ export function HubSwapFallbackPanel() {
     const fundedWallet =
       effectiveWallet + (topUpRef ? Math.max(0, due - effectiveWallet) : 0)
     const shortfall = hasActiveHold ? 0 : Math.max(0, due - fundedWallet)
-    return describeMode(settleMode, {
+    const plan = describeMode(settleMode, {
       due,
       wallet: fundedWallet,
       shortfall,
@@ -992,7 +992,10 @@ export function HubSwapFallbackPanel() {
       reservation: identified.reservation,
       holdAmountKobo: holdKobo,
     })
-  }, [identified, settleActor, settleMode, topUpRef, appliedDiscount, walletForSettle])
+    return settleMode === 'PAYSTACK' && paystackPaid
+      ? { ...plan, label: 'Paid with Paystack — ready to complete' }
+      : plan
+  }, [identified, settleActor, settleMode, topUpRef, appliedDiscount, walletForSettle, paystackPaid])
 
   const settleVehicleCount = Math.max(1, accountVehicles.length || 1)
 

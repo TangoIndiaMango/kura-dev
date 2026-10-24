@@ -78,8 +78,13 @@ func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow) (db.FinanceWal
 	if err != nil {
 		return c, err
 	}
+	if s.PaymentMode != "PAYSTACK" { // the rider's app shows the Pay prompt for PAYSTACK swaps
+		if err := b.q.SetSwapPaymentMode(ctx, db.SetSwapPaymentModeParams{ID: s.ID, PaymentMode: "PAYSTACK"}); err != nil {
+			return c, err
+		}
+	}
 	return finance.StartCheckout(ctx, b.q, b.checkout, finance.CheckoutIn{Account: acct, Amount: due, Purpose: "SWAP",
-		Swap: &s.ID, Return: "/swap?paid=" + s.ID.String()})
+		Swap: &s.ID, Return: "/"})
 }
 
 func checkoutJSON(c db.FinanceWalletcheckout, emailed bool) map[string]any {
@@ -154,25 +159,26 @@ func (b *Bay) emailPayLink(ctx context.Context, s db.SwapRowsRow, c db.FinanceWa
 	return ok, nil
 }
 
-// paidWithPaystack settles a PAYSTACK swap: Paystack must already have
-// confirmed a checkout for exactly the fee (the webhook or a status check
-// records it; the rider's money is in psp_clearing by then).
-func paidWithPaystack(ctx context.Context, q *db.Queries, swapKey string, fee int64) (settled, error) {
-	id, err := uuid.Parse(swapKey)
+// paidWithPaystack settles a PAYSTACK swap: the rider's Paystack payment for
+// this swap (confirmed by the webhook or a status check) is in their balance;
+// the fee is taken from it and recorded as that card / transfer payment.
+func paidWithPaystack(ctx context.Context, q *db.Queries, in settleIn, acct finance.Account) (settled, error) {
+	id, err := uuid.Parse(in.SwapKey)
 	if err != nil {
 		return settled{}, apperr.Conflict("PAYMENT_MODE_UNSUPPORTED", "Paystack payment needs a started swap session.")
 	}
 	c, err := q.PaidSwapCheckout(ctx, &id)
 	if database.IsNoRows(err) {
 		return settled{}, apperr.Conflict("PAYMENT_REQUIRED",
-			"Waiting for the rider's Paystack payment of "+finance.FormatNaira(fee)+".")
+			"Waiting for the rider's Paystack payment of "+finance.FormatNaira(in.Fee)+".")
 	}
 	if err != nil {
 		return settled{}, err
 	}
-	if c.AmountKobo != fee {
-		return settled{}, apperr.Conflict("PAYMENT_MISMATCH", "Paystack payment of "+finance.FormatNaira(c.AmountKobo)+
-			" does not match the swap fee of "+finance.FormatNaira(fee)+".")
+	p, err := finance.CaptureSwapPayment(ctx, q, acct, c, in.Fee, &in.Hub.ID)
+	if ae, ok := apperr.As(err); ok && (ae.Code == "WALLET_INSUFFICIENT" || ae.Code == "WALLET_HOLD_MISSING") {
+		return settled{}, apperr.Conflict("PAYMENT_SHORT", "The rider's Paystack payment no longer covers "+
+			finance.FormatNaira(in.Fee)+" — take the difference with a new link or cash.")
 	}
-	return settled{Payment: c.PaymentID}, nil
+	return settled{Payment: &p.ID}, err
 }

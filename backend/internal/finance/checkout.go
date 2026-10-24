@@ -83,64 +83,74 @@ func SettleCheckout(ctx context.Context, q *db.Queries, reference string, v psp.
 		return c, err
 	}
 	channel := channelOf(v.Channel)
-	var p db.FinancePayment
+	// Every Paystack payment lands in the rider's balance. The first payment
+	// for a still-open swap is credited quietly and becomes the swap's own
+	// payment at Complete; anything else (a top-up, a second payment, a swap
+	// already finished or aborted) is a visible "Payment received" — so money
+	// is never lost and the rider never sees one card payment twice.
+	acctRef := Account{ID: acct.ID, KuraID: acct.KuraID}
+	forOpenSwap := false
 	if c.SwapID != nil {
-		p, err = PayForSwap(ctx, q, Account{ID: acct.ID, KuraID: acct.KuraID}, amount, channel, reference)
+		if forOpenSwap, err = swapAwaitsPayment(ctx, q, *c.SwapID, c.ID); err != nil {
+			return c, err
+		}
+	}
+	var p db.FinancePayment
+	var paymentID *uuid.UUID
+	if forOpenSwap {
+		err = creditForSwap(ctx, q, acctRef, amount, channel, reference)
 	} else {
-		p, err = Fund(ctx, q, Account{ID: acct.ID, KuraID: acct.KuraID}, amount, channel, reference)
+		p, err = Fund(ctx, q, acctRef, amount, channel, reference)
+		paymentID = &p.ID
 	}
 	if err != nil {
 		return c, err
 	}
-	c.Status, c.PaymentID, c.Channel = "SUCCESS", &p.ID, channel
-	if err := q.SettleCheckout(ctx, db.SettleCheckoutParams{ID: c.ID, Status: "SUCCESS", PaymentID: &p.ID,
+	c.Status, c.PaymentID, c.Channel = "SUCCESS", paymentID, channel
+	if err := q.SettleCheckout(ctx, db.SettleCheckoutParams{ID: c.ID, Status: "SUCCESS", PaymentID: paymentID,
 		Channel: channel}); err != nil {
 		return c, err
 	}
+	after := events.Map{"amount_kobo": amount, "psp_reference": reference, "provider": "PAYSTACK", "channel": channel}
+	if paymentID != nil {
+		after["payment_id"] = paymentID.String()
+	}
 	if c.SwapID != nil {
+		title, body := "Swap paid", FormatNaira(amount)+" received — the hub can now complete your swap."
+		if !forOpenSwap {
+			title, body = "Payment added to your balance", FormatNaira(amount)+
+				" was added to your Kura balance — it pays for your next swap."
+		}
 		return c, events.Emit(ctx, q, events.Event{Action: "swap.paid", SubjectType: "swap",
-			SubjectID: c.SwapID.String(), SubjectLabel: reference, Actor: who,
-			After: events.Map{"amount_kobo": amount, "psp_reference": reference, "payment_id": p.ID.String(),
-				"provider": "PAYSTACK", "channel": channel},
-			Metadata: events.Map{"receipt_code": p.ReceiptCode},
-			Notify: []events.NotifySpec{{UserID: acct.OwnerUserID, Title: "Swap paid",
-				Body: FormatNaira(amount) + " received for your battery swap.", Source: "Swaps",
-				Severity: events.Info, LinkPath: "/swaps", TemplateCode: "swap.paid",
+			SubjectID: c.SwapID.String(), SubjectLabel: reference, Actor: who, After: after,
+			Notify: []events.NotifySpec{{UserID: acct.OwnerUserID, Title: title, Body: body, Source: "Swaps",
+				Severity: events.Info, LinkPath: "/swap", TemplateCode: "swap.paid",
 				DedupeKey: "swap.paid:" + reference}}})
 	}
 	return c, events.Emit(ctx, q, events.Event{Action: "wallet.funded", SubjectType: "wallet",
-		SubjectID: acct.ID.String(), SubjectLabel: acct.KuraID, Actor: who,
-		After: events.Map{"amount_kobo": amount, "psp_reference": reference, "payment_id": p.ID.String(),
-			"provider": "PAYSTACK", "channel": channel},
+		SubjectID: acct.ID.String(), SubjectLabel: acct.KuraID, Actor: who, After: after,
 		Metadata: events.Map{"receipt_code": p.ReceiptCode},
-		Notify: []events.NotifySpec{{UserID: acct.OwnerUserID, Title: "Wallet funded",
-			Body: FormatNaira(amount) + " was added to your wallet.", Source: "Wallet", Severity: events.Info,
+		Notify: []events.NotifySpec{{UserID: acct.OwnerUserID, Title: "Payment received",
+			Body: FormatNaira(amount) + " was added to your Kura balance.", Source: "Wallet", Severity: events.Info,
 			LinkPath: "/wallet", TemplateCode: "wallet.funded", DedupeKey: "wallet.funded:" + reference}}})
 }
 
-// PayForSwap records a swap paid through Paystack: a SWAP payment and swap
-// revenue net of VAT against PSP clearing (Capture's revenue lines, paid by
-// card / transfer instead of the wallet). Idempotent on the PSP reference.
-func PayForSwap(ctx context.Context, q *db.Queries, acct Account, amount int64, channel, pspRef string) (db.FinancePayment, error) {
-	if amount <= 0 {
-		return db.FinancePayment{}, apperr.New("VALIDATION_ERROR", "amount_kobo must be positive.")
+// swapAwaitsPayment: the swap is still open and this is its first paid checkout.
+func swapAwaitsPayment(ctx context.Context, q *db.Queries, swap, checkout uuid.UUID) (bool, error) {
+	rows, err := q.SwapRows(ctx, []uuid.UUID{swap})
+	if err != nil || len(rows) == 0 {
+		return false, err
 	}
-	if p, err := q.PaymentByPSPRef(ctx, &pspRef); err == nil {
-		return p, nil
-	} else if !database.IsNoRows(err) {
-		return p, err
+	switch rows[0].Status {
+	case "STARTED", "RETURN_RECORDED", "ISSUED":
+	default:
+		return false, nil
 	}
-	net, vat := SplitVAT(amount)
-	p, err := CreatePayment(ctx, q, PaymentIn{Account: acct.ID, Amount: amount, VAT: vat, Channel: channel,
-		Purpose: "SWAP", Status: "SUCCESS", PSPReference: pspRef})
-	if err != nil {
-		return p, err
+	first, err := q.PaidSwapCheckout(ctx, &swap)
+	if database.IsNoRows(err) {
+		return true, nil
 	}
-	_, err = Post(ctx, q, "SWAP_FEE", trunc100("PAYSTACK-"+pspRef), "Swap paid via Paystack", []Entry{
-		{Code: "psp_clearing", Type: Clearing, Debit: amount},
-		{Code: "revenue:swap", Type: Revenue, Credit: net},
-		{Code: "vat_payable", Type: Liability, Credit: vat}})
-	return p, err
+	return err == nil && first.ID == checkout, err
 }
 
 // CheckoutIn is one Paystack Checkout to open.

@@ -49,6 +49,15 @@ type settleIn struct {
 // hold, or a walk-in hold+capture), agent cash or swap credit.
 func (b *Bay) settle(ctx context.Context, q *db.Queries, in settleIn) (settled, error) {
 	acct := finance.Account{ID: in.Account.ID, KuraID: in.Account.KuraID}
+	if in.Mode != "PAYSTACK" {
+		// Settled another way: a Paystack payment already made for this swap
+		// stays in the rider's balance and shows as money added.
+		if id, err := uuid.Parse(in.SwapKey); err == nil {
+			if err := finance.SurfaceSwapCredit(ctx, q, id); err != nil {
+				return settled{}, err
+			}
+		}
+	}
 	if in.Mode == "PLAN" {
 		s, err := planCovers(ctx, q, in.Vehicle)
 		if err != nil {
@@ -108,7 +117,7 @@ func (b *Bay) settle(ctx context.Context, q *db.Queries, in settleIn) (settled, 
 		p, err := credit.ConsumeSwapCredit(ctx, q, in.Account, in.Fee, ref, &in.Hub.ID)
 		return settled{Payment: &p.ID}, err
 	case "PAYSTACK":
-		return paidWithPaystack(ctx, q, in.SwapKey, in.Fee)
+		return paidWithPaystack(ctx, q, in, acct)
 	}
 	return settled{}, apperr.New("PAYMENT_MODE_UNSUPPORTED", "Unsupported payment mode "+in.Mode+".")
 }

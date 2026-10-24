@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, CopyButton, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import PaystackPop from '@paystack/inline-js'
@@ -33,26 +33,38 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
   const [checkout, setCheckout] = useState<SwapCheckout | null>(null)
   const [busy, setBusy] = useState<'link' | 'email' | null>(null)
 
-  const apply = useCallback(
-    (c: SwapCheckout) => {
-      setCheckout(c)
-      onPaid(c.paid)
-      if (c.paid) onLog?.('Paystack', `${formatNaira(c.amount_kobo / 100)} confirmed · ${c.reference}`)
-    },
-    [onPaid, onLog],
-  )
+  // Parent callbacks are inline functions — keep them in refs so the fetch
+  // effects below don't re-run on every render.
+  const onPaidRef = useRef(onPaid)
+  const onLogRef = useRef(onLog)
+  onPaidRef.current = onPaid
+  onLogRef.current = onLog
+  const loggedPaid = useRef<string | null>(null)
+
+  const apply = useCallback((c: SwapCheckout) => {
+    setCheckout(c)
+    onPaidRef.current(c.paid)
+    if (c.paid && loggedPaid.current !== c.reference) {
+      loggedPaid.current = c.reference
+      onLogRef.current?.('Paystack', `${formatNaira(c.amount_kobo / 100)} confirmed · ${c.reference}`)
+    }
+  }, [])
 
   const start = async (sendEmail: boolean) => {
     if (!swapId) return
     setBusy(sendEmail ? 'email' : 'link')
     try {
-      const { data } = await axiosInstance.post<SwapCheckout>(checkoutUrl(swapId), { send_email: sendEmail })
+      const { data } = await axiosInstance.post<SwapCheckout>(
+        checkoutUrl(swapId),
+        { send_email: sendEmail },
+        { silentError: true },
+      )
       apply(data)
       if (sendEmail && data.emailed) {
         notifications.show({ color: 'teal', message: 'Payment link emailed to the rider' })
-        onLog?.('Paystack', `Link emailed · ${formatNaira(data.amount_kobo / 100)}`)
+        onLogRef.current?.('Paystack', `Link emailed · ${formatNaira(data.amount_kobo / 100)}`)
       } else if (!data.paid) {
-        onLog?.('Paystack', `Link ready · ${formatNaira(data.amount_kobo / 100)}`)
+        onLogRef.current?.('Paystack', `Link ready · ${formatNaira(data.amount_kobo / 100)}`)
       }
     } catch (err) {
       notifications.show({ color: 'red', message: apiErrorMessage(err, 'Could not create the payment link') })
@@ -61,13 +73,34 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
     }
   }
 
+  // The rider may already have paid from their app — pick that up first.
+  useEffect(() => {
+    if (!swapId) return
+    let live = true
+    axiosInstance
+      .get<SwapCheckout>(checkoutUrl(swapId), { silentError: true })
+      .then(({ data }) => live && apply(data))
+      .catch(() => undefined) // 404: nothing started yet
+    return () => {
+      live = false
+    }
+  }, [swapId, apply])
+
+  const refresh = () => {
+    if (!swapId) return
+    axiosInstance
+      .get<SwapCheckout>(checkoutUrl(swapId), { silentError: true })
+      .then(({ data }) => apply(data))
+      .catch(() => undefined)
+  }
+
   // Watch a pending payment until Paystack confirms it (the server verifies).
   const pending = Boolean(swapId && checkout && checkout.status === 'PENDING')
   useEffect(() => {
     if (!pending || !swapId) return
     const t = window.setInterval(() => {
       axiosInstance
-        .get<SwapCheckout>(checkoutUrl(swapId))
+        .get<SwapCheckout>(checkoutUrl(swapId), { silentError: true })
         .then(({ data }) => {
           if (data.status !== 'PENDING' || data.reference !== checkout?.reference) apply(data)
         })
@@ -80,7 +113,10 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
     if (!checkout) return
     try {
       new PaystackPop().resumeTransaction(checkout.access_code, {
-        onSuccess: () => notifications.show({ color: 'teal', message: 'Paid — confirming with Paystack…' }),
+        onSuccess: () => {
+          notifications.show({ color: 'teal', message: 'Paid — confirming with Paystack…' })
+          refresh()
+        },
         onError: () => notifications.show({ color: 'red', message: 'Paystack could not open here — share the link' }),
       })
     } catch {

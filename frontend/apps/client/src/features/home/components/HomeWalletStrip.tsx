@@ -32,7 +32,7 @@ export const HomeWalletStrip: React.FC<HomeWalletStripProps> = ({
     <section className="flex items-center gap-3 rounded-2xl border border-[var(--kura-border)] bg-[var(--kura-bg-elevated)] px-3.5 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kura-muted)]">
-          Wallet
+          Kura balance
         </p>
         <p className="text-[17px] font-extrabold tabular-nums text-[var(--kura-text)]">
           {formatNaira(balanceNaira)}

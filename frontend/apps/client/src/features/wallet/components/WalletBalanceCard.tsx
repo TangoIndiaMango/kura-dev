@@ -67,16 +67,17 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-medium text-sky-200/80">
-              Wallet balance
+              Kura balance
             </span>
             <div className="text-3xl font-extrabold tracking-tight">
               {formatNaira(balanceNaira)}
             </div>
+            <span className="text-[11px] text-sky-100/80">Used first for your next swap or plan.</span>
           </div>
           <button
             type="button"
             onClick={runSync}
-            className="rounded-md bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-100 transition active:scale-95"
+            className="shrink-0 whitespace-nowrap rounded-md bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-100 transition active:scale-95"
           >
             Updated {syncLabel}
           </button>

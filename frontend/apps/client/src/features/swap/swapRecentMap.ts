@@ -8,6 +8,7 @@ function paymentModeLabel(mode: string): string {
   if (m === 'CREDIT') return 'Credit'
   if (m === 'CASH' || m === 'CASH_AT_HUB') return 'Cash at hub'
   if (m === 'PAYSTACK') return 'Paystack'
+  if (m === 'WALLET') return 'Kura balance'
   return 'Pay as you go'
 }
 

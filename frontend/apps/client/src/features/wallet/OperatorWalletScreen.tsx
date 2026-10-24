@@ -29,7 +29,6 @@ import { WalletCreditBlock } from './components/WalletCreditBlock'
 import { toWalletTxItems } from './transactionItems'
 import { ApplyCreditSheet } from './components/ApplyCreditSheet'
 import { RepayCreditSheet } from './components/RepayCreditSheet'
-import { OperatorBannerEmptyState } from '@shared/components/operator/OperatorBannerEmptyState'
 import { OperatorReceiptScreen } from '../receipt/OperatorReceiptScreen'
 import type { TabId } from '../layout/FloatingGlassBottomBar'
 
@@ -194,20 +193,12 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
     ? toWalletTxItems(livePayments.payments)
     : []
 
-  // Kura Wallet top-ups are coming soon: swaps are paid with Paystack at the
-  // bay. A balance a rider already holds still shows (and can still be spent).
-  let walletHero = (
-    <OperatorBannerEmptyState
-      image="/illustrations/wallet-provisioning.png"
-      badge="Coming soon"
-      title="Kura Wallet is coming soon"
-      description="For now you pay for each swap with Paystack — card, bank transfer or USSD — when the hub completes it. Your receipts appear below."
-      footnote="Prefer cash? Every hub still takes cash at the bay."
-    />
-  )
+  // Payments are made with Paystack when they're due (swap, plan). A balance
+  // only exists from overpayments or refunds — show it then, never an empty one.
+  let walletHero: React.ReactNode = null
   if (liveWallet.isLoading) {
     walletHero = (
-      <div className="h-[196px] animate-pulse rounded-2xl bg-[var(--kura-border)]/40" />
+      <div className="h-[132px] animate-pulse rounded-2xl bg-[var(--kura-border)]/40" />
     )
   } else if (balanceNaira > 0) {
     walletHero = (
@@ -232,6 +223,13 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
+      <header>
+        <h2 className="text-lg font-bold text-[var(--kura-text)]">Payments</h2>
+        <p className="mt-0.5 text-[12.5px] text-[var(--kura-muted)]">
+          Swaps and plans are paid with Paystack — card, bank transfer or USSD.
+        </p>
+      </header>
+
       {walletHero}
 
       {creditEnabled && activeLoan ? (
@@ -255,22 +253,20 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
         onOpen={openCreditFlow}
       />
 
-      {txItems.length > 0 || livePayments.isLoading ? (
-        <TransactionList
-          items={txItems}
-          pageSize={10}
-          loading={livePayments.isLoading}
-          onSeeAll={onSeeHistory}
-          onItemClick={(id, itemReceiptId) => {
-            if (onOpenReceipt && itemReceiptId) {
-              onOpenReceipt(itemReceiptId)
-              return
-            }
-            setReceiptId(itemReceiptId ?? id)
-            setView('receipt')
-          }}
-        />
-      ) : null}
+      <TransactionList
+        items={txItems}
+        pageSize={10}
+        loading={livePayments.isLoading}
+        onSeeAll={onSeeHistory}
+        onItemClick={(id, itemReceiptId) => {
+          if (onOpenReceipt && itemReceiptId) {
+            onOpenReceipt(itemReceiptId)
+            return
+          }
+          setReceiptId(itemReceiptId ?? id)
+          setView('receipt')
+        }}
+      />
 
       <ApplyCreditSheet
         opened={creditSheet === 'apply' && creditEnabled}

@@ -24,7 +24,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', icon: Home01Icon },
   { id: 'swap', label: 'Swap', icon: ZapIcon },
-  { id: 'wallet', label: 'Wallet', icon: Wallet01Icon },
+  { id: 'wallet', label: 'Payments', icon: Wallet01Icon },
   { id: 'plans', label: 'Plans', icon: Coins01Icon },
   { id: 'account', label: 'Account', icon: UserIcon },
 ]

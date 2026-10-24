@@ -92,7 +92,7 @@ export function HubSwapSettleSection({
         </div>
         <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5">
           <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--su)]">
-            Wallet
+            Kura balance
           </p>
           <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
             {walletVisible ? formatNaira(plan.walletBalance) : 'Private'}
