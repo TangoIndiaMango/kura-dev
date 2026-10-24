@@ -7,6 +7,7 @@ WHERE (sqlc.arg(all_rows)::bool
        OR (NOT sqlc.arg(hub_scoped)::bool AND s.account_id = ANY(sqlc.arg(own)::uuid[])))
   AND (sqlc.narg(account)::uuid IS NULL OR s.account_id = sqlc.narg(account))
   AND (sqlc.narg(status)::text IS NULL OR s.status = sqlc.narg(status))
+  AND (NOT sqlc.arg(open_only)::bool OR s.status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED'))
   AND (sqlc.narg(payment_mode)::text IS NULL OR s.payment_mode = sqlc.narg(payment_mode))
   AND (sqlc.narg(hub)::uuid IS NULL OR s.hub_id = sqlc.narg(hub))
   AND (sqlc.narg(vehicle)::uuid IS NULL OR s.vehicle_id = sqlc.narg(vehicle))
@@ -44,6 +45,12 @@ SELECT * FROM mobility_swap WHERE client_event_id = $1;
 
 -- name: SwapForUpdate :one
 SELECT * FROM mobility_swap WHERE id = $1 FOR UPDATE;
+
+-- name: OpenSwapForVehicle :one
+-- A vehicle's in-progress bay session (at most one: starts lock the vehicle).
+SELECT s.*, h.code AS hub_code FROM mobility_swap s JOIN mobility_hub h ON h.id = s.hub_id
+WHERE s.vehicle_id = $1 AND s.status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED')
+ORDER BY s.started_at DESC NULLS FIRST LIMIT 1;
 
 -- name: OpenSwapForReservation :one
 SELECT * FROM mobility_swap WHERE reservation_id = $1 AND status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED')

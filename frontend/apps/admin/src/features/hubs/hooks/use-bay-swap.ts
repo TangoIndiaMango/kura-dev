@@ -48,6 +48,21 @@ export type SwapSessionApi = {
   mismatch_flag?: boolean
   returned_serial?: string | null
   issued_serial?: string | null
+  returned_charge_pct?: number | null
+  /** start: true when an open session was picked up rather than created. */
+  resumed?: boolean
+}
+
+/** An in-progress bay session (swap list row). */
+export type OpenSwapSessionApi = SwapSessionApi & {
+  hub: string
+  vehicle: string
+  vehicle_plate: string | null
+  reservation: string | null
+  driver_phone: string | null
+  payment_mode: string
+  started_at: string | null
+  created_at: string
 }
 
 type CursorPage<T> = { results: T[]; next: string | null }
@@ -307,4 +322,14 @@ export function useAgentOpenShift(hubId: string | undefined) {
   const depositMut = useRecordCashDeposit()
   const openShift = shifts.data?.results?.[0] ?? null
   return { openShift, shifts, openMut, depositMut }
+}
+
+/** Sessions in progress at this hub (STARTED / RETURN_RECORDED / ISSUED). */
+export function useHubOpenSessions(hubId: string | undefined) {
+  const query = useFetchData<CursorPage<OpenSwapSessionApi>>(
+    '/mobility/swaps/',
+    { hub: hubId, open: true, page_size: 20 },
+    { enabled: Boolean(hubId), staleTime: 10_000, refetchOnWindowFocus: true, refetchInterval: 15_000 },
+  )
+  return { ...query, sessions: query.data?.results ?? [] }
 }

@@ -451,6 +451,8 @@ type Querier interface {
 	OpenShiftForUpdate(ctx context.Context, arg OpenShiftForUpdateParams) (OperationsShift, error)
 	OpenShiftHubIDs(ctx context.Context, agentID uuid.UUID) ([]uuid.UUID, error)
 	OpenSwapForReservation(ctx context.Context, reservationID *uuid.UUID) (MobilitySwap, error)
+	// A vehicle's in-progress bay session (at most one: starts lock the vehicle).
+	OpenSwapForVehicle(ctx context.Context, vehicleID uuid.UUID) (OpenSwapForVehicleRow, error)
 	OpenSwapIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	OpenSwapsForVehicle(ctx context.Context, vehicleID uuid.UUID) ([]uuid.UUID, error)
 	OpenVelocityEvent(ctx context.Context, subjectID string) (RiskRiskevent, error)

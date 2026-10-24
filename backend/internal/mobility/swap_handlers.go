@@ -34,6 +34,9 @@ func (b *Bay) swaps(w http.ResponseWriter, r *http.Request) {
 	p := db.SwapsPageParams{Account: qp.UUID("account"), Status: listq.Exact(r, "status"),
 		PaymentMode: listq.Exact(r, "payment_mode"), Hub: qp.UUID("hub"), Vehicle: qp.UUID("vehicle"),
 		Agent: qp.UUID("agent"), Battery: qp.UUID("battery")}
+	if open := qp.Bool("open"); open != nil {
+		p.OpenOnly = *open // ?open=true: in-progress bay sessions only
+	}
 	if d := qp.Date("start_date"); d != nil {
 		p.FromAt = ptrTime(time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, lagosTZ))
 	}
@@ -139,14 +142,15 @@ func (b *Bay) start(w http.ResponseWriter, r *http.Request) {
 	var in startIn
 	err := decode.JSON(r, &in)
 	var id uuid.UUID
+	var resumed bool
 	if err == nil {
-		id, err = b.startSwap(r.Context(), in)
+		id, resumed, err = b.startSwap(r.Context(), in)
 	}
 	if err != nil {
 		respond.Error(w, r, err)
 		return
 	}
-	b.respondSwap(w, r, id, http.StatusCreated, nil)
+	b.respondSwap(w, r, id, http.StatusCreated, map[string]any{"resumed": resumed})
 }
 
 type returnIn struct {
