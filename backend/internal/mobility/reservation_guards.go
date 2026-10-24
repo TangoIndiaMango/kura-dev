@@ -126,11 +126,16 @@ func assertHubOpen(h db.MobilityHub) error {
 
 // assertNoOverdue is assert_no_unreturned_battery.
 func assertNoOverdue(ctx context.Context, q *db.Queries, account uuid.UUID) error {
-	overdue, err := q.AccountHasOverdueBattery(ctx, account)
-	if err != nil || !overdue {
+	o, err := q.OverdueBatteryForAccount(ctx, account)
+	if database.IsNoRows(err) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	return apperr.Conflict("BATTERY_UNRETURNED", "Account has an unreturned battery past the return window.")
+	return apperr.Conflict("BATTERY_UNRETURNED", "Pack "+o.Serial+" on "+o.RegistrationPlate+
+		" has been out for more than 48 hours, so app booking is paused. Ride it to any Kura hub and the agent will swap it.").
+		WithDetails(apperr.Details{"vehicle": o.RegistrationPlate, "battery": o.Serial})
 }
 
 // planCovers is assert_plan_covers_swap (locks the subscription).

@@ -12,19 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const accountHasOverdueBattery = `-- name: AccountHasOverdueBattery :one
-SELECT EXISTS (SELECT 1 FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
-  WHERE b.status = 'ISSUED' AND v.account_id = $1
-    AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours')))
-`
-
-func (q *Queries) AccountHasOverdueBattery(ctx context.Context, accountID uuid.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, accountHasOverdueBattery, accountID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const activeSubscriptionCovering = `-- name: ActiveSubscriptionCovering :one
 SELECT id, created_at, updated_at, starts_at, ends_at, swaps_used, swaps_allowance, status, auto_renew, account_id, plan_id, vehicle_id, amount_kobo, discount_code, discount_kobo, idempotency_key, list_price_kobo, payment_id, queued_plan_id FROM mobility_subscription WHERE vehicle_id = $1 AND status = 'ACTIVE' AND ends_at > now()
 ORDER BY ends_at DESC LIMIT 1 FOR UPDATE
@@ -314,6 +301,26 @@ func (q *Queries) LiveReservationsAtHub(ctx context.Context, hubID uuid.UUID) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const overdueBatteryForAccount = `-- name: OverdueBatteryForAccount :one
+SELECT v.registration_plate, b.serial FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
+WHERE b.status = 'ISSUED' AND v.account_id = $1
+  AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'))
+ORDER BY b.issued_at LIMIT 1
+`
+
+type OverdueBatteryForAccountRow struct {
+	RegistrationPlate string
+	Serial            string
+}
+
+// The first overdue pack (same rule as AccountHasOverdueBattery), to name it.
+func (q *Queries) OverdueBatteryForAccount(ctx context.Context, accountID uuid.UUID) (OverdueBatteryForAccountRow, error) {
+	row := q.db.QueryRow(ctx, overdueBatteryForAccount, accountID)
+	var i OverdueBatteryForAccountRow
+	err := row.Scan(&i.RegistrationPlate, &i.Serial)
+	return i, err
 }
 
 const readySlotForUpdate = `-- name: ReadySlotForUpdate :one

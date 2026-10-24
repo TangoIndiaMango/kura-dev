@@ -20,7 +20,6 @@ type Querier interface {
 	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	// Virtual account provisioning (integrations.services.va + WalletService).
 	AccountForVA(ctx context.Context, id uuid.UUID) (AccountForVARow, error)
-	AccountHasOverdueBattery(ctx context.Context, accountID uuid.UUID) (bool, error)
 	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
 	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
 	AccountRedemptionCount(ctx context.Context, arg AccountRedemptionCountParams) (int32, error)
@@ -456,6 +455,8 @@ type Querier interface {
 	OpsCsvRows(ctx context.Context, arg OpsCsvRowsParams) ([]OpsCsvRowsRow, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
+	// The first overdue pack (same rule as AccountHasOverdueBattery), to name it.
+	OverdueBatteryForAccount(ctx context.Context, accountID uuid.UUID) (OverdueBatteryForAccountRow, error)
 	OverdueBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).

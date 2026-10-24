@@ -147,6 +147,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	bay := m.bay
 	rv := router.New(mux, "/api/v1/mobility/reservations", m.limiter)
 	rv.User("GET", "/", bay.reservations)
+	rv.User("GET", "/precheck/", bay.precheck)
 	rv.Cap("POST", "/", "swaps:read", bay.createReservationHandler)
 	rv.Cap("POST", "/lookup/", "swaps:read", bay.lookup)
 	rv.User("GET", "/{id}/", bay.getReservation)

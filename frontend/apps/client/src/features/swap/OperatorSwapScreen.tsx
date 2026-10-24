@@ -32,7 +32,7 @@ import { SetPinStep } from './components/SetPinStep'
 import { ForgotPinFlow } from './components/ForgotPinFlow'
 import { ReservationCodeStep } from './components/ReservationCodeStep'
 import { useSwapPayment } from './hooks/use-swap-payment'
-import { useMySwaps } from './hooks/use-swap-live'
+import { useBookingPrecheck, useMySwaps } from './hooks/use-swap-live'
 import { swapsPausedMessage } from '../../shared/session/accountStatus'
 
 type View = 'hub' | 'book' | 'pass'
@@ -97,6 +97,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const setPinMut = useSetPinMutation()
 
   const liveSwaps = useMySwaps({ enabled: isAuthenticated, page_size: 8 })
+  const bookingPrecheck = useBookingPrecheck(isAuthenticated)
   const [localHold, setLocalHold] = useState<OperatorActiveReservation | null>(null)
   const [pinnedHold, setPinnedHold] = useState<OperatorActiveReservation | null>(
     null,
@@ -211,6 +212,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   )
 
   const startBook = () => {
+    void bookingPrecheck.refetch()
     if (vehicles.length === 0) {
       setBookStep('add-vehicle')
     } else {
@@ -532,7 +534,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     )
   }
 
-  const swapsPaused = swapsPausedMessage(session?.accountStatus)
+  const swapsPaused = swapsPausedMessage(session?.accountStatus) ?? bookingPrecheck.blockedMessage
   if (bookStep === 'vehicle' && swapsPaused) {
     return (
       <>
@@ -548,7 +550,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
           className="rounded-2xl border border-[var(--kura-coral)]/40 bg-[var(--kura-coral)]/10 px-4 py-3.5"
         >
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--kura-coral)]">
-            Swaps paused
+            Booking paused
           </p>
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--kura-text)]">{swapsPaused}</p>
         </div>

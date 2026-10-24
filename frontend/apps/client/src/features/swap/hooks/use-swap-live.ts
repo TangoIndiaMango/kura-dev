@@ -7,6 +7,7 @@ export const SWAP_API = {
   reservationCancel: (id: string) => `/mobility/reservations/${id}/cancel/`,
   holdPolicy: '/mobility/pricing/hold-policy/',
   swaps: '/mobility/swaps/',
+  precheck: '/mobility/reservations/precheck/',
   swapCheckout: (id: string) => `/mobility/swaps/${id}/checkout/`,
 } as const
 
@@ -261,4 +262,16 @@ export function useCancelReservation() {
     [SWAP_API.reservations, '/finance/wallets/mine/'],
     { body: () => ({}), silentError: true },
   )
+}
+
+export type BookingPrecheckApi = { ok: boolean; code?: string; message?: string }
+
+/** Account-wide rules that would refuse a booking (overdue pack, paused account) — checked before the steps. */
+export function useBookingPrecheck(enabled: boolean) {
+  const query = useFetchData<BookingPrecheckApi>(SWAP_API.precheck, undefined, {
+    enabled,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  })
+  return { ...query, blockedMessage: query.data && !query.data.ok ? (query.data.message ?? null) : null }
 }
