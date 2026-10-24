@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/auth"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/finance"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/integrations/psp"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/integrations/va"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/jobs"
@@ -25,7 +26,9 @@ func Worker(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *jobs.Runne
 		NombaAccountID: cfg.NombaAccountID}
 	return &jobs.Runner{Pool: pool, Log: log, Mailer: mailer,
 		VA:      vaService(pool, pspSettings, cfg, log),
-		Billing: mobility.NewBilling(pool, tokens), MockIoT: cfg.MockIoT}
+		Billing: mobility.NewBilling(pool, tokens), MockIoT: cfg.MockIoT,
+		Checkout: finance.CheckoutConfig{PSP: pspSettings, ClientURL: cfg.FrontendClientURL,
+			EmailDomain: cfg.PSPCustomerEmailDom}}
 }
 
 func vaService(pool *pgxpool.Pool, settings psp.Settings, cfg config.Config, log *slog.Logger) *va.Service {

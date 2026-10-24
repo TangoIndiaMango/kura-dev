@@ -13,9 +13,11 @@ export type CoverOutcome = 'covered' | 'cancelled' | 'failed' | 'pending'
 const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms))
 
 /**
- * Makes sure the rider's Kura balance covers `dueKobo`: anything short is
- * paid now through Paystack's popup (card, transfer, USSD) and confirmed by
- * the server before we continue. Nothing is opened when the balance is enough.
+ * Collects a plan payment through Paystack's popup (card, transfer, USSD)
+ * and waits for the server to confirm it. The plan endpoints then charge the
+ * account it funded. Riders hold no balance; the only thing already there is
+ * an earlier payment that didn't go through to a plan, which is used instead
+ * of charging again.
  */
 export async function coverShortfall(dueKobo: number): Promise<CoverOutcome> {
   const { data: wallet } = await axiosInstance.get<WalletMineApi>(WALLET_API.mine, { silentError: true })

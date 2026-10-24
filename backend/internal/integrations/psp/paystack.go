@@ -119,6 +119,16 @@ func (c *PaystackClient) InitializeCheckout(ctx context.Context, in CheckoutRequ
 	return out, nil
 }
 
+// Refund is POST /refund: Paystack sends the money back to the card or
+// account the transaction was paid from (it settles in a few working days).
+func (c *PaystackClient) Refund(ctx context.Context, reference string, amountKobo int64) error {
+	if c.secret == "" {
+		return c.notConfigured()
+	}
+	_, err := c.api(ctx, "POST", "/refund", map[string]any{"transaction": reference, "amount": amountKobo})
+	return err
+}
+
 func (c *PaystackClient) api(ctx context.Context, method, path string, body any) (map[string]any, error) {
 	payload, err := requestJSON(ctx, "paystack", method, c.base+path,
 		map[string]string{"Authorization": "Bearer " + c.secret}, body)

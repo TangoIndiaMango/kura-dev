@@ -134,7 +134,7 @@ export const PlanChangeConfirmSheet: React.FC<PlanChangeConfirmSheetProps> = ({
               </span>
             </div>
             <p className="mt-2 text-[11.5px] leading-relaxed text-[var(--kura-muted)]">
-              Pay with Paystack — card, bank transfer or USSD. Any Kura balance you have is used first.
+              Paid with Paystack — card, bank transfer or USSD.
             </p>
           </div>
 

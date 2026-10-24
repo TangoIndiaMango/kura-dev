@@ -18,7 +18,6 @@ import { ActiveSwapBanner } from './components/ActiveSwapBanner'
 import { QuickActionsRow } from './components/QuickActionsRow'
 import { NextActionCard } from './components/NextActionCard'
 import { RecentActivityList } from './components/RecentActivityList'
-import { HomeWalletStrip } from './components/HomeWalletStrip'
 import { HomeCreditScoreBlock } from './components/HomeCreditScoreBlock'
 import { HomeOnboardingChecklist } from './components/HomeOnboardingChecklist'
 import { swapsPausedMessage } from '../../shared/session/accountStatus'
@@ -77,8 +76,6 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
   if (!session) return null
 
   const balanceNaira = liveWallet.balanceNaira ?? 0
-  /** Payments are made with Paystack when due — the strip only shows a balance the rider holds. */
-  const showWalletStrip = balanceNaira > 0
   const hasLivePass = holds.length > 0
   const swapsSettled = !liveSwaps.isLoading
   const hasCompletedFirstSwap = swapsSettled && liveSwaps.swaps.length > 0
@@ -180,9 +177,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
         }}
       />
 
-      {showWalletStrip ? (
-        <HomeWalletStrip balanceNaira={balanceNaira} nuban={null} />
-      ) : null}
+
 
       <HomeCreditScoreBlock
         enabled={isAuthenticated}

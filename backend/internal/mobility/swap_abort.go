@@ -118,7 +118,7 @@ func abortSwap(ctx context.Context, q *db.Queries, id uuid.UUID, reason string, 
 		}
 	}
 	s.Status = "FAILED"
-	if err := finance.SurfaceSwapCredit(ctx, q, s.ID); err != nil { // paid but not swapped: it's balance now
+	if err := finance.RefundUnusedSwapPayments(ctx, q, s.ID); err != nil { // paid but not swapped: refund it
 		return err
 	}
 	if err := saveSwap(ctx, q, s); err != nil {

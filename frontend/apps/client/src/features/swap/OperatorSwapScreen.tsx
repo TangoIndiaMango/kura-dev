@@ -16,11 +16,7 @@ import {
 } from '@lib/api/auth-mutations'
 import { useAuth } from '../auth/AuthProvider'
 import { useLiveSwapBooking } from './hooks/use-live-swap-booking'
-import {
-  useCreditEligibility,
-  useOperatorLoans,
-  useOperatorWallet,
-} from '@features/wallet'
+import { useCreditEligibility, useOperatorLoans } from '@features/wallet'
 import { clearOfflineHold } from '../../shared/pwa/holdIdb'
 import { nowMs } from '../../shared/time/serverClock'
 import { SwapHubScreen, type SwapRecentItem } from './components/SwapHubScreen'
@@ -35,7 +31,6 @@ import { PinStep } from './components/PinStep'
 import { SetPinStep } from './components/SetPinStep'
 import { ForgotPinFlow } from './components/ForgotPinFlow'
 import { ReservationCodeStep } from './components/ReservationCodeStep'
-import { InsufficientBalanceStep } from './components/InsufficientBalanceStep'
 import { useSwapPayment } from './hooks/use-swap-payment'
 import { useMySwaps } from './hooks/use-swap-live'
 import { swapsPausedMessage } from '../../shared/session/accountStatus'
@@ -50,7 +45,6 @@ type BookStep =
   | 'set-pin'
   | 'pin'
   | 'forgot-pin'
-  | 'shortfall'
 
 interface OperatorSwapScreenProps {
   onNavigateTab: (tab: TabId) => void
@@ -76,7 +70,6 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
 }) => {
   const { session } = useOperatorSession()
   const { refreshProfile } = useAuth()
-  const liveWallet = useOperatorWallet({ enabled: Boolean(session) })
   const creditEligibility = useCreditEligibility({
     enabled: Boolean(session),
   })
@@ -183,7 +176,6 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     (holdsLoading && holds.length === 0) ||
     (liveSwaps.isLoading && recentSwaps.length === 0)
 
-  const balanceNaira = liveWallet.balanceNaira ?? 0
   const vehicle = vehicles.find((v) => v.id === vehicleId)
   const hub = catalogueHubs.find((h) => h.id === hubId)
   const listPriceNaira =
@@ -194,7 +186,6 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         .join(' '),
     ).payPerSwap
   const covered = vehicle ? vehicleCoveredByPlan(vehicle.plan) : false
-  const walletOk = balanceNaira >= listPriceNaira
   const activeLoan = creditLoans.activeLoan
   const creditAvailable = Boolean(
     activeLoan && activeLoan.swap_credit_remaining_kobo > 0,
@@ -213,7 +204,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         ? `₦${listPriceNaira.toLocaleString()} · cash at hub`
         : effectiveMode === 'CREDIT'
           ? `₦${listPriceNaira.toLocaleString()} · credit`
-          : `₦${listPriceNaira.toLocaleString()} · Kura balance`
+          : `₦${listPriceNaira.toLocaleString()} · paid online`
 
   const vehiclesAvailableToBook = vehicles.filter(
     (v) => !holds.some((h) => h.vehicleId === v.id),
@@ -239,9 +230,8 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     }, 2200)
   }
 
-  // Pay-per-swap defaults to Paystack at the bay (a balance that covers the
-  // fee is offered too), so there is no shortfall to route around.
-  const goConfirmOrShortfall = () => {
+  // Pay-per-swap defaults to Paystack at the bay.
+  const goToConfirm = () => {
     if (!covered) setPaymentMode('PAYSTACK')
     setBookStep('confirm')
   }
@@ -289,13 +279,6 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         setReservedOpen(true)
       }, 2000)
     })
-  }
-
-  // From the shortfall screen: preselect cash/credit, but still show the summary
-  // (price, discount code) before the PIN — same path as a normal booking.
-  const beginReserveWithMode = (mode: BookingPaymentMode) => {
-    setPaymentMode(mode)
-    setBookStep('confirm')
   }
 
   const openPass = (id: string) => {
@@ -499,7 +482,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
             ? 'Pay cash at the bay when you swap'
             : hold.paymentMode === 'PLAN'
               ? 'Covered by your plan'
-              : 'Held from your Kura balance'
+              : 'Paid online'
         }
         cancelBusy={cancelBusy}
         onDone={() => {
@@ -637,7 +620,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         }}
         userPosition={mapOrigin}
         onBack={() => setBookStep('find-hub')}
-        onReserve={goConfirmOrShortfall}
+        onReserve={goToConfirm}
         onDirections={() => {
           const dest = `destination=${hub.lat},${hub.lng}`
           const origin = mapOrigin
@@ -671,7 +654,6 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         }}
         creditAvailable={creditAvailable}
         creditEligible={creditEligibleBand}
-        walletBalanceNaira={balanceNaira}
         vehicleCount={vehicles.length}
         confirmBusy={bookingBusy}
         onConfirm={afterConfirm}
@@ -753,7 +735,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
           <PinStep
             subtitle={
               effectiveMode === 'WALLET'
-                ? 'Confirm the Kura balance hold with your 4-digit PIN.'
+                ? 'Enter your 4-digit PIN to confirm this booking.'
                 : 'Enter your 4-digit PIN to confirm this booking.'
             }
             pin={pin}
@@ -793,35 +775,6 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         ) : null}
         {reservationModals}
       </>
-    )
-  }
-
-  if (bookStep === 'shortfall') {
-    return (
-      <InsufficientBalanceStep
-        shortfallNaira={Math.max(0, listPriceNaira - balanceNaira)}
-        nuban={liveWallet.nuban}
-        creditAvailable={creditAvailable}
-        canApplyCredit={creditEligibleBand && !creditAvailable}
-        onFund={() => {
-          sessionStorage.setItem('kura_wallet_intent', 'fund')
-          onNavigateTab('wallet')
-        }}
-        onPayAtHub={() => beginReserveWithMode('CASH_AT_HUB')}
-        onUseCredit={
-          creditAvailable
-            ? () => beginReserveWithMode('CREDIT')
-            : undefined
-        }
-        onCheckCredit={() => {
-          sessionStorage.setItem(
-            'kura_wallet_intent',
-            creditEligibleBand ? 'credit' : 'eligibility',
-          )
-          onNavigateTab('wallet')
-        }}
-        onBack={() => setBookStep('hub-detail')}
-      />
     )
   }
 

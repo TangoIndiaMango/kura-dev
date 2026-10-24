@@ -28,3 +28,18 @@ ORDER BY created_at FOR UPDATE;
 
 -- name: SetCheckoutPayment :exec
 UPDATE finance_walletcheckout SET payment_id = $2, updated_at = now() WHERE id = $1;
+
+-- name: CheckoutsToReverify :many
+SELECT * FROM finance_walletcheckout WHERE status = 'PENDING'
+  AND created_at < now() - interval '2 minutes' AND created_at > now() - interval '48 hours'
+ORDER BY created_at LIMIT $1;
+
+-- name: ExpireStaleCheckouts :execrows
+UPDATE finance_walletcheckout SET status = 'FAILED', failure_reason = 'expired', updated_at = now()
+WHERE status = 'PENDING' AND created_at <= now() - interval '48 hours';
+
+-- name: RefundDueCheckouts :many
+SELECT * FROM finance_walletcheckout WHERE status = 'REFUND_PENDING' ORDER BY updated_at LIMIT $1;
+
+-- name: CheckoutByPayment :one
+SELECT * FROM finance_walletcheckout WHERE payment_id = $1 LIMIT 1;

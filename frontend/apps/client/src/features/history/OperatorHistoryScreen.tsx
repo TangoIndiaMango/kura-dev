@@ -11,6 +11,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { useMySwaps } from '../swap/hooks/use-swap-live'
 import { useOperatorPayments } from '../wallet/hooks/use-operator-wallet'
 import { paymentToHistory, swapToHistory } from './historyLiveMap'
+import { isRiderFacing } from '@shared/utils/paymentDisplay'
 import {
   matchesSwapFilter,
   type HistoryFilter,
@@ -75,7 +76,7 @@ export const OperatorHistoryScreen: React.FC<OperatorHistoryScreenProps> = ({
 
   const liveItems = useMemo(() => {
     const swaps = liveSwaps.swaps.map(swapToHistory)
-    const payments = livePayments.payments.map(paymentToHistory)
+    const payments = livePayments.payments.filter(isRiderFacing).map(paymentToHistory)
     return { swaps, payments, all: [...swaps, ...payments] }
   }, [liveSwaps.swaps, livePayments.payments])
 

@@ -160,7 +160,7 @@ export function useLivePlanActions(input: {
           pin_grant: pinGrant,
           discount_code: payload.discount?.code ?? '',
           idempotency_key: newIdempotencyKey('buy'),
-          auto_renew: true,
+          auto_renew: false, // renewals are paid with Paystack each time
         })
       } else {
         if (!target.apiPlanId) throw new Error('Plan not available online yet.')

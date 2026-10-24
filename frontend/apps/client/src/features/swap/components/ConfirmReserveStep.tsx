@@ -21,7 +21,6 @@ interface ConfirmReserveStepProps {
   creditAvailable: boolean
   /** Score/KYC band — can apply for credit even if no active line */
   creditEligible?: boolean
-  walletBalanceNaira: number
   vehicleCount: number
   onConfirm: (dueNaira: number, discount: DiscountRedeemOk | null) => void
   onBack: () => void
@@ -33,10 +32,8 @@ const MODES: Array<{
   label: string
   hint: string
   needsCredit?: boolean
-  needsWallet?: boolean
 }> = [
   { id: 'PAYSTACK', label: 'Paystack', hint: 'Card, transfer or USSD at the bay' },
-  { id: 'WALLET', label: 'Kura balance', hint: 'Held now, used at swap', needsWallet: true },
   { id: 'CREDIT', label: 'Swap credit', hint: 'Drawn at swap', needsCredit: true },
   { id: 'CASH_AT_HUB', label: 'Cash', hint: 'Pay the agent at the bay' },
 ]
@@ -48,7 +45,6 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
   paymentMode,
   onPaymentModeChange,
   creditAvailable,
-  walletBalanceNaira,
   vehicleCount,
   onConfirm,
   onBack,
@@ -61,11 +57,8 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
   }, [listPriceNaira, coveredByPlan])
 
   const due = coveredByPlan ? 0 : (discount?.dueNaira ?? listPriceNaira)
-  const walletOk = walletBalanceNaira >= due
   // Only offer what can actually be used right now — no greyed-out dead ends.
-  const visibleModes = MODES.filter(
-    (m) => !(m.needsCredit && !creditAvailable) && !(m.needsWallet && !walletOk),
-  )
+  const visibleModes = MODES.filter((m) => !(m.needsCredit && !creditAvailable))
 
   const settleHint =
     paymentMode === 'PAYSTACK'
@@ -76,7 +69,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
         ? 'Charges your open credit line — wallet balance stays the same. Daily repay continues as scheduled.'
         : coveredByPlan
           ? 'Covered by your plan — no extra charge.'
-          : 'We hold this from your Kura balance now and take it when the hub completes your swap. Cancel and it is released.'
+          : 'Paid when the hub completes your swap.'
 
   const paymentRows = coveredByPlan
     ? rows
@@ -100,7 +93,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
               ? `${formatNaira(due)} · cash at hub`
               : paymentMode === 'CREDIT'
                 ? `${formatNaira(due)} · credit`
-                : `${formatNaira(due)} · Kura balance`,
+                : `${formatNaira(due)} · paid online`,
         },
       ]
 
@@ -149,12 +142,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
             vehicleCount,
           }}
           applied={discount}
-          onApplied={(next) => {
-            setDiscount(next)
-            if (next && paymentMode === 'WALLET' && walletBalanceNaira < next.dueNaira) {
-              onPaymentModeChange('PAYSTACK')
-            }
-          }}
+          onApplied={setDiscount}
         />
       ) : (
         <p className="rounded-xl border border-dashed border-[var(--kura-border)] px-3.5 py-3 text-[12px] leading-relaxed text-[var(--kura-muted)]">

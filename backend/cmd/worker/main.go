@@ -36,7 +36,7 @@ func run() error {
 	only := flag.String("only", "", "comma-separated jobs to run (default: all); "+strings.Join(jobs.Order, ", "))
 	asJSON := flag.Bool("json", false, "with --once: print each job's result as JSON")
 	skip := map[string]*bool{}
-	for _, name := range []string{"unreturned", "settlement", "subscriptions", "credit", "swaps", "mock-iot", "pricing"} {
+	for _, name := range []string{"payments", "unreturned", "settlement", "subscriptions", "credit", "swaps", "mock-iot", "pricing"} {
 		skip[name] = flag.Bool("no-"+name, false, "skip "+name)
 	}
 	flag.Parse()
@@ -66,7 +66,7 @@ func run() error {
 			enabled[strings.TrimSpace(n)] = true
 		}
 	}
-	off := map[string][]string{"unreturned": {"unreturned"}, "settlement": {"shifts", "settlement"},
+	off := map[string][]string{"payments": {"payments"}, "unreturned": {"unreturned"}, "settlement": {"shifts", "settlement"},
 		"subscriptions": {"subscriptions"}, "credit": {"credit_scores", "credit_debit"}, "swaps": {"swaps"},
 		"mock-iot": {"mock_iot"}, "pricing": {"pricing"}}
 	for flagName, set := range skip {

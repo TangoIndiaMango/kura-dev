@@ -11,6 +11,33 @@ import (
 	"github.com/google/uuid"
 )
 
+const checkoutByPayment = `-- name: CheckoutByPayment :one
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE payment_id = $1 LIMIT 1
+`
+
+func (q *Queries) CheckoutByPayment(ctx context.Context, paymentID *uuid.UUID) (FinanceWalletcheckout, error) {
+	row := q.db.QueryRow(ctx, checkoutByPayment, paymentID)
+	var i FinanceWalletcheckout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Reference,
+		&i.AmountKobo,
+		&i.Status,
+		&i.AccessCode,
+		&i.AuthorizationUrl,
+		&i.FailureReason,
+		&i.AccountID,
+		&i.UserID,
+		&i.PaymentID,
+		&i.Purpose,
+		&i.Channel,
+		&i.SwapID,
+	)
+	return i, err
+}
+
 const checkoutByReference = `-- name: CheckoutByReference :one
 SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE reference = $1
 `
@@ -63,6 +90,61 @@ func (q *Queries) CheckoutForUpdate(ctx context.Context, reference string) (Fina
 		&i.SwapID,
 	)
 	return i, err
+}
+
+const checkoutsToReverify = `-- name: CheckoutsToReverify :many
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE status = 'PENDING'
+  AND created_at < now() - interval '2 minutes' AND created_at > now() - interval '48 hours'
+ORDER BY created_at LIMIT $1
+`
+
+func (q *Queries) CheckoutsToReverify(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error) {
+	rows, err := q.db.Query(ctx, checkoutsToReverify, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FinanceWalletcheckout{}
+	for rows.Next() {
+		var i FinanceWalletcheckout
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Reference,
+			&i.AmountKobo,
+			&i.Status,
+			&i.AccessCode,
+			&i.AuthorizationUrl,
+			&i.FailureReason,
+			&i.AccountID,
+			&i.UserID,
+			&i.PaymentID,
+			&i.Purpose,
+			&i.Channel,
+			&i.SwapID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const expireStaleCheckouts = `-- name: ExpireStaleCheckouts :execrows
+UPDATE finance_walletcheckout SET status = 'FAILED', failure_reason = 'expired', updated_at = now()
+WHERE status = 'PENDING' AND created_at <= now() - interval '48 hours'
+`
+
+func (q *Queries) ExpireStaleCheckouts(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, expireStaleCheckouts)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertCheckout = `-- name: InsertCheckout :one
@@ -171,6 +253,46 @@ func (q *Queries) PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (Fina
 		&i.SwapID,
 	)
 	return i, err
+}
+
+const refundDueCheckouts = `-- name: RefundDueCheckouts :many
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE status = 'REFUND_PENDING' ORDER BY updated_at LIMIT $1
+`
+
+func (q *Queries) RefundDueCheckouts(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error) {
+	rows, err := q.db.Query(ctx, refundDueCheckouts, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FinanceWalletcheckout{}
+	for rows.Next() {
+		var i FinanceWalletcheckout
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Reference,
+			&i.AmountKobo,
+			&i.Status,
+			&i.AccessCode,
+			&i.AuthorizationUrl,
+			&i.FailureReason,
+			&i.AccountID,
+			&i.UserID,
+			&i.PaymentID,
+			&i.Purpose,
+			&i.Channel,
+			&i.SwapID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setCheckoutPayment = `-- name: SetCheckoutPayment :exec

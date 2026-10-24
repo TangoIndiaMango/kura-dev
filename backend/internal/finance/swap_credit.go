@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/db"
-	"github.com/TangoIndiaMango/kura-dev/backend/internal/events"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/database"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/ids"
 )
@@ -53,39 +52,60 @@ func CaptureSwapPayment(ctx context.Context, q *db.Queries, acct Account, c db.F
 	return p, err
 }
 
-// SurfaceSwapCredit records Paystack payments for a swap that did not use
-// them (aborted, or settled by cash / plan / credit): the money is already in
-// the rider's balance — this adds the "Payment received" row and tells them.
-func SurfaceSwapCredit(ctx context.Context, q *db.Queries, swap uuid.UUID) error {
+// RefundUnusedSwapPayments sends back Paystack payments for a swap that did
+// not use them (aborted, or settled by cash / plan / credit). Riders hold no
+// balance: the money is taken back out of the swap's internal credit and
+// queued for a Paystack refund to the card / account it came from.
+func RefundUnusedSwapPayments(ctx context.Context, q *db.Queries, swap uuid.UUID) error {
 	cs, err := q.UnrecordedSwapCheckouts(ctx, &swap)
 	if err != nil {
 		return err
 	}
 	for _, c := range cs {
-		acct, err := q.AccountByID(ctx, c.AccountID)
-		if err != nil {
-			return err
-		}
-		p, err := CreatePayment(ctx, q, PaymentIn{Account: acct.ID, Amount: c.AmountKobo,
-			Channel: firstNonEmpty(c.Channel, "CARD"), Purpose: "FUND", Status: "SUCCESS", PSPReference: c.Reference})
-		if err != nil {
-			return err
-		}
-		if err := q.SetCheckoutPayment(ctx, db.SetCheckoutPaymentParams{ID: c.ID, PaymentID: &p.ID}); err != nil {
-			return err
-		}
-		if err := events.Emit(ctx, q, events.Event{Action: "wallet.funded", SubjectType: "wallet",
-			SubjectID: acct.ID.String(), SubjectLabel: acct.KuraID,
-			After:    events.Map{"amount_kobo": c.AmountKobo, "psp_reference": c.Reference, "payment_id": p.ID.String()},
-			Metadata: events.Map{"receipt_code": p.ReceiptCode, "swap_id": swap.String()},
-			Notify: []events.NotifySpec{{UserID: acct.OwnerUserID, Title: "Payment added to your balance",
-				Body:   FormatNaira(c.AmountKobo) + " you paid with Paystack is in your Kura balance — it pays for your next swap.",
-				Source: "Wallet", Severity: events.Info, LinkPath: "/wallet", TemplateCode: "wallet.funded",
-				DedupeKey: "wallet.funded:" + c.Reference}}}); err != nil {
+		if err := queueRefund(ctx, q, c, true); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// RefundSwapPayment queues the card refund of a reversed PAYSTACK swap (its
+// capture has just been reversed back into the internal credit).
+func RefundSwapPayment(ctx context.Context, q *db.Queries, payment uuid.UUID) error {
+	c, err := q.CheckoutByPayment(ctx, &payment)
+	if database.IsNoRows(err) {
+		return nil // not a Paystack payment
+	}
+	if err != nil {
+		return err
+	}
+	return queueRefund(ctx, q, c, true)
+}
+
+// queueRefund marks a paid checkout REFUND_PENDING (the worker sends it).
+// credited: the amount sits in the rider's internal credit and comes out.
+func queueRefund(ctx context.Context, q *db.Queries, c db.FinanceWalletcheckout, credited bool) error {
+	if credited {
+		acct, err := q.AccountByID(ctx, c.AccountID)
+		if err != nil {
+			return err
+		}
+		w, err := LockedWallet(ctx, q, acct.ID)
+		if err != nil {
+			return err
+		}
+		w.BalanceKobo -= c.AmountKobo
+		if err := saveWallet(ctx, q, w); err != nil {
+			return err
+		}
+		if _, err := Post(ctx, q, "REFUND", trunc100("REFUND-"+c.Reference), "Paystack refund for unused swap payment",
+			[]Entry{{Code: "wallet:" + acct.KuraID, Type: Liability, Debit: c.AmountKobo},
+				{Code: "psp_clearing", Type: Clearing, Credit: c.AmountKobo}}); err != nil {
+			return err
+		}
+	}
+	return q.SettleCheckout(ctx, db.SettleCheckoutParams{ID: c.ID, Status: "REFUND_PENDING", PaymentID: c.PaymentID,
+		FailureReason: c.FailureReason, Channel: c.Channel})
 }
 
 func firstNonEmpty(vals ...string) string {

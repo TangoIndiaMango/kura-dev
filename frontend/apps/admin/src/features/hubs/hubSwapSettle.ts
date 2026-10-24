@@ -82,8 +82,8 @@ export function buildSettlePlan(
     allowed.push('PLAN')
   }
   if (creditOk || reservation.paymentMode === 'CREDIT') allowed.push('CREDIT')
-  // Wallet top-ups are coming soon: an existing balance can still pay.
-  if ((wallet > 0 && effectiveWallet >= due) || bookedWithWallet) allowed.push('WALLET')
+  // Riders hold no balance: the wallet only settles a legacy booking-time hold.
+  if (bookedWithWallet && hasActiveHold) allowed.push('WALLET')
   // A booking-time wallet hold is already the payment.
   if (!hasActiveHold) allowed.push('PAYSTACK')
   allowed.push('CASH_AT_HUB')

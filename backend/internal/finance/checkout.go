@@ -83,11 +83,11 @@ func SettleCheckout(ctx context.Context, q *db.Queries, reference string, v psp.
 		return c, err
 	}
 	channel := channelOf(v.Channel)
-	// Every Paystack payment lands in the rider's balance. The first payment
-	// for a still-open swap is credited quietly and becomes the swap's own
-	// payment at Complete; anything else (a top-up, a second payment, a swap
-	// already finished or aborted) is a visible "Payment received" — so money
-	// is never lost and the rider never sees one card payment twice.
+	// Riders hold no balance. The first payment for a still-open swap is
+	// credited internally and becomes the swap's own payment at Complete; a
+	// payment for a swap that already ended (or a second one) is refunded to
+	// the card. A plan shortfall payment funds the internal account the plan
+	// is charged from straight after.
 	acctRef := Account{ID: acct.ID, KuraID: acct.KuraID}
 	forOpenSwap := false
 	if c.SwapID != nil {
@@ -97,17 +97,21 @@ func SettleCheckout(ctx context.Context, q *db.Queries, reference string, v psp.
 	}
 	var p db.FinancePayment
 	var paymentID *uuid.UUID
-	if forOpenSwap {
+	status := "SUCCESS"
+	switch {
+	case forOpenSwap:
 		err = creditForSwap(ctx, q, acctRef, amount, channel, reference)
-	} else {
+	case c.SwapID != nil: // swap already finished, or paid twice: send it back
+		status = "REFUND_PENDING"
+	default:
 		p, err = Fund(ctx, q, acctRef, amount, channel, reference)
 		paymentID = &p.ID
 	}
 	if err != nil {
 		return c, err
 	}
-	c.Status, c.PaymentID, c.Channel = "SUCCESS", paymentID, channel
-	if err := q.SettleCheckout(ctx, db.SettleCheckoutParams{ID: c.ID, Status: "SUCCESS", PaymentID: paymentID,
+	c.Status, c.PaymentID, c.Channel = status, paymentID, channel
+	if err := q.SettleCheckout(ctx, db.SettleCheckoutParams{ID: c.ID, Status: status, PaymentID: paymentID,
 		Channel: channel}); err != nil {
 		return c, err
 	}
@@ -118,8 +122,8 @@ func SettleCheckout(ctx context.Context, q *db.Queries, reference string, v psp.
 	if c.SwapID != nil {
 		title, body := "Swap paid", FormatNaira(amount)+" received — the hub can now complete your swap."
 		if !forOpenSwap {
-			title, body = "Payment added to your balance", FormatNaira(amount)+
-				" was added to your Kura balance — it pays for your next swap."
+			title, body = "Refund on its way", "This swap was already settled, so we're refunding your "+
+				FormatNaira(amount)+" Paystack payment."
 		}
 		return c, events.Emit(ctx, q, events.Event{Action: "swap.paid", SubjectType: "swap",
 			SubjectID: c.SwapID.String(), SubjectLabel: reference, Actor: who, After: after,

@@ -1,28 +1,18 @@
 import React, { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   creditUiPresentation,
   resolveCreditUiState,
   useOperatorSession,
 } from '@shared/session'
 import { useAuth } from '../auth/AuthProvider'
-import { apiErrorMessage } from '@lib/api/auth'
-import { notify } from '@shared/utils/notify'
-import { usePostData } from '@shared/hooks/api'
-import {
-  useOperatorWallet,
-  useOperatorPayments,
-  WALLET_API,
-} from './hooks/use-operator-wallet'
+import { useOperatorPayments } from './hooks/use-operator-wallet'
 import {
   loanDaysLeft,
   useCreditEligibility,
   useOperatorLoans,
 } from './hooks/use-operator-credit'
 import { useMyOffers } from './hooks/use-operator-offers'
-import { WalletBalanceCard } from './components/WalletBalanceCard'
 import { TransactionList } from './components/TransactionList'
-import { FundWalletPanel } from './components/FundWalletPanel'
 import { ActiveLoanBanner } from './components/ActiveLoanBanner'
 import { CreditEligibilityPanel } from './components/CreditEligibilityPanel'
 import { WalletCreditBlock } from './components/WalletCreditBlock'
@@ -32,7 +22,7 @@ import { RepayCreditSheet } from './components/RepayCreditSheet'
 import { OperatorReceiptScreen } from '../receipt/OperatorReceiptScreen'
 import type { TabId } from '../layout/FloatingGlassBottomBar'
 
-type WalletView = 'main' | 'fund' | 'receipt' | 'eligibility'
+type WalletView = 'main' | 'receipt' | 'eligibility'
 type CreditSheet = 'none' | 'apply' | 'repay'
 
 interface OperatorWalletScreenProps {
@@ -57,7 +47,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
 }) => {
   const { session } = useOperatorSession()
   const { isAuthenticated } = useAuth()
-  const liveWallet = useOperatorWallet({ enabled: isAuthenticated })
   const livePayments = useOperatorPayments({ enabled: isAuthenticated, page_size: 10 })
   const eligibilityQ = useCreditEligibility({ enabled: isAuthenticated })
   const loansQ = useOperatorLoans({
@@ -66,21 +55,13 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
   const offersQ = useMyOffers({
     enabled: isAuthenticated && Boolean(eligibilityQ.eligibility?.offers_enabled),
   })
-  const queryClient = useQueryClient()
   const [view, setView] = useState<WalletView>('main')
   const [receiptId, setReceiptId] = useState<string | null>(null)
   const [creditSheet, setCreditSheet] = useState<CreditSheet>('none')
-  const fundMut = usePostData<
-    { amount_naira: number; channel: string },
-    unknown
-  >(WALLET_API.fund, [WALLET_API.mine, WALLET_API.payments], {
-    silentError: true,
-  })
 
   useEffect(() => {
     if (!session) return
     const intent = consumeWalletIntent()
-    if (intent === 'fund') setView('fund')
     if (intent === 'credit') setCreditSheet('apply')
     if (intent === 'schedule') setCreditSheet('repay')
     if (intent === 'eligibility') setView('eligibility')
@@ -88,11 +69,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
 
   if (!session) return null
 
-  const balanceNaira = liveWallet.balanceNaira ?? 0
-  const nuban = liveWallet.wallet ? liveWallet.nuban : null
-  const bankLabel = liveWallet.wallet ? liveWallet.bankLabel : 'Virtual account'
-  const accountName = liveWallet.accountName || session.name
-  const syncedAt = liveWallet.wallet ? liveWallet.syncedAt : '—'
   const eligibility = eligibilityQ.eligibility
   const creditEnabled = Boolean(eligibility?.credit_enabled)
   const offersEnabled = Boolean(eligibility?.offers_enabled)
@@ -137,37 +113,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
     )
   }
 
-  if (view === 'fund') {
-    return (
-      <FundWalletPanel
-        bank={bankLabel}
-        nuban={nuban}
-        accountName={accountName}
-        onBack={() => setView('main')}
-        demoFundEnabled={liveWallet.demoFundEnabled}
-        demoFunding={fundMut.isPending}
-        onDemoFund={async (amountNaira) => {
-          try {
-            await fundMut.mutateAsync({
-              amount_naira: amountNaira,
-              channel: 'NUBAN_TRANSFER',
-            })
-            notify({
-              title: `₦${amountNaira.toLocaleString()} credited`,
-              tone: 'success',
-            })
-            setView('main')
-          } catch (err) {
-            notify({
-              title: apiErrorMessage(err, 'Could not credit wallet'),
-              tone: 'error',
-            })
-          }
-        }}
-      />
-    )
-  }
-
   if (view === 'eligibility' && eligibility) {
     return (
       <CreditEligibilityPanel
@@ -193,34 +138,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
     ? toWalletTxItems(livePayments.payments)
     : []
 
-  // Payments are made with Paystack when they're due (swap, plan). A balance
-  // only exists from overpayments or refunds — show it then, never an empty one.
-  let walletHero: React.ReactNode = null
-  if (liveWallet.isLoading) {
-    walletHero = (
-      <div className="h-[132px] animate-pulse rounded-2xl bg-[var(--kura-border)]/40" />
-    )
-  } else if (balanceNaira > 0) {
-    walletHero = (
-      <WalletBalanceCard
-        balanceNaira={balanceNaira}
-        syncedAt={syncedAt}
-        bankLabel={bankLabel}
-        nuban={null} // virtual accounts are off: no transfer details to show
-        accountName={accountName}
-        onCredit={creditEnabled && creditUi ? openCreditFlow : undefined}
-        creditLabel={creditUi?.heroCreditLabel}
-        onSync={
-          isAuthenticated
-            ? () => {
-                queryClient.invalidateQueries({ queryKey: [WALLET_API.mine] })
-              }
-            : undefined
-        }
-      />
-    )
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <header>
@@ -229,8 +146,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
           Swaps and plans are paid with Paystack — card, bank transfer or USSD.
         </p>
       </header>
-
-      {walletHero}
 
       {creditEnabled && activeLoan ? (
         <ActiveLoanBanner

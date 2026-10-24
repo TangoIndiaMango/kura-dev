@@ -111,8 +111,10 @@ type Querier interface {
 	CasesPage(ctx context.Context, arg CasesPageParams) ([]uuid.UUID, error)
 	CashDepositByID(ctx context.Context, id uuid.UUID) (OperationsCashdeposit, error)
 	CashDepositReceipt(ctx context.Context, id uuid.UUID) (CashDepositReceiptRow, error)
+	CheckoutByPayment(ctx context.Context, paymentID *uuid.UUID) (FinanceWalletcheckout, error)
 	CheckoutByReference(ctx context.Context, reference string) (FinanceWalletcheckout, error)
 	CheckoutForUpdate(ctx context.Context, reference string) (FinanceWalletcheckout, error)
+	CheckoutsToReverify(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
@@ -231,6 +233,7 @@ type Querier interface {
 	ExistingHubIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	ExistingPermissionIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	ExpirePPSSubscriptions(ctx context.Context, planID uuid.UUID) error
+	ExpireStaleCheckouts(ctx context.Context) (int64, error)
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
 	FirstCooperative(ctx context.Context) (AccountsCooperative, error)
@@ -492,6 +495,7 @@ type Querier interface {
 	RedemptionByKey(ctx context.Context, idempotencyKey *string) (RedemptionByKeyRow, error)
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
+	RefundDueCheckouts(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
 	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
 	ReleaseEngine(ctx context.Context, arg ReleaseEngineParams) error
 	// QuerySet.update(): updated_at is left alone.

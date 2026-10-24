@@ -9,7 +9,7 @@ const PURPOSE: Record<string, string> = {
 }
 
 const CHANNEL: Record<string, string> = {
-  WALLET_DEBIT: 'From Kura balance',
+  WALLET_DEBIT: 'Paid online',
   NUBAN_TRANSFER: 'Bank transfer',
   CARD: 'Card',
   AGENT_CASH: 'Cash at hub',
@@ -21,6 +21,14 @@ const STATUS: Record<string, string> = {
   PENDING: 'Pending',
   FAILED: 'Failed',
   REVERSED: 'Reversed',
+}
+
+/**
+ * Riders don't hold a balance: a FUND row is only the internal leg of a
+ * Paystack payment (the swap / plan it paid for is the row they expect).
+ */
+export function isRiderFacing(p: { purpose?: string }) {
+  return (p.purpose || '').toUpperCase() !== 'FUND'
 }
 
 export function isCredit(p: { purpose?: string; channel?: string }) {

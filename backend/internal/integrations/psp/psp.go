@@ -57,6 +57,8 @@ type Port interface {
 	ProvisionVirtualAccount(ctx context.Context, in VARequest) (VAResult, error)
 	VerifyTransaction(ctx context.Context, reference string) (VerifyResult, error)
 	InitializeCheckout(ctx context.Context, in CheckoutRequest) (CheckoutResult, error)
+	// Refund returns amountKobo of a successful transaction to the payer.
+	Refund(ctx context.Context, reference string, amountKobo int64) error
 }
 
 // VARequest carries the customer for a dedicated account.

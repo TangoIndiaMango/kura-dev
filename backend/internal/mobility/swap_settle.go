@@ -51,9 +51,9 @@ func (b *Bay) settle(ctx context.Context, q *db.Queries, in settleIn) (settled, 
 	acct := finance.Account{ID: in.Account.ID, KuraID: in.Account.KuraID}
 	if in.Mode != "PAYSTACK" {
 		// Settled another way: a Paystack payment already made for this swap
-		// stays in the rider's balance and shows as money added.
+		// is refunded to the rider's card.
 		if id, err := uuid.Parse(in.SwapKey); err == nil {
-			if err := finance.SurfaceSwapCredit(ctx, q, id); err != nil {
+			if err := finance.RefundUnusedSwapPayments(ctx, q, id); err != nil {
 				return settled{}, err
 			}
 		}

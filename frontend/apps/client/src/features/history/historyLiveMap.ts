@@ -31,7 +31,7 @@ export function paymentToHistory(p: {
 }
 
 const SWAP_MODE_LABEL: Record<string, string> = {
-  WALLET: 'Kura balance',
+  WALLET: 'Paid online',
   CASH: 'Cash at hub',
   CASH_AT_HUB: 'Cash at hub',
   PLAN: 'Plan',

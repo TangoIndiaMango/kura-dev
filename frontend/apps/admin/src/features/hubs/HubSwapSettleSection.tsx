@@ -54,6 +54,7 @@ export function HubSwapSettleSection({
   onLog,
 }: Props) {
   const due = mode === 'PLAN' ? 0 : plan.dueNaira
+  const walletMode = mode === 'WALLET'
   const modeData = plan.allowed.map((m) => ({
     value: m,
     label: settleModeLabel(m),
@@ -76,7 +77,7 @@ export function HubSwapSettleSection({
       <h3 className="text-[14px] font-bold text-[var(--tx)]">Confirm payment</h3>
       <p className="mt-1 text-[12.5px] text-[var(--mu)]">{settleHint}</p>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className={`mt-3 grid gap-2 ${walletMode ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1'}`}>
         <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5">
           <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--su)]">
             {discount && showDiscount ? 'Due after code' : 'Swap due'}
@@ -90,24 +91,26 @@ export function HubSwapSettleSection({
             </p>
           ) : null}
         </div>
-        <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--su)]">
-            Kura balance
-          </p>
-          <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
-            {walletVisible ? formatNaira(plan.walletBalance) : 'Private'}
-          </p>
-        </div>
-        <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5 sm:col-span-1 col-span-2">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--su)]">
-            Shortfall
-          </p>
-          <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
-            {walletVisible && plan.shortfallNaira > 0 && mode !== 'PLAN'
-              ? formatNaira(plan.shortfallNaira)
-              : '-'}
-          </p>
-        </div>
+        {walletMode ? ( // only a legacy booking-time wallet hold has a balance to show
+          <>
+            <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--su)]">
+                Wallet
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
+                {walletVisible ? formatNaira(plan.walletBalance) : 'Private'}
+              </p>
+            </div>
+            <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5 sm:col-span-1 col-span-2">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--su)]">
+                Shortfall
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tx)]">
+                {walletVisible && plan.shortfallNaira > 0 ? formatNaira(plan.shortfallNaira) : '-'}
+              </p>
+            </div>
+          </>
+        ) : null}
       </div>
 
       {showDiscount && discountLocked && discount ? (
