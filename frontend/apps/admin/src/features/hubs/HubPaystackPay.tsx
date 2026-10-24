@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, CopyButton, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import PaystackPop from '@paystack/inline-js'
 import { axiosInstance } from '@lib/api/client'
 import { apiErrorMessage } from '@lib/api/auth'
 import { formatNaira } from '@shared/utils/currency'
+import { openPaystackPopup } from './paystack-popup'
 
 type SwapCheckout = {
   reference: string
@@ -109,17 +109,13 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
     return () => window.clearInterval(t)
   }, [pending, swapId, checkout?.reference, apply])
 
-  const openPopup = () => {
+  const openPopup = async () => {
     if (!checkout) return
-    try {
-      new PaystackPop().resumeTransaction(checkout.access_code, {
-        onSuccess: () => {
-          notifications.show({ color: 'teal', message: 'Paid — confirming with Paystack…' })
-          refresh()
-        },
-        onError: () => notifications.show({ color: 'red', message: 'Paystack could not open here — share the link' }),
-      })
-    } catch {
+    const outcome = await openPaystackPopup(checkout.access_code)
+    if (outcome === 'success') {
+      notifications.show({ color: 'teal', message: 'Paid — confirming with Paystack…' })
+      refresh()
+    } else if (outcome === 'failed') {
       notifications.show({ color: 'red', message: 'Paystack could not open here — share the link' })
     }
   }
@@ -173,7 +169,7 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
             <Button variant="light" loading={busy === 'email'} onClick={() => void start(true)}>
               Email to rider
             </Button>
-            <Button color="brand" onClick={openPopup} disabled={checkout.status !== 'PENDING'}>
+            <Button color="brand" onClick={() => void openPopup()} disabled={checkout.status !== 'PENDING'}>
               Pay here
             </Button>
           </div>
