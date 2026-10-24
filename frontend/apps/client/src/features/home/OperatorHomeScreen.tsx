@@ -77,7 +77,6 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
   if (!session) return null
 
   const balanceNaira = liveWallet.balanceNaira ?? 0
-  const nuban = liveWallet.wallet ? liveWallet.nuban : null
   /** Payments are made with Paystack when due — the strip only shows a balance the rider holds. */
   const showWalletStrip = balanceNaira > 0
   const hasLivePass = holds.length > 0
@@ -182,7 +181,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
       />
 
       {showWalletStrip ? (
-        <HomeWalletStrip balanceNaira={balanceNaira} nuban={nuban} />
+        <HomeWalletStrip balanceNaira={balanceNaira} nuban={null} />
       ) : null}
 
       <HomeCreditScoreBlock
