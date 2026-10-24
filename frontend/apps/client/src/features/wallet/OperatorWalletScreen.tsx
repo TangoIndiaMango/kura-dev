@@ -1,39 +1,28 @@
 import React, { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   creditUiPresentation,
   resolveCreditUiState,
   useOperatorSession,
 } from '@shared/session'
 import { useAuth } from '../auth/AuthProvider'
-import { apiErrorMessage } from '@lib/api/auth'
-import { notify } from '@shared/utils/notify'
-import { usePostData } from '@shared/hooks/api'
-import {
-  useOperatorWallet,
-  useOperatorPayments,
-  WALLET_API,
-} from './hooks/use-operator-wallet'
+import { useOperatorPayments } from './hooks/use-operator-wallet'
 import {
   loanDaysLeft,
   useCreditEligibility,
   useOperatorLoans,
 } from './hooks/use-operator-credit'
 import { useMyOffers } from './hooks/use-operator-offers'
-import { WalletBalanceCard } from './components/WalletBalanceCard'
 import { TransactionList } from './components/TransactionList'
-import { FundWalletPanel } from './components/FundWalletPanel'
 import { ActiveLoanBanner } from './components/ActiveLoanBanner'
 import { CreditEligibilityPanel } from './components/CreditEligibilityPanel'
 import { WalletCreditBlock } from './components/WalletCreditBlock'
 import { toWalletTxItems } from './transactionItems'
 import { ApplyCreditSheet } from './components/ApplyCreditSheet'
 import { RepayCreditSheet } from './components/RepayCreditSheet'
-import { OperatorBannerEmptyState } from '@shared/components/operator/OperatorBannerEmptyState'
 import { OperatorReceiptScreen } from '../receipt/OperatorReceiptScreen'
 import type { TabId } from '../layout/FloatingGlassBottomBar'
 
-type WalletView = 'main' | 'fund' | 'receipt' | 'eligibility'
+type WalletView = 'main' | 'receipt' | 'eligibility'
 type CreditSheet = 'none' | 'apply' | 'repay'
 
 interface OperatorWalletScreenProps {
@@ -58,7 +47,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
 }) => {
   const { session } = useOperatorSession()
   const { isAuthenticated } = useAuth()
-  const liveWallet = useOperatorWallet({ enabled: isAuthenticated })
   const livePayments = useOperatorPayments({ enabled: isAuthenticated, page_size: 10 })
   const eligibilityQ = useCreditEligibility({ enabled: isAuthenticated })
   const loansQ = useOperatorLoans({
@@ -67,21 +55,13 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
   const offersQ = useMyOffers({
     enabled: isAuthenticated && Boolean(eligibilityQ.eligibility?.offers_enabled),
   })
-  const queryClient = useQueryClient()
   const [view, setView] = useState<WalletView>('main')
   const [receiptId, setReceiptId] = useState<string | null>(null)
   const [creditSheet, setCreditSheet] = useState<CreditSheet>('none')
-  const fundMut = usePostData<
-    { amount_naira: number; channel: string },
-    unknown
-  >(WALLET_API.fund, [WALLET_API.mine, WALLET_API.payments], {
-    silentError: true,
-  })
 
   useEffect(() => {
     if (!session) return
     const intent = consumeWalletIntent()
-    if (intent === 'fund') setView('fund')
     if (intent === 'credit') setCreditSheet('apply')
     if (intent === 'schedule') setCreditSheet('repay')
     if (intent === 'eligibility') setView('eligibility')
@@ -89,11 +69,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
 
   if (!session) return null
 
-  const balanceNaira = liveWallet.balanceNaira ?? 0
-  const nuban = liveWallet.wallet ? liveWallet.nuban : null
-  const bankLabel = liveWallet.wallet ? liveWallet.bankLabel : 'Virtual account'
-  const accountName = liveWallet.accountName || session.name
-  const syncedAt = liveWallet.wallet ? liveWallet.syncedAt : '—'
   const eligibility = eligibilityQ.eligibility
   const creditEnabled = Boolean(eligibility?.credit_enabled)
   const offersEnabled = Boolean(eligibility?.offers_enabled)
@@ -138,37 +113,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
     )
   }
 
-  if (view === 'fund') {
-    return (
-      <FundWalletPanel
-        bank={bankLabel}
-        nuban={nuban}
-        accountName={accountName}
-        onBack={() => setView('main')}
-        demoFundEnabled={liveWallet.demoFundEnabled}
-        demoFunding={fundMut.isPending}
-        onDemoFund={async (amountNaira) => {
-          try {
-            await fundMut.mutateAsync({
-              amount_naira: amountNaira,
-              channel: 'NUBAN_TRANSFER',
-            })
-            notify({
-              title: `₦${amountNaira.toLocaleString()} credited`,
-              tone: 'success',
-            })
-            setView('main')
-          } catch (err) {
-            notify({
-              title: apiErrorMessage(err, 'Could not credit wallet'),
-              tone: 'error',
-            })
-          }
-        }}
-      />
-    )
-  }
-
   if (view === 'eligibility' && eligibility) {
     return (
       <CreditEligibilityPanel
@@ -194,61 +138,14 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
     ? toWalletTxItems(livePayments.payments)
     : []
 
-  const walletUsable = Boolean(nuban) || balanceNaira > 0 || txItems.length > 0
-
-  // The PSP issues the NUBAN against an ID number; without one it never comes.
-  const needsId = session.kycStatus === 'NONE' || session.kycStatus === 'REJECTED'
-  let walletHero = needsId ? (
-    <OperatorBannerEmptyState
-      image="/illustrations/wallet-provisioning.png"
-      badge="Action needed"
-      title="Add your ID to get a transfer account"
-      description="Your bank account number is issued in your name once your NIN or BVN is on file. Then you can top up from any banking app."
-      actionLabel="Add NIN or BVN"
-      onAction={() => {
-        sessionStorage.setItem('kura_account_open', 'identity')
-        onNavigateTab?.('account')
-      }}
-      footnote="Swaps still work in the meantime — pay cash at any hub."
-    />
-  ) : (
-    <OperatorBannerEmptyState
-      image="/illustrations/wallet-provisioning.png"
-      badge="Setting up"
-      title="Your transfer account is on the way"
-      description="We are issuing a dedicated account in your name. It appears here once the bank confirms it, then you can top up from any banking app."
-      footnote="Swaps still work in the meantime — pay cash at any hub."
-    />
-  )
-  if (liveWallet.isLoading) {
-    walletHero = (
-      <div className="h-[196px] animate-pulse rounded-2xl bg-[var(--kura-border)]/40" />
-    )
-  } else if (walletUsable) {
-    walletHero = (
-      <WalletBalanceCard
-        balanceNaira={balanceNaira}
-        syncedAt={syncedAt}
-        bankLabel={bankLabel}
-        nuban={nuban}
-        accountName={accountName}
-        onFund={() => setView('fund')}
-        onCredit={creditEnabled && creditUi ? openCreditFlow : undefined}
-        creditLabel={creditUi?.heroCreditLabel}
-        onSync={
-          isAuthenticated
-            ? () => {
-                queryClient.invalidateQueries({ queryKey: [WALLET_API.mine] })
-              }
-            : undefined
-        }
-      />
-    )
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      {walletHero}
+      <header>
+        <h2 className="text-lg font-bold text-[var(--kura-text)]">Payments</h2>
+        <p className="mt-0.5 text-[12.5px] text-[var(--kura-muted)]">
+          Swaps and plans are paid with Paystack — card, bank transfer or USSD.
+        </p>
+      </header>
 
       {creditEnabled && activeLoan ? (
         <ActiveLoanBanner
@@ -271,22 +168,20 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
         onOpen={openCreditFlow}
       />
 
-      {walletUsable ? (
-        <TransactionList
-          items={txItems}
-          pageSize={10}
-          loading={livePayments.isLoading}
-          onSeeAll={onSeeHistory}
-          onItemClick={(id, itemReceiptId) => {
-            if (onOpenReceipt && itemReceiptId) {
-              onOpenReceipt(itemReceiptId)
-              return
-            }
-            setReceiptId(itemReceiptId ?? id)
-            setView('receipt')
-          }}
-        />
-      ) : null}
+      <TransactionList
+        items={txItems}
+        pageSize={10}
+        loading={livePayments.isLoading}
+        onSeeAll={onSeeHistory}
+        onItemClick={(id, itemReceiptId) => {
+          if (onOpenReceipt && itemReceiptId) {
+            onOpenReceipt(itemReceiptId)
+            return
+          }
+          setReceiptId(itemReceiptId ?? id)
+          setView('receipt')
+        }}
+      />
 
       <ApplyCreditSheet
         opened={creditSheet === 'apply' && creditEnabled}

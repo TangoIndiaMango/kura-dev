@@ -81,7 +81,7 @@ func (c *PaystackClient) VerifyTransaction(ctx context.Context, reference string
 	}
 	status := pyStr(data["status"])
 	out := VerifyResult{OK: status == "success", Reference: pyStr(data["reference"]), Status: status,
-		Currency: pyStr(data["currency"])}
+		Currency: pyStr(data["currency"]), Channel: pyStr(data["channel"])}
 	if out.Reference == "" {
 		out.Reference = reference
 	}
@@ -93,6 +93,40 @@ func (c *PaystackClient) VerifyTransaction(ctx context.Context, reference string
 		out.AmountKobo = &k
 	}
 	return out, nil
+}
+
+// InitializeCheckout is POST /transaction/initialize: Paystack hosts the
+// payment page; the app opens it in the InlineJS popup with AccessCode, or
+// redirects to AuthorizationURL.
+func (c *PaystackClient) InitializeCheckout(ctx context.Context, in CheckoutRequest) (CheckoutResult, error) {
+	if c.secret == "" {
+		return CheckoutResult{}, c.notConfigured()
+	}
+	body := map[string]any{"email": in.Email, "amount": in.AmountKobo, "reference": in.Reference,
+		"currency": "NGN", "metadata": in.Metadata}
+	if in.CallbackURL != "" {
+		body["callback_url"] = in.CallbackURL
+	}
+	data, err := c.api(ctx, "POST", "/transaction/initialize", body)
+	if err != nil {
+		return CheckoutResult{}, err
+	}
+	out := CheckoutResult{AuthorizationURL: pyStr(data["authorization_url"]), AccessCode: pyStr(data["access_code"]),
+		Reference: pyStr(data["reference"])}
+	if out.AccessCode == "" || out.AuthorizationURL == "" {
+		return out, &Error{Message: "Paystack did not return a checkout link.", Payload: data}
+	}
+	return out, nil
+}
+
+// Refund is POST /refund: Paystack sends the money back to the card or
+// account the transaction was paid from (it settles in a few working days).
+func (c *PaystackClient) Refund(ctx context.Context, reference string, amountKobo int64) error {
+	if c.secret == "" {
+		return c.notConfigured()
+	}
+	_, err := c.api(ctx, "POST", "/refund", map[string]any{"transaction": reference, "amount": amountKobo})
+	return err
 }
 
 func (c *PaystackClient) api(ctx context.Context, method, path string, body any) (map[string]any, error) {

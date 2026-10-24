@@ -75,11 +75,6 @@ WHERE driver_id = $1 AND status = 'COMPLETED' AND completed_at >= $2 AND complet
 SELECT count(*)::int AS n, COALESCE(sum(hold_amount_kobo), 0)::bigint AS held FROM mobility_reservation
 WHERE driver_id = $1 AND status IN ('PENDING', 'CONFIRMED') AND expires_at > now();
 
--- name: AccountHasOverdueBattery :one
-SELECT EXISTS (SELECT 1 FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
-  WHERE b.status = 'ISSUED' AND v.account_id = $1
-    AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours')));
-
 -- name: ReadySlotForUpdate :one
 -- First READY slot (slot_no order) holding an AVAILABLE pack of the vehicle's type.
 SELECT s.id AS slot_id, b.id AS battery_id FROM mobility_hubslot s JOIN mobility_battery b ON b.id = s.battery_id
@@ -126,3 +121,16 @@ UPDATE mobility_battery SET status = $2, updated_at = now() WHERE id = $1;
 
 -- name: GetUserRow :one
 SELECT * FROM accounts_user WHERE id = $1;
+
+-- name: OverdueBatteriesForAccount :many
+-- Packs past the 48 h return window, per vehicle (that vehicle can't book).
+SELECT v.id AS vehicle_id, v.registration_plate, b.serial FROM mobility_battery b
+JOIN mobility_vehicle v ON v.current_battery_id = b.id
+WHERE b.status = 'ISSUED' AND v.account_id = $1
+  AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'))
+ORDER BY v.registration_plate;
+
+-- name: VehicleOverdueBattery :one
+SELECT v.registration_plate, b.serial FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
+WHERE b.status = 'ISSUED' AND v.id = $1
+  AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'));

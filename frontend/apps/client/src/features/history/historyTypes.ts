@@ -10,7 +10,7 @@ export type SwapHistoryFilter =
 
 export type SwapHistoryStatus = 'completed' | 'cancelled' | 'expired'
 
-export type SwapPaymentMode = 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
+export type SwapPaymentMode = 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
 
 export interface HistoryItem {
   id: string
@@ -43,7 +43,11 @@ export function matchesSwapFilter(
   }
   if (filter === 'plan') return item.swapPayment === 'PLAN'
   if (filter === 'wallet') {
-    return item.swapPayment === 'WALLET' || item.swapPayment === 'CREDIT'
+    return (
+      item.swapPayment === 'PAYSTACK' ||
+      item.swapPayment === 'WALLET' ||
+      item.swapPayment === 'CREDIT'
+    )
   }
   if (filter === 'cash') return item.swapPayment === 'CASH_AT_HUB'
   return true

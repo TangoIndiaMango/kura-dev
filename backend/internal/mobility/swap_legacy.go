@@ -271,12 +271,18 @@ func reverseMoney(ctx context.Context, q *db.Queries, s db.MobilitySwap) error {
 		}
 	}
 	switch mode {
-	case "WALLET":
+	case "WALLET", "PAYSTACK":
 		acct, _, err := acctOf(ctx, q, s.AccountID)
 		if err != nil {
 			return err
 		}
-		return finance.ReverseCapture(ctx, q, acct, s.AmountKobo, s.ID.String()[:20], pay)
+		if err := finance.ReverseCapture(ctx, q, acct, s.AmountKobo, s.ID.String()[:20], pay); err != nil {
+			return err
+		}
+		if mode == "PAYSTACK" && pay != nil { // no balance to keep it in: back to the card
+			return finance.RefundSwapPayment(ctx, q, pay.ID)
+		}
+		return nil
 	case "CASH":
 		if pay != nil && pay.Status == "SUCCESS" {
 			return q.SetPaymentStatus(ctx, db.SetPaymentStatusParams{ID: pay.ID, Status: "REVERSED"})

@@ -86,7 +86,7 @@ func (b *Bay) createReservation(ctx context.Context, q *db.Queries, in CreateIn)
 	if err := b.clearIncomplete(ctx, q, in.Vehicle.ID, driverUser); err != nil {
 		return uuid.Nil, err
 	}
-	if err := assertNoOverdue(ctx, q, in.Account.ID); err != nil {
+	if err := assertVehicleNotOverdue(ctx, q, in.Vehicle.ID); err != nil {
 		return uuid.Nil, err
 	}
 	if err := assertHubOpen(in.Hub); err != nil {

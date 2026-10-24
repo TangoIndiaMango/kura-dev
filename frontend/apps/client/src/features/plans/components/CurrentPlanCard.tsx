@@ -7,7 +7,8 @@ interface CurrentPlanCardProps {
   expires: string
   daysLeft: string
   autoRenew: boolean
-  onToggleAutoRenew: () => void
+  /** Omitted while plans renew manually (each renewal is paid with Paystack). */
+  onToggleAutoRenew?: () => void
   showRenew?: boolean
   onRenew?: () => void
   /** Pay-per-swap / no subscription */
@@ -71,27 +72,29 @@ export const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({
         </span>
       </div>
 
-      <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-[var(--kura-border-subtle)] pt-3.5">
-        <span className="text-[13px] font-bold text-[var(--kura-text)]">
-          Auto-renew
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={autoRenew}
-          aria-label="Auto-renew"
-          onClick={onToggleAutoRenew}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-            autoRenew ? 'bg-[var(--kura-teal)]' : 'bg-white/20'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-              autoRenew ? 'left-[22px]' : 'left-0.5'
+      {onToggleAutoRenew ? (
+        <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-[var(--kura-border-subtle)] pt-3.5">
+          <span className="text-[13px] font-bold text-[var(--kura-text)]">
+            Auto-renew
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoRenew}
+            aria-label="Auto-renew"
+            onClick={onToggleAutoRenew}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+              autoRenew ? 'bg-[var(--kura-teal)]' : 'bg-white/20'
             }`}
-          />
-        </button>
-      </div>
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
+                autoRenew ? 'left-[22px]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      ) : null}
 
       {showRenew && onRenew ? (
         <button

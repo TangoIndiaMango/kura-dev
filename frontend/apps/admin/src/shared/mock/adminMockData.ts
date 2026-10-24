@@ -106,7 +106,7 @@ export interface ReservationRecord {
   vehicleReg: string
   expiresIn: string
   status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
-  paymentMode: 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
+  paymentMode: 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
   firstSwap?: boolean
 }
 

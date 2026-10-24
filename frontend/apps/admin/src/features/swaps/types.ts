@@ -15,7 +15,7 @@ export type SwapStatus =
   | 'FAILED'
   | 'REVERSED'
 
-export type SwapPaymentMode = 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH'
+export type SwapPaymentMode = 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH'
 
 export type SwapListApi = {
   id: string

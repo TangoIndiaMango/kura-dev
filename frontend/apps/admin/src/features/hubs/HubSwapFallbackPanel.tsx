@@ -240,6 +240,14 @@ function deriveTriage(
       skipReturn,
     }
   }
+  if (r.paymentMode === 'PAYSTACK') {
+    return {
+      triage: 'AMBER',
+      paymentLabel: r.code === 'WALK-IN' ? 'Walk-in · Paystack at bay' : 'Pays with Paystack at bay',
+      needsSettlement: true,
+      skipReturn,
+    }
+  }
   if (r.paymentMode === 'WALLET') {
     return {
       triage: 'GREEN',
@@ -265,15 +273,9 @@ function deriveTriage(
   }
 }
 
-function walkInPaymentMode(
-  actor: SettleActor,
-  vehicleType?: string,
-): ReservationRecord['paymentMode'] {
-  const due = listSwapDueNaira(vehicleType)
-  if (actor.planCovers) return 'PLAN'
-  if (actor.walletBalanceNaira >= due) return 'WALLET'
-  if (actor.creditOk) return 'CREDIT'
-  return 'CASH_AT_HUB'
+// Wallet top-ups are coming soon: a walk-in pays with Paystack unless a plan covers it.
+function walkInPaymentMode(actor: SettleActor): ReservationRecord['paymentMode'] {
+  return actor.planCovers ? 'PLAN' : 'PAYSTACK'
 }
 
 function stepList(id: Identified | null): Array<{ id: SessionStep; label: string }> {
@@ -396,6 +398,7 @@ export function HubSwapFallbackPanel() {
   const recordOverride = useRecordBayOverride()
   const [agentPinGrant, setAgentPinGrant] = useState<string | null>(null)
   const [swapSessionId, setSwapSessionId] = useState<string | null>(null)
+  const [paystackPaid, setPaystackPaid] = useState(false)
 
   const [catalogue, setCatalogue] = useState<BatteryRecord[]>([])
   useEffect(() => {
@@ -876,7 +879,7 @@ export function HubSwapFallbackPanel() {
           vehicleReg: ctx.vehicle.registration_plate,
           expiresIn: '—',
           status: 'ACTIVE',
-          paymentMode: walkInPaymentMode(actor, ctx.vehicle.vehicle_type),
+          paymentMode: walkInPaymentMode(actor),
           firstSwap: skipReturn,
         }
         setIdentifyMode('walkin')
@@ -980,7 +983,7 @@ export function HubSwapFallbackPanel() {
     const fundedWallet =
       effectiveWallet + (topUpRef ? Math.max(0, due - effectiveWallet) : 0)
     const shortfall = hasActiveHold ? 0 : Math.max(0, due - fundedWallet)
-    return describeMode(settleMode, {
+    const plan = describeMode(settleMode, {
       due,
       wallet: fundedWallet,
       shortfall,
@@ -989,7 +992,10 @@ export function HubSwapFallbackPanel() {
       reservation: identified.reservation,
       holdAmountKobo: holdKobo,
     })
-  }, [identified, settleActor, settleMode, topUpRef, appliedDiscount, walletForSettle])
+    return settleMode === 'PAYSTACK' && paystackPaid
+      ? { ...plan, label: 'Paid with Paystack — ready to complete' }
+      : plan
+  }, [identified, settleActor, settleMode, topUpRef, appliedDiscount, walletForSettle, paystackPaid])
 
   const settleVehicleCount = Math.max(1, accountVehicles.length || 1)
 
@@ -1059,6 +1065,7 @@ export function HubSwapFallbackPanel() {
     setRiderPinGrant(null)
     setAgentPinGrant(null)
     setSwapSessionId(null)
+    setPaystackPaid(false)
     setLookupError(null)
     setVelocityHit(null)
     setSuccessOpen(false)
@@ -1167,6 +1174,7 @@ export function HubSwapFallbackPanel() {
       setIdentified(null)
       setSelectedCode(null)
       setSwapSessionId(null)
+      setPaystackPaid(false)
       setSelectedVehicle(null)
       setReturned(null)
       setIssued(null)
@@ -1249,6 +1257,7 @@ export function HubSwapFallbackPanel() {
       setSelectedCode(null)
       setSelectedVehicle(null)
       setSwapSessionId(null)
+      setPaystackPaid(false)
       setConfirmOpen(false)
       setBayConfirm(null)
       setStep('lookup')
@@ -1268,7 +1277,7 @@ export function HubSwapFallbackPanel() {
       setLookupError('No active swap session. Re-run triage to start.')
       return
     }
-    const block = settleCompleteBlocked(settleMode, settlePlan, cashReceiptRef, topUpRef)
+    const block = settleCompleteBlocked(settleMode, settlePlan, cashReceiptRef, topUpRef, paystackPaid)
     if (block) {
       setLookupError(block)
       return
@@ -1299,7 +1308,7 @@ export function HubSwapFallbackPanel() {
               ? amount_kobo
               : identified.liveMeta.holdAmountKobo || amount_kobo,
         payment_mode: apiPaymentMode(settleMode),
-        ...(settleDiscount && !hasHold
+        ...(settleDiscount && !hasHold && settleMode !== 'PAYSTACK'
           ? { discount_code: settleDiscount.code }
           : {}),
         ...(settlePlan.riderPinRequired && riderPinGrant
@@ -1494,6 +1503,7 @@ export function HubSwapFallbackPanel() {
         settlePlan,
         cashReceiptRef,
         topUpRef,
+        paystackPaid,
       )
       return {
         label: 'Complete swap',
@@ -1880,6 +1890,7 @@ export function HubSwapFallbackPanel() {
                     paymentLabel: settleModeLabel(m),
                     needsSettlement:
                       m === 'CASH_AT_HUB' ||
+                      m === 'PAYSTACK' ||
                       (m === 'WALLET' && identified.isWalkIn),
                   })
                   pushLog('Confirm', `Payment method: ${settleModeLabel(m)}`)
@@ -1925,6 +1936,9 @@ export function HubSwapFallbackPanel() {
                   grantedDiscountId: undefined,
                 }}
                 onUseCashInstead={() => switchWalletToCash('Agent chose cash (no PIN)')}
+                swapId={swapSessionId}
+                onPaystackPaid={setPaystackPaid}
+                onLog={pushLog}
               />
             ) : null}
           </div>

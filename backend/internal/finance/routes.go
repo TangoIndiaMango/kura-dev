@@ -28,6 +28,8 @@ func (m *Module) Register(mux *http.ServeMux) {
 	w := router.New(mux, "/api/v1/finance/wallets", m.limiter)
 	w.User("GET", "/", m.h.wallets)
 	w.Cap("POST", "/fund/", "finance:read", m.h.fund)
+	w.User("POST", "/checkout/", m.h.checkoutStart)
+	w.User("POST", "/checkout/verify/", m.h.checkoutVerify)
 	w.User("GET", "/mine/", m.h.mine)
 	w.User("GET", "/{id}/", m.h.wallet)
 

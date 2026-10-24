@@ -29,6 +29,9 @@ type RetryResult struct {
 // came). When the schedule is spent, ops hear about it once.
 func (s *Service) RetryPending(ctx context.Context, limit int) (RetryResult, error) {
 	var out RetryResult
+	if !s.Enabled {
+		return out, nil
+	}
 	due, err := s.q.DueVirtualAccounts(ctx, dbDueParams(time.Now(), limit))
 	if err != nil {
 		return out, err

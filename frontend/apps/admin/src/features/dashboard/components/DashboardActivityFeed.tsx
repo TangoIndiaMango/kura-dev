@@ -17,10 +17,13 @@ const HEADERS: TableHeader[] = [
   { key: 'kind', label: 'KIND' },
 ]
 
+const PAGE_SIZE = 8
+
 export function DashboardActivityFeed() {
   const navigate = useNavigate()
   const { data, isPending } = useOpsActivity()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const rows = data?.results ?? []
 
   const filtered = useMemo(() => {
@@ -34,6 +37,10 @@ export function DashboardActivityFeed() {
     )
   }, [rows, search])
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const current = Math.min(page, totalPages)
+  const pageRows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
+
   return (
     <div className="flex flex-col gap-4 rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-5 shadow-[var(--sh)]">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -43,7 +50,10 @@ export function DashboardActivityFeed() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
             placeholder="Search events"
             className="w-full border-0 bg-transparent text-[13px] text-[var(--tx)] outline-none"
           />
@@ -56,9 +66,14 @@ export function DashboardActivityFeed() {
         <DynamicTableSection<(typeof filtered)[number]>
           variant="embedded"
           headers={HEADERS}
-          data={filtered}
+          data={pageRows}
           getRowKey={(item) => `${item.kind}-${item.id}`}
           onRowClick={(item) => navigate(item.link_path)}
+          pagination={
+            totalPages > 1
+              ? { page: current, totalPages, onPageChange: setPage }
+              : undefined
+          }
           renderItems={(item) => [
             <span key="time" className="text-xs font-bold text-[var(--tx)]">
               {new Date(item.created_at).toLocaleTimeString([], {

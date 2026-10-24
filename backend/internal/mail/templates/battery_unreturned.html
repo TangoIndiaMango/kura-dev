@@ -4,8 +4,14 @@
   Battery still out
 </p>
 <p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#243B4A;">
-  Pack <strong>{{.serial}}</strong> passed the 48 hour return window.
-  We paused account <strong>{{.account_label}}</strong> until the pack comes back.
+  {{if .suspended}}
+  Pack <strong>{{.serial}}</strong> has been out for more than 7 days.
+  We suspended account <strong>{{.account_label}}</strong> until the pack comes back.
+  {{else}}
+  Pack <strong>{{.serial}}</strong>{{if .plate}} on <strong>{{.plate}}</strong>{{end}} passed the 48 hour return window.
+  Booking for that vehicle is paused until the pack is swapped at any Kura hub. If it is not back within
+  7 days, account <strong>{{.account_label}}</strong> will be suspended.
+  {{end}}
 </p>
 {{if .cooperative_name}}
 <p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#243B4A;">

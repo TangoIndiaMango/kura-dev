@@ -1,5 +1,5 @@
 // Package jobs ports core.management.commands.run_task_worker: the periodic
-// sweeps (unreturned packs, swap lifecycle, mock IoT, shifts + settlement,
+// sweeps (Paystack re-verify + refunds, unreturned packs, swap lifecycle, mock IoT, shifts + settlement,
 // subscriptions, price matrices, virtual accounts, daily credit jobs).
 package jobs
 
@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/credit"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/finance"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/integrations/va"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/mobility"
@@ -19,7 +20,7 @@ import (
 )
 
 // Order is the run order of one loop (run_task_worker's enqueue order).
-var Order = []string{"unreturned", "swaps", "mock_iot", "shifts", "settlement", "subscriptions", "pricing",
+var Order = []string{"payments", "unreturned", "swaps", "mock_iot", "shifts", "settlement", "subscriptions", "pricing",
 	"virtual_accounts", "credit_scores", "credit_debit"}
 
 // Runner holds what the sweeps need.
@@ -29,7 +30,9 @@ type Runner struct {
 	Mailer  *mail.Mailer
 	VA      *va.Service
 	Billing *mobility.Billing
-	MockIoT bool
+	// Checkout is Paystack Checkout's settings (payment re-verify + refunds).
+	Checkout finance.CheckoutConfig
+	MockIoT  bool
 	// daily remembers the UTC day a once-a-day job last ran (Django keys
 	// this in the cache with cache.add; one worker process here).
 	daily map[string]string
@@ -38,6 +41,8 @@ type Runner struct {
 // Run executes one named job and returns its summary.
 func (r *Runner) Run(ctx context.Context, name string) (map[string]any, error) {
 	switch name {
+	case "payments":
+		return finance.PaymentSweep(ctx, r.Pool, r.Checkout, r.Log, 50)
 	case "unreturned":
 		return mobility.FlagUnreturned(ctx, r.Pool, r.Mailer, 200)
 	case "swaps":

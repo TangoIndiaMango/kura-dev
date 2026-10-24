@@ -39,7 +39,8 @@ var DefaultRules = []rule{
 	{"CHARGEBACK", "Chargeback after spend", "CRITICAL", "RESTRICT", nil},
 	{"CREDIT_BUSTOUT", "Credit bust-out pattern", "HIGH", "RESTRICT", nil},
 	{"DUPLICATE_IDENTITY", "Duplicate identity", "CRITICAL", "BLOCK", nil},
-	{"UNRETURNED_48H", "Battery unreturned 48h", "HIGH", "SUSPEND", nil},
+	{"UNRETURNED_48H", "Battery unreturned 48h", "HIGH", "FLAG", nil},
+	{"UNRETURNED_7D", "Battery unreturned 7 days", "CRITICAL", "SUSPEND", nil},
 	{"MANUAL_FLAG", "Manual ops flag", "MEDIUM", "FLAG", nil},
 }
 

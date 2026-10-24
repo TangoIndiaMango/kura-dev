@@ -78,6 +78,16 @@ func (c *NombaClient) VerifyTransaction(ctx context.Context, reference string) (
 	return out, nil
 }
 
+// InitializeCheckout: hosted checkout is Paystack-only for now.
+func (c *NombaClient) InitializeCheckout(ctx context.Context, in CheckoutRequest) (CheckoutResult, error) {
+	return CheckoutResult{}, &Error{Message: "Card / transfer checkout is not available with Nomba yet."}
+}
+
+// Refund: checkout (and so refunds) is Paystack-only for now.
+func (c *NombaClient) Refund(ctx context.Context, reference string, amountKobo int64) error {
+	return &Error{Message: "Refunds are not available with Nomba yet."}
+}
+
 func (c *NombaClient) api(ctx context.Context, method, path string, body any) (map[string]any, error) {
 	payload, err := requestJSON(ctx, "nomba", method, c.base+path,
 		map[string]string{"Authorization": "Bearer " + c.secret, "accountId": c.accountID}, body)

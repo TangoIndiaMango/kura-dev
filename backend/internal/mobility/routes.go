@@ -31,7 +31,7 @@ type Module struct {
 func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, tokens *auth.Tokens, deps BayDeps,
 	limiter *throttle.Limiter) *Module {
 	bay := &Bay{pool: pool, q: db.New(pool), signer: signer, secret: deps.Secret, ops: deps.Ops, tokens: tokens,
-		verifyPin: deps.VerifyPin, cdn: deps.CDN}
+		verifyPin: deps.VerifyPin, cdn: deps.CDN, checkout: deps.Checkout, mailer: mailer}
 	return &Module{bay: bay, hubs: NewHubHandler(pool), btypes: NewBatteryTypeHandler(pool),
 		bats: NewBatteryHandler(pool, signer), vehs: NewVehicleHandler(pool, signer),
 		vmodels: NewVehicleModelHandler(pool), pricing: NewPricingHandler(pool, mailer), plans: NewPlanHandler(pool),
@@ -147,6 +147,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	bay := m.bay
 	rv := router.New(mux, "/api/v1/mobility/reservations", m.limiter)
 	rv.User("GET", "/", bay.reservations)
+	rv.User("GET", "/precheck/", bay.precheck)
 	rv.Cap("POST", "/", "swaps:read", bay.createReservationHandler)
 	rv.Cap("POST", "/lookup/", "swaps:read", bay.lookup)
 	rv.User("GET", "/{id}/", bay.getReservation)
@@ -163,6 +164,8 @@ func (m *Module) Register(mux *http.ServeMux) {
 	sw.Cap("POST", "/request-velocity-exception/", "swaps:complete", bay.requestException)
 	sw.Cap("POST", "/verify-rider-pin/", "swaps:complete", bay.verifyRiderPin)
 	sw.User("GET", "/{id}/", bay.getSwap)
+	sw.User("POST", "/{id}/checkout/", bay.swapCheckoutStart)
+	sw.User("GET", "/{id}/checkout/", bay.swapCheckoutStatus)
 	sw.Cap("POST", "/{id}/return/", "swaps:complete", bay.recordReturnHandler)
 	sw.Cap("POST", "/{id}/issue/", "swaps:complete", bay.issue)
 	sw.Cap("POST", "/{id}/complete/", "swaps:complete", bay.completeSessionHandler)

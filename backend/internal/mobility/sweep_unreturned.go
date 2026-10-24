@@ -26,11 +26,18 @@ func userActor(u db.AccountsUser) *events.Actor {
 	return &events.Actor{ID: u.ID, Email: email, Phone: phone, Role: u.Role}
 }
 
-// FlagUnreturned is process_unreturned_batteries (UNRETURNED_48H): each
-// overdue ISSUED pack goes LOST, risk is raised, the chairman (or owner) is
-// told and emailed, and an ACTIVE account is suspended by its owner.
+// FlagUnreturned handles packs not brought back:
+//   - 48 h (UNRETURNED_48H, flagOverdue): flagged once; booking for that
+//     vehicle is paused (reservation guard) and the owner / chairman told.
+//     Other vehicles on the account keep booking; a walk-in swap returns it.
+//   - 7 days (UNRETURNED_7D, flagOne): the pack goes LOST, the chairman (or
+//     owner) is told and emailed, and an ACTIVE account is suspended.
 func FlagUnreturned(ctx context.Context, pool *pgxpool.Pool, mailer *mail.Mailer, limit int) (map[string]any, error) {
-	due, err := db.New(pool).OverdueBatteryIDs(ctx, int32(limit))
+	flagged, err := flagOverdue(ctx, pool, mailer, limit)
+	if err != nil {
+		return nil, err
+	}
+	due, err := db.New(pool).LostBatteryIDs(ctx, int32(limit))
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +63,7 @@ func FlagUnreturned(ctx context.Context, pool *pgxpool.Pool, mailer *mail.Mailer
 			suspended++
 		}
 	}
-	return map[string]any{"processed": processed, "suspended": suspended}, nil
+	return map[string]any{"overdue_flagged": flagged, "processed": processed, "suspended": suspended}, nil
 }
 
 func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mail.Message, error) {
@@ -81,7 +88,7 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 	if acct != nil {
 		acctID = &acct.ID
 	}
-	if _, err := risk.Emit(ctx, q, risk.Event{RuleCode: "UNRETURNED_48H", SubjectType: "battery",
+	if _, err := risk.Emit(ctx, q, risk.Event{RuleCode: "UNRETURNED_7D", SubjectType: "battery",
 		SubjectID: b.ID.String(), AccountID: acctID, ActionTaken: "SUSPEND",
 		Context: map[string]any{"serial": b.Serial}}); err != nil {
 		return false, false, nil, err
@@ -93,7 +100,7 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 		return false, false, nil, err
 	}
 	if err := recordBatteryEvent(ctx, q, b, custodyEvent{Event: "LOST", FromType: fromType, FromID: fromID,
-		FromSet: true, ToType: "NONE", Meta: map[string]any{"reason": "UNRETURNED_48H"}, Source: "SYSTEM"}); err != nil {
+		FromSet: true, ToType: "NONE", Meta: map[string]any{"reason": "UNRETURNED_7D"}, Source: "SYSTEM"}); err != nil {
 		return false, false, nil, err
 	}
 	target, owner, err := unreturnedTargets(ctx, q, acct)
@@ -110,7 +117,7 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 			SubjectID: b.ID.String(), SubjectLabel: b.Serial, After: events.Map{"status": "LOST"},
 			Metadata: events.Map{"account_id": acctOut, "notify_user_id": target.ID.String()},
 			Notify: []events.NotifySpec{{UserID: target.ID, Title: "Battery " + b.Serial + " unreturned",
-				Body:   "Pack past 48h return window — account suspended pending recovery.",
+				Body:   "Pack out for more than 7 days — account suspended pending recovery.",
 				Source: "Batteries", Severity: events.Warning, LinkPath: "/batteries/" + b.ID.String(),
 				TemplateCode: "battery.unreturned", DedupeKey: "battery.unreturned:" + b.ID.String()}}}); err != nil {
 			return false, false, nil, err
@@ -122,12 +129,12 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 			}
 			email = &mail.Message{To: []string{*target.Email}, Subject: "Unreturned battery " + b.Serial,
 				Template: "battery_unreturned", Context: map[string]any{"first_name": target.FirstName,
-					"serial": b.Serial, "account_label": label}}
+					"serial": b.Serial, "account_label": label, "suspended": true}}
 		}
 	}
 	susp := false
 	if acct != nil && acct.Status == "ACTIVE" && owner != nil {
-		if err := suspendForUnreturned(ctx, q, *acct, *owner, "UNRETURNED_48H battery "+b.Serial); err != nil {
+		if err := suspendForUnreturned(ctx, q, *acct, *owner, "UNRETURNED_7D battery "+b.Serial); err != nil {
 			return false, false, nil, err
 		}
 		susp = true

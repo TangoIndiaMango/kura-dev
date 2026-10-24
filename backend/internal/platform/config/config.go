@@ -44,9 +44,12 @@ type Config struct {
 	NombaWebhook   string `env:"NOMBA_WEBHOOK_SECRET"`
 	NombaAccountID string `env:"NOMBA_ACCOUNT_ID"`
 	// PSP_ALLOW_DEV_VA defaults to DEBUG; staging/production never allow it.
-	PSPAllowDevVA       *bool  `env:"PSP_ALLOW_DEV_VA"`
-	PSPCustomerEmailDom string `env:"PSP_CUSTOMER_EMAIL_DOMAIN" envDefault:"customers.kura.eco"`
-	MockIoT             bool   `env:"MOCK_IOT_ENABLED" envDefault:"false"`
+	PSPAllowDevVA *bool `env:"PSP_ALLOW_DEV_VA"`
+	// Dedicated virtual accounts (NUBAN per rider) need Paystack approval and
+	// KYC paperwork; off by default — riders top up through Paystack Checkout.
+	VirtualAccountsEnabled bool   `env:"PSP_VIRTUAL_ACCOUNTS_ENABLED" envDefault:"false"`
+	PSPCustomerEmailDom    string `env:"PSP_CUSTOMER_EMAIL_DOMAIN" envDefault:"customers.kura.eco"`
+	MockIoT                bool   `env:"MOCK_IOT_ENABLED" envDefault:"false"`
 
 	// Petrol comparison used by savings / fuel-saved estimates.
 	PetrolLitresPerSwap float64 `env:"COOP_PETROL_LITRES_PER_SWAP" envDefault:"1.2"`

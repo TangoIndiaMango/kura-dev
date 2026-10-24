@@ -3,6 +3,7 @@ package mobility
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -45,13 +46,15 @@ func assertWithinLimits(ctx context.Context, q *db.Queries, driver uuid.UUID, fe
 	}
 	if d.DailySwapLimit != nil {
 		if used := int64(day.Swaps + holds.N); used >= int64(*d.DailySwapLimit) {
-			return apperr.Conflict("DRIVER_SWAP_LIMIT", "Daily swap limit reached for this driver.").
+			return apperr.Conflict("DRIVER_SWAP_LIMIT", fmt.Sprintf("Today's swap limit (%d) for this driver is used up. "+
+				"Booking opens again tomorrow, or ask the account owner to raise it.", *d.DailySwapLimit)).
 				WithDetails(apperr.Details{"limit": *d.DailySwapLimit, "used": used})
 		}
 	}
 	if d.DailySpendKoboLimit != nil {
 		if day.Spend+holds.Held+max(0, fee) > *d.DailySpendKoboLimit {
-			return apperr.Conflict("DRIVER_SPEND_LIMIT", "Daily spend limit would be exceeded for this driver.").
+			return apperr.Conflict("DRIVER_SPEND_LIMIT", "Today's spend limit for this driver would be exceeded. "+
+				"Ask the account owner to raise it.").
 				WithDetails(apperr.Details{"limit_kobo": *d.DailySpendKoboLimit, "spent_kobo": day.Spend,
 					"held_kobo": holds.Held, "fee_kobo": fee})
 		}
@@ -124,13 +127,28 @@ func assertHubOpen(h db.MobilityHub) error {
 	return apperr.Conflict("HUB_CLOSED", "Hub "+h.Code+" is closed or outside operating hours.")
 }
 
-// assertNoOverdue is assert_no_unreturned_battery.
-func assertNoOverdue(ctx context.Context, q *db.Queries, account uuid.UUID) error {
-	overdue, err := q.AccountHasOverdueBattery(ctx, account)
-	if err != nil || !overdue {
+// assertVehicleNotOverdue blocks booking for a vehicle whose pack is past
+// the 48 h return window (only that vehicle — the account's other vehicles
+// still book). A walk-in at a hub swaps it, which returns the pack.
+func assertVehicleNotOverdue(ctx context.Context, q *db.Queries, vehicle uuid.UUID) error {
+	o, err := q.VehicleOverdueBattery(ctx, vehicle)
+	if database.IsNoRows(err) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	return apperr.Conflict("BATTERY_UNRETURNED", "Account has an unreturned battery past the return window.")
+	return overdueError(o.RegistrationPlate, o.Serial)
+}
+
+func overdueError(plate, serial string) error {
+	return apperr.Conflict("BATTERY_UNRETURNED", overdueMessage(plate, serial)).
+		WithDetails(apperr.Details{"vehicle": plate, "battery": serial})
+}
+
+func overdueMessage(plate, serial string) string {
+	return "Pack " + serial + " on " + plate + " has been out for more than 48 hours, so booking for " + plate +
+		" is paused. Ride it to any Kura hub and the agent will swap it."
 }
 
 // planCovers is assert_plan_covers_swap (locks the subscription).

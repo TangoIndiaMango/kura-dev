@@ -12,6 +12,8 @@ export interface SwapVehicle {
   batteryType?: string | null
   plan: string
   payPerSwapNaira?: number | null
+  /** Why this vehicle can't be booked right now (e.g. its pack is overdue). */
+  blockedReason?: string | null
 }
 
 interface SelectVehicleStepProps {
@@ -50,16 +52,21 @@ export const SelectVehicleStep: React.FC<SelectVehicleStepProps> = ({
       ) : (
         <div className="flex flex-col gap-2.5">
           {vehicles.map((v) => {
-            const active = v.id === selectedId
+            const blocked = Boolean(v.blockedReason)
+            const active = v.id === selectedId && !blocked
             return (
               <button
                 key={v.id}
                 type="button"
+                disabled={blocked}
+                aria-disabled={blocked}
                 onClick={() => onSelect(v.id)}
                 className={`flex items-center justify-between rounded-xl border px-4 py-4 text-left transition ${
-                  active
-                    ? 'border-[var(--kura-teal)] bg-[var(--kura-teal)]/10'
-                    : 'border-[var(--kura-border)] bg-[var(--kura-bg-elevated)]'
+                  blocked
+                    ? 'cursor-not-allowed border-[var(--kura-coral)]/40 bg-[var(--kura-coral)]/5'
+                    : active
+                      ? 'border-[var(--kura-teal)] bg-[var(--kura-teal)]/10'
+                      : 'border-[var(--kura-border)] bg-[var(--kura-bg-elevated)]'
                 }`}
               >
                 <span className="flex flex-col gap-0.5">
@@ -69,9 +76,15 @@ export const SelectVehicleStep: React.FC<SelectVehicleStepProps> = ({
                   <span className="text-[12px] text-[var(--kura-muted)]">
                     {v.reg} · {v.battery}
                   </span>
-                  <span className="text-[11px] text-[var(--kura-teal-bright)]">
-                    Plan · {v.plan}
-                  </span>
+                  {blocked ? (
+                    <span className="mt-1 text-[11.5px] leading-snug text-[var(--kura-coral)]">
+                      {v.blockedReason}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-[var(--kura-teal-bright)]">
+                      Plan · {v.plan}
+                    </span>
+                  )}
                 </span>
                 {active ? (
                   <Tick01Icon
@@ -87,7 +100,9 @@ export const SelectVehicleStep: React.FC<SelectVehicleStepProps> = ({
 
       <OperatorPrimaryButton
         onClick={onContinue}
-        disabled={!selectedId || loading}
+        disabled={
+          !selectedId || loading || Boolean(vehicles.find((v) => v.id === selectedId)?.blockedReason)
+        }
       >
         Continue
       </OperatorPrimaryButton>

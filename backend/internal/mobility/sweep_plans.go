@@ -145,8 +145,9 @@ func (b *Billing) RenewDueSubscriptions(ctx context.Context, log *slog.Logger, l
 					return events.Event{Action: "subscription.lapsed_to_pps", SubjectType: "subscription",
 						SubjectID: s.ID.String(), Before: events.Map{"status": s.Status},
 						After: events.Map{"status": "LAPSED_TO_PPS", "error": msg},
-						Notify: ownerNote(ctx, b, s, "Auto-renew failed", "We could not renew "+plan+
-							". You are on pay-per-swap until you renew.", "plan.lapsed", "sub-lapsed:"+s.ID.String())}
+						Notify: ownerNote(ctx, b, s, "Your plan has ended", plan+
+							" has ended. Renew it in Plans (pay with Paystack) — you are on pay-per-swap until then.",
+							"plan.lapsed", "sub-lapsed:"+s.ID.String())}
 				})
 			return err
 		})

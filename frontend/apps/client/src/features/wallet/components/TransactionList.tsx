@@ -72,8 +72,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       ) : items.length === 0 ? (
         <OperatorEmptyState
           illustration="no-activity"
-          title="No money movement yet"
-          description="Top-ups, swap payments and plan charges all land here with a receipt you can open."
+          title="No payments yet"
+          description="Every swap or plan you pay for shows up here with a receipt you can open."
         />
       ) : (
         <>

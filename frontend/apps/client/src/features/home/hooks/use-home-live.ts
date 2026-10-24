@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { isRiderFacing } from '@shared/utils/paymentDisplay'
 import { useAuth } from '../../auth/AuthProvider'
 import { useMySubscriptions } from '../../plans/hooks/use-operator-plans'
 import { planLabelForVehicle } from '../../plans/hooks/plan-live-map'
@@ -29,7 +30,7 @@ export function useHomeLiveData() {
 
   const activityItems =
     isAuthenticated && livePayments.payments.length > 0
-      ? livePayments.payments.map((p) => {
+      ? livePayments.payments.filter(isRiderFacing).map((p) => {
           const row = paymentToHistory(p)
           return {
             id: row.id,

@@ -11,14 +11,14 @@ interface QuickActionsRowProps {
   onNavigateTab: (tab: TabId) => void
   onOpenSwaps: () => void
   hasActivePass?: boolean
-  onFund: () => void
+  onOpenWallet: () => void
 }
 
 export const QuickActionsRow: React.FC<QuickActionsRowProps> = ({
   onNavigateTab,
   onOpenSwaps,
   hasActivePass = false,
-  onFund,
+  onOpenWallet,
 }) => {
   const actions: Array<{
     id: string
@@ -43,10 +43,10 @@ export const QuickActionsRow: React.FC<QuickActionsRowProps> = ({
       onClick: () => onNavigateTab('plans'),
     },
     {
-      id: 'fund',
-      label: 'Fund',
+      id: 'wallet',
+      label: 'Receipts',
       icon: Wallet01Icon,
-      onClick: onFund,
+      onClick: onOpenWallet,
     },
   ]
 

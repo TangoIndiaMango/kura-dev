@@ -133,6 +133,9 @@ export const PlanChangeConfirmSheet: React.FC<PlanChangeConfirmSheetProps> = ({
                 {formatNaira(due)}
               </span>
             </div>
+            <p className="mt-2 text-[11.5px] leading-relaxed text-[var(--kura-muted)]">
+              Paid with Paystack — card, bank transfer or USSD.
+            </p>
           </div>
 
           {previewDueNaira == null ? (
@@ -154,7 +157,7 @@ export const PlanChangeConfirmSheet: React.FC<PlanChangeConfirmSheetProps> = ({
       {needsPin ? (
         <div className="mt-4 flex flex-col gap-2">
           <p className="text-[12px] font-bold text-[var(--kura-muted)]">
-            Enter wallet PIN
+            Enter your Kura PIN
           </p>
           <PinDigitInputs
             values={pinDigits}

@@ -365,6 +365,33 @@ func (q *Queries) IssuedBatteryForUpdate(ctx context.Context, id uuid.UUID) (Mob
 	return i, err
 }
 
+const lostBatteryIDs = `-- name: LostBatteryIDs :many
+SELECT id FROM mobility_battery WHERE status = 'ISSUED'
+  AND COALESCE(expected_return_by, issued_at + interval '48 hours') < now() - interval '5 days'
+ORDER BY issued_at LIMIT $1
+`
+
+// Stage 2 (7 days): still not returned 5 days after the 48 h window.
+func (q *Queries) LostBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, lostBatteryIDs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const mountedVehicle = `-- name: MountedVehicle :one
 SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id FROM mobility_vehicle WHERE current_battery_id = $1 ORDER BY id LIMIT 1
 `
@@ -430,11 +457,16 @@ func (q *Queries) OpenSwapIDs(ctx context.Context, limit int32) ([]uuid.UUID, er
 }
 
 const overdueBatteryIDs = `-- name: OverdueBatteryIDs :many
-SELECT id FROM mobility_battery WHERE status = 'ISSUED'
-  AND (expected_return_by < now() OR (expected_return_by IS NULL AND issued_at < now() - interval '48 hours'))
-ORDER BY expected_return_by, issued_at LIMIT $1
+SELECT b.id FROM mobility_battery b WHERE b.status = 'ISSUED'
+  AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'))
+  AND NOT EXISTS (SELECT 1 FROM risk_riskevent e JOIN risk_riskrule r ON r.id = e.rule_id
+    WHERE r.code = 'UNRETURNED_48H' AND e.subject_type = 'battery' AND e.subject_id = b.id::text
+      AND e.created_at >= COALESCE(b.issued_at, '-infinity'::timestamptz))
+ORDER BY b.expected_return_by, b.issued_at LIMIT $1
 `
 
+// Stage 1 (48 h): ISSUED packs past the return window not yet flagged for
+// this issue (one UNRETURNED_48H risk event per issue).
 func (q *Queries) OverdueBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, overdueBatteryIDs, limit)
 	if err != nil {

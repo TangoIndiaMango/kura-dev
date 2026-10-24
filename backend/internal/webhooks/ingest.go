@@ -182,6 +182,16 @@ func (h *Handler) applyFunding(ctx context.Context, ev Event) error {
 	if !verified.OK {
 		return apperr.New("INTEGRATION_ERROR", "PSP verify rejected funding event.")
 	}
+	// A wallet top-up started in the app (Paystack Checkout): settle that
+	// checkout — same path as the app's verify call, credited once.
+	if _, err := h.q.CheckoutByReference(ctx, ev.Reference); err == nil {
+		return database.InTx(ctx, h.pool, func(tx pgx.Tx) error {
+			_, err := finance.SettleCheckout(ctx, db.New(tx), ev.Reference, verified, nil)
+			return err
+		})
+	} else if !database.IsNoRows(err) {
+		return err
+	}
 	amount := ev.AmountKobo
 	if verified.AmountKobo != nil {
 		amount = verified.AmountKobo

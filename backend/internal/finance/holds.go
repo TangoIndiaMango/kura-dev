@@ -58,6 +58,13 @@ func Release(ctx context.Context, q *db.Queries, acct Account, amount int64, ref
 // WALLET_DEBIT payment and recognise swap revenue net of VAT.
 func Capture(ctx context.Context, q *db.Queries, acct Account, amount int64, reference, purpose string,
 	hub *uuid.UUID) (db.FinancePayment, error) {
+	return capture(ctx, q, acct, amount, reference, purpose, hub, "WALLET_DEBIT", "")
+}
+
+// capture records the payment under channel (WALLET_DEBIT, or the card /
+// transfer a Paystack swap was paid with) and its PSP reference.
+func capture(ctx context.Context, q *db.Queries, acct Account, amount int64, reference, purpose string,
+	hub *uuid.UUID, channel, pspRef string) (db.FinancePayment, error) {
 	if amount <= 0 {
 		return db.FinancePayment{}, apperr.New("VALIDATION_ERROR", "Capture amount_kobo must be positive.")
 	}
@@ -80,8 +87,8 @@ func Capture(ctx context.Context, q *db.Queries, acct Account, amount int64, ref
 	if err := saveWallet(ctx, q, w); err != nil {
 		return db.FinancePayment{}, err
 	}
-	p, err := CreatePayment(ctx, q, PaymentIn{Account: acct.ID, Channel: "WALLET_DEBIT", Amount: amount, VAT: vat,
-		Purpose: purpose, Status: "SUCCESS", Hub: hub})
+	p, err := CreatePayment(ctx, q, PaymentIn{Account: acct.ID, Channel: channel, Amount: amount, VAT: vat,
+		Purpose: purpose, Status: "SUCCESS", Hub: hub, PSPReference: pspRef})
 	if err != nil {
 		return p, err
 	}

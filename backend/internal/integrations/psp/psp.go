@@ -30,6 +30,25 @@ type VerifyResult struct {
 	AmountKobo *int64
 	Currency   string
 	Status     string
+	// Channel is how the customer paid (Paystack: card, bank_transfer, ussd…).
+	Channel string
+}
+
+// CheckoutRequest starts a hosted payment (Paystack transaction/initialize).
+type CheckoutRequest struct {
+	Email       string
+	AmountKobo  int64
+	Reference   string
+	CallbackURL string
+	Metadata    map[string]any
+}
+
+// CheckoutResult opens the payment: AccessCode for the in-app popup,
+// AuthorizationURL for the redirect fallback.
+type CheckoutResult struct {
+	AuthorizationURL string
+	AccessCode       string
+	Reference        string
 }
 
 // Port is what each provider client implements.
@@ -37,6 +56,9 @@ type Port interface {
 	Code() string
 	ProvisionVirtualAccount(ctx context.Context, in VARequest) (VAResult, error)
 	VerifyTransaction(ctx context.Context, reference string) (VerifyResult, error)
+	InitializeCheckout(ctx context.Context, in CheckoutRequest) (CheckoutResult, error)
+	// Refund returns amountKobo of a successful transaction to the payer.
+	Refund(ctx context.Context, reference string, amountKobo int64) error
 }
 
 // VARequest carries the customer for a dedicated account.

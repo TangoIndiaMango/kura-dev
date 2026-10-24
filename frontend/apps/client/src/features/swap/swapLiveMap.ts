@@ -24,6 +24,7 @@ export type BookableHub = SwapHub & {
 
 export function apiPaymentMode(mode: BookingPaymentMode): string {
   if (mode === 'CASH_AT_HUB') return 'CASH'
+  if (mode === 'PAYSTACK') return 'PAYSTACK'
   if (mode === 'PLAN') return 'PLAN'
   if (mode === 'CREDIT') return 'CREDIT'
   return 'WALLET'
@@ -32,6 +33,7 @@ export function apiPaymentMode(mode: BookingPaymentMode): string {
 export function uiPaymentMode(mode: string): BookingPaymentMode {
   const m = mode.toUpperCase()
   if (m === 'CASH' || m === 'CASH_AT_HUB') return 'CASH_AT_HUB'
+  if (m === 'PAYSTACK') return 'PAYSTACK'
   if (m === 'PLAN') return 'PLAN'
   if (m === 'CREDIT') return 'CREDIT'
   return 'WALLET'

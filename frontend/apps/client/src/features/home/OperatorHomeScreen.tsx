@@ -4,7 +4,6 @@ import {
   deriveNextAction,
   liveReservations,
   useOperatorSession,
-  SWAP_PRICE_NAIRA,
   vehicleCoveredByPlan,
   type OperatorActiveReservation,
 } from '../../shared/session'
@@ -19,7 +18,6 @@ import { ActiveSwapBanner } from './components/ActiveSwapBanner'
 import { QuickActionsRow } from './components/QuickActionsRow'
 import { NextActionCard } from './components/NextActionCard'
 import { RecentActivityList } from './components/RecentActivityList'
-import { HomeWalletStrip } from './components/HomeWalletStrip'
 import { HomeCreditScoreBlock } from './components/HomeCreditScoreBlock'
 import { HomeOnboardingChecklist } from './components/HomeOnboardingChecklist'
 import { swapsPausedMessage } from '../../shared/session/accountStatus'
@@ -78,9 +76,6 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
   if (!session) return null
 
   const balanceNaira = liveWallet.balanceNaira ?? 0
-  const nuban = liveWallet.wallet ? liveWallet.nuban : null
-  /** Nothing to fund into and nothing to show — Wallet carries the setup notice. */
-  const showWalletStrip = Boolean(nuban) || balanceNaira > 0
   const hasLivePass = holds.length > 0
   const swapsSettled = !liveSwaps.isLoading
   const hasCompletedFirstSwap = swapsSettled && liveSwaps.swaps.length > 0
@@ -106,10 +101,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
     sessionStorage.setItem('kura_swap_intent', `pass:${holdId}`)
     onNavigateTab('swap')
   }
-  const openFund = () => {
-    sessionStorage.setItem('kura_wallet_intent', 'fund')
-    onNavigateTab('wallet')
-  }
+  const openWallet = () => onNavigateTab('wallet')
   const openWalletCredit = (
     intent: 'credit' | 'schedule' | 'eligibility',
   ) => {
@@ -136,14 +128,6 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
       label: 'Add a vehicle',
       done: vehicles.length > 0,
       tab: 'swap' as TabId,
-    },
-    {
-      id: 'fund',
-      label: 'Fund wallet',
-      done:
-        balanceNaira >= SWAP_PRICE_NAIRA ||
-        vehicles.some((v) => vehicleCoveredByPlan(v.plan)),
-      tab: 'wallet' as TabId,
     },
     {
       id: 'swap',
@@ -193,13 +177,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
         }}
       />
 
-      {showWalletStrip ? (
-        <HomeWalletStrip
-          balanceNaira={balanceNaira}
-          nuban={nuban}
-          onFund={openFund}
-        />
-      ) : null}
+
 
       <HomeCreditScoreBlock
         enabled={isAuthenticated}
@@ -215,7 +193,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
             if (primary) openHoldPass(primary.id)
             else openSwapHub()
           }}
-          onFund={openFund}
+          onOpenWallet={openWallet}
         />
       ) : null}
 
@@ -233,7 +211,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
               onNavigateTab('account')
               return
             }
-            if (item.tab === 'wallet') openFund()
+            if (item.tab === 'wallet') openWallet()
             else if (item.tab === 'swap') {
               sessionStorage.setItem('kura_swap_intent', 'book')
               onNavigateTab('swap')
@@ -247,7 +225,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
             if (nextAction.id === 'pin') {
               sessionStorage.setItem('kura_account_open', 'pin')
               onNavigateTab('account')
-            } else if (nextAction.tab === 'wallet') openFund()
+            } else if (nextAction.tab === 'wallet') openWallet()
             else onNavigateTab(nextAction.tab)
           }}
         />

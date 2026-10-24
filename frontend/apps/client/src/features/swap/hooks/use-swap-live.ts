@@ -7,6 +7,8 @@ export const SWAP_API = {
   reservationCancel: (id: string) => `/mobility/reservations/${id}/cancel/`,
   holdPolicy: '/mobility/pricing/hold-policy/',
   swaps: '/mobility/swaps/',
+  precheck: '/mobility/reservations/precheck/',
+  swapCheckout: (id: string) => `/mobility/swaps/${id}/checkout/`,
 } as const
 
 export type DiscoverHubApi = {
@@ -260,4 +262,32 @@ export function useCancelReservation() {
     [SWAP_API.reservations, '/finance/wallets/mine/'],
     { body: () => ({}), silentError: true },
   )
+}
+
+export type BlockedVehicleApi = { vehicle: string; plate: string; battery: string; code: string; message: string }
+export type BookingPrecheckApi = {
+  ok: boolean
+  code?: string
+  message?: string
+  blocked_vehicles?: BlockedVehicleApi[]
+}
+
+/**
+ * What would refuse a booking, checked before the steps: a paused account
+ * blocks everything; a pack past its 48 h return window blocks only its vehicle.
+ */
+export function useBookingPrecheck(enabled: boolean) {
+  const query = useFetchData<BookingPrecheckApi>(SWAP_API.precheck, undefined, {
+    enabled,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  })
+  const blockedByVehicle = new Map(
+    (query.data?.blocked_vehicles ?? []).map((b) => [b.vehicle, b.message] as const),
+  )
+  return {
+    ...query,
+    blockedMessage: query.data && !query.data.ok ? (query.data.message ?? null) : null,
+    blockedByVehicle,
+  }
 }

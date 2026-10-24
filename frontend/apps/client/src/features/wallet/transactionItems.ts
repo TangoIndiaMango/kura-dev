@@ -1,4 +1,10 @@
-import { isCredit, paymentAmount, paymentMeta, paymentTitle } from '@shared/utils/paymentDisplay'
+import {
+  isCredit,
+  isRiderFacing,
+  paymentAmount,
+  paymentMeta,
+  paymentTitle,
+} from '@shared/utils/paymentDisplay'
 import type { PaymentApi } from './hooks/use-operator-wallet'
 
 export interface WalletTxItem {
@@ -11,7 +17,7 @@ export interface WalletTxItem {
 }
 
 export function toWalletTxItems(payments: PaymentApi[]): WalletTxItem[] {
-  return payments.map((payment) => ({
+  return payments.filter(isRiderFacing).map((payment) => ({
     id: payment.id,
     title: paymentTitle(payment),
     meta: paymentMeta(payment),

@@ -188,9 +188,6 @@ export const OperatorPlansScreen: React.FC<OperatorPlansScreenProps> = ({
             expires={liveCard?.expiresLabel ?? ''}
             daysLeft={liveCard?.progressLabel ?? ''}
             autoRenew={liveCard?.autoRenew ?? false}
-            onToggleAutoRenew={() => {
-              if (live && liveSub) actions.toggleAutoRenew()
-            }}
             showRenew={
               Boolean(liveCard) &&
               !payPerSwap &&

@@ -31,11 +31,12 @@ export function paymentToHistory(p: {
 }
 
 const SWAP_MODE_LABEL: Record<string, string> = {
-  WALLET: 'Wallet',
+  WALLET: 'Paid online',
   CASH: 'Cash at hub',
   CASH_AT_HUB: 'Cash at hub',
   PLAN: 'Plan',
   CREDIT: 'Swap credit',
+  PAYSTACK: 'Paystack',
 }
 
 function uiLabel(ui: string): string {
@@ -57,7 +58,9 @@ export function swapToHistory(s: SwapListApi): HistoryItem {
         ? 'PLAN'
         : mode === 'CREDIT'
           ? 'CREDIT'
-          : 'WALLET'
+          : mode === 'PAYSTACK'
+            ? 'PAYSTACK'
+            : 'WALLET'
   const ui = swapUiStatus(s)
   const amount =
     typeof s.display_amount_kobo === 'number'

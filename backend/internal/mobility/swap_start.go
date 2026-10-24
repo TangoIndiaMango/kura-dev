@@ -178,9 +178,15 @@ func (b *Bay) startTx(ctx context.Context, q *db.Queries, in startIn, cid string
 	if err := assertMayUse(driverID, v); err != nil {
 		return uuid.Nil, err
 	}
-	mode, source := "WALLET", "HUB_APP"
+	// A walk-in pays with Paystack at the bay unless a plan covers it (the
+	// desk can still settle another way at Complete).
+	mode, source := "PAYSTACK", "HUB_APP"
 	if res != nil {
 		mode, source = res.PaymentMode, res.Source
+	} else if _, err := planCovers(ctx, q, v.ID); err == nil {
+		mode = "PLAN"
+	} else if _, isApp := apperr.As(err); !isApp {
+		return uuid.Nil, err
 	}
 	agent := actorID(who)
 	id, now := ids.New(), time.Now()

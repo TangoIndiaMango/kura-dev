@@ -20,7 +20,6 @@ type Querier interface {
 	AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error)
 	// Virtual account provisioning (integrations.services.va + WalletService).
 	AccountForVA(ctx context.Context, id uuid.UUID) (AccountForVARow, error)
-	AccountHasOverdueBattery(ctx context.Context, accountID uuid.UUID) (bool, error)
 	// account_ids_touching_hubs: swapped, reserved, or holding a pack at these hubs.
 	AccountIDsTouchingHubs(ctx context.Context, hubs []uuid.UUID) ([]uuid.UUID, error)
 	AccountRedemptionCount(ctx context.Context, arg AccountRedemptionCountParams) (int32, error)
@@ -111,6 +110,10 @@ type Querier interface {
 	CasesPage(ctx context.Context, arg CasesPageParams) ([]uuid.UUID, error)
 	CashDepositByID(ctx context.Context, id uuid.UUID) (OperationsCashdeposit, error)
 	CashDepositReceipt(ctx context.Context, id uuid.UUID) (CashDepositReceiptRow, error)
+	CheckoutByPayment(ctx context.Context, paymentID *uuid.UUID) (FinanceWalletcheckout, error)
+	CheckoutByReference(ctx context.Context, reference string) (FinanceWalletcheckout, error)
+	CheckoutForUpdate(ctx context.Context, reference string) (FinanceWalletcheckout, error)
+	CheckoutsToReverify(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
@@ -229,6 +232,7 @@ type Querier interface {
 	ExistingHubIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	ExistingPermissionIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	ExpirePPSSubscriptions(ctx context.Context, planID uuid.UUID) error
+	ExpireStaleCheckouts(ctx context.Context) (int64, error)
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
 	FirstCooperative(ctx context.Context) (AccountsCooperative, error)
@@ -294,6 +298,8 @@ type Querier interface {
 	InsertCase(ctx context.Context, arg InsertCaseParams) error
 	InsertCaseEvent(ctx context.Context, arg InsertCaseEventParams) error
 	InsertCataloguePlan(ctx context.Context, arg InsertCataloguePlanParams) error
+	// Paystack Checkout payments (finance_walletcheckout): top-ups and pay-at-swap.
+	InsertCheckout(ctx context.Context, arg InsertCheckoutParams) (FinanceWalletcheckout, error)
 	InsertConfig(ctx context.Context, arg InsertConfigParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
@@ -367,6 +373,7 @@ type Querier interface {
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
 	LatestOpenShift(ctx context.Context, arg LatestOpenShiftParams) (OperationsShift, error)
+	LatestSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error)
 	LedgerAccountForUpdate(ctx context.Context, code string) (FinanceLedgeraccount, error)
 	// LedgerEntry inherits BaseModel ordering (-created_at).
 	LedgerEntriesFor(ctx context.Context, ids []uuid.UUID) ([]LedgerEntriesForRow, error)
@@ -416,6 +423,8 @@ type Querier interface {
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	LockBatteryChain(ctx context.Context, key int64) error
+	// Stage 2 (7 days): still not returned 5 days after the 48 h window.
+	LostBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	MarkAllRead(ctx context.Context, userID uuid.UUID) (int64, error)
 	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
 	MatrixByID(ctx context.Context, id uuid.UUID) (MobilityPricematrix, error)
@@ -448,10 +457,15 @@ type Querier interface {
 	OpsCsvRows(ctx context.Context, arg OpsCsvRowsParams) ([]OpsCsvRowsRow, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
+	// Packs past the 48 h return window, per vehicle (that vehicle can't book).
+	OverdueBatteriesForAccount(ctx context.Context, accountID uuid.UUID) ([]OverdueBatteriesForAccountRow, error)
+	// Stage 1 (48 h): ISSUED packs past the return window not yet flagged for
+	// this issue (one UNRETURNED_48H risk event per issue).
 	OverdueBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
+	PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error)
 	PaymentByID(ctx context.Context, id uuid.UUID) (PaymentByIDRow, error)
 	PaymentByIdempotency(ctx context.Context, idempotencyKey *string) (FinancePayment, error)
 	PaymentByPSPRef(ctx context.Context, pspReference *string) (FinancePayment, error)
@@ -486,6 +500,7 @@ type Querier interface {
 	RedemptionByKey(ctx context.Context, idempotencyKey *string) (RedemptionByKeyRow, error)
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
+	RefundDueCheckouts(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
 	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
 	ReleaseEngine(ctx context.Context, arg ReleaseEngineParams) error
 	// QuerySet.update(): updated_at is left alone.
@@ -589,6 +604,7 @@ type Querier interface {
 	SetAccountStatusOnly(ctx context.Context, arg SetAccountStatusOnlyParams) error
 	SetBatteryAvailable(ctx context.Context, id uuid.UUID) error
 	SetBatteryStatus(ctx context.Context, arg SetBatteryStatusParams) error
+	SetCheckoutPayment(ctx context.Context, arg SetCheckoutPaymentParams) error
 	SetCooperativeChairman(ctx context.Context, arg SetCooperativeChairmanParams) error
 	SetCreditLineStatus(ctx context.Context, arg SetCreditLineStatusParams) error
 	SetCreditLinesStatus(ctx context.Context, arg SetCreditLinesStatusParams) error
@@ -608,12 +624,14 @@ type Querier interface {
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
 	SetPspEventStatus(ctx context.Context, arg SetPspEventStatusParams) error
 	SetSlot(ctx context.Context, arg SetSlotParams) error
+	SetSwapPaymentMode(ctx context.Context, arg SetSwapPaymentModeParams) error
 	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
 	SetUserOnboardingStep(ctx context.Context, arg SetUserOnboardingStepParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetVehicleBattery(ctx context.Context, arg SetVehicleBatteryParams) error
 	SetVehicleEngineSwap(ctx context.Context, arg SetVehicleEngineSwapParams) error
+	SettleCheckout(ctx context.Context, arg SettleCheckoutParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	ShiftByID(ctx context.Context, id uuid.UUID) (OperationsShift, error)
@@ -685,6 +703,7 @@ type Querier interface {
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
 	TrustedDeviceSeen(ctx context.Context, accountID uuid.UUID) ([]TrustedDeviceSeenRow, error)
+	UnrecordedSwapCheckouts(ctx context.Context, swapID *uuid.UUID) ([]FinanceWalletcheckout, error)
 	UpdateCooperative(ctx context.Context, arg UpdateCooperativeParams) error
 	UpdateHoldPolicy(ctx context.Context, arg UpdateHoldPolicyParams) error
 	UpdateHub(ctx context.Context, arg UpdateHubParams) error
@@ -708,6 +727,7 @@ type Querier interface {
 	VehicleModelByID(ctx context.Context, id uuid.UUID) (VehicleModelByIDRow, error)
 	VehicleModelForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehiclemodel, error)
 	VehicleModelTypeCounts(ctx context.Context) ([]VehicleModelTypeCountsRow, error)
+	VehicleOverdueBattery(ctx context.Context, id uuid.UUID) (VehicleOverdueBatteryRow, error)
 	VehicleRows(ctx context.Context, ids []uuid.UUID) ([]VehicleRowsRow, error)
 	VehicleStatusCounts(ctx context.Context) ([]VehicleStatusCountsRow, error)
 	// inspect_swap_velocity: completed in the WAT day + open swaps started (or created) that day.
