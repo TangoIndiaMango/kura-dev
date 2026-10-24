@@ -7,6 +7,7 @@ export const SWAP_API = {
   reservationCancel: (id: string) => `/mobility/reservations/${id}/cancel/`,
   holdPolicy: '/mobility/pricing/hold-policy/',
   swaps: '/mobility/swaps/',
+  swapCheckout: (id: string) => `/mobility/swaps/${id}/checkout/`,
 } as const
 
 export type DiscoverHubApi = {

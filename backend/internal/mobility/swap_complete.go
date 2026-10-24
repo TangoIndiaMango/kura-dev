@@ -55,6 +55,10 @@ func swapDiscount(ctx context.Context, q *db.Queries, code string, r *db.Mobilit
 	if code == "" || mode == "PLAN" || fee <= 0 || (r != nil && r.DiscountCode != "") {
 		return fee, false, nil
 	}
+	if mode == "PAYSTACK" {
+		return fee, false, apperr.Conflict("DISCOUNT_NOT_APPLICABLE",
+			"This swap is paid with Paystack — discount codes must be applied when booking.")
+	}
 	if held > 0 && mode == "WALLET" {
 		return fee, false, apperr.Conflict("DISCOUNT_NOT_APPLICABLE",
 			"This wallet hold is already fixed — discount codes must be applied when booking.")
@@ -118,7 +122,11 @@ func (b *Bay) completeSession(ctx context.Context, q *db.Queries, id uuid.UUID, 
 	if err != nil {
 		return settled{}, err
 	}
-	fee, held := swapFee(r, mode, in.Amount, tariff)
+	amount := in.Amount
+	if mode == "PAYSTACK" {
+		amount = nil // the fee the rider paid Paystack for, never a desk-typed amount
+	}
+	fee, held := swapFee(r, mode, amount, tariff)
 	key := "swap:" + s.ID.String()
 	fee, discounted, err := swapDiscount(ctx, q, in.Code, r, held, mode, fee, tariff, s.AccountID, key)
 	if err != nil {

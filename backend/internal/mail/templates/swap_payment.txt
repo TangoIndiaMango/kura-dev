@@ -1,0 +1,6 @@
+Hi{{if .first_name}} {{.first_name}}{{end}}, your swap is ready to pay
+
+Your battery swap for {{.vehicle}} at {{.hub_name}} comes to {{.amount}}.
+
+Pay securely with Paystack:
+{{.pay_url}}

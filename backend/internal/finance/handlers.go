@@ -37,10 +37,12 @@ type Handler struct {
 	q          *db.Queries
 	receiptKey []byte
 	demoFund   bool
+	checkout   CheckoutConfig
 }
 
-func NewHandler(pool *pgxpool.Pool, receiptKey string, demoFund bool) *Handler {
-	return &Handler{pool: pool, q: db.New(pool), receiptKey: []byte(receiptKey), demoFund: demoFund}
+func NewHandler(pool *pgxpool.Pool, receiptKey string, demoFund bool, checkout CheckoutConfig) *Handler {
+	return &Handler{pool: pool, q: db.New(pool), receiptKey: []byte(receiptKey), demoFund: demoFund,
+		checkout: checkout}
 }
 
 // CanReadAll is _can_read_all_finance: wallets:manage, or finance:read held

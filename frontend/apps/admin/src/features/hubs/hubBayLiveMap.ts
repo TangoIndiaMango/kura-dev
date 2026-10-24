@@ -39,7 +39,7 @@ export function mapReservationApi(r: ReservationApi): ReservationRecord & {
     vehicleReg: r.vehicle_plate,
     expiresIn: expiresLabel(r.expires_at),
     status: uiStatus as ReservationRecord['status'],
-    paymentMode: (['PLAN', 'WALLET', 'CREDIT', 'CASH_AT_HUB'].includes(mode)
+    paymentMode: (['PLAN', 'PAYSTACK', 'WALLET', 'CREDIT', 'CASH_AT_HUB'].includes(mode)
       ? mode
       : 'WALLET') as ReservationRecord['paymentMode'],
     accountId: r.account,
@@ -125,8 +125,8 @@ export function mapBatteryApi(b: BatteryListApi): BatteryRecord {
 
 export function apiPaymentMode(
   ui: ReservationRecord['paymentMode'] | string,
-): 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH' {
+): 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH' {
   if (ui === 'CASH_AT_HUB' || ui === 'CASH') return 'CASH'
-  if (ui === 'PLAN' || ui === 'CREDIT') return ui
+  if (ui === 'PLAN' || ui === 'CREDIT' || ui === 'PAYSTACK') return ui
   return 'WALLET'
 }

@@ -111,6 +111,8 @@ type Querier interface {
 	CasesPage(ctx context.Context, arg CasesPageParams) ([]uuid.UUID, error)
 	CashDepositByID(ctx context.Context, id uuid.UUID) (OperationsCashdeposit, error)
 	CashDepositReceipt(ctx context.Context, id uuid.UUID) (CashDepositReceiptRow, error)
+	CheckoutByReference(ctx context.Context, reference string) (FinanceWalletcheckout, error)
+	CheckoutForUpdate(ctx context.Context, reference string) (FinanceWalletcheckout, error)
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
@@ -294,6 +296,8 @@ type Querier interface {
 	InsertCase(ctx context.Context, arg InsertCaseParams) error
 	InsertCaseEvent(ctx context.Context, arg InsertCaseEventParams) error
 	InsertCataloguePlan(ctx context.Context, arg InsertCataloguePlanParams) error
+	// Paystack Checkout wallet top-ups (finance_walletcheckout).
+	InsertCheckout(ctx context.Context, arg InsertCheckoutParams) (FinanceWalletcheckout, error)
 	InsertConfig(ctx context.Context, arg InsertConfigParams) error
 	InsertConsent(ctx context.Context, arg InsertConsentParams) error
 	InsertCooperative(ctx context.Context, arg InsertCooperativeParams) error
@@ -367,6 +371,7 @@ type Querier interface {
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
 	LatestOpenShift(ctx context.Context, arg LatestOpenShiftParams) (OperationsShift, error)
+	LatestSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error)
 	LedgerAccountForUpdate(ctx context.Context, code string) (FinanceLedgeraccount, error)
 	// LedgerEntry inherits BaseModel ordering (-created_at).
 	LedgerEntriesFor(ctx context.Context, ids []uuid.UUID) ([]LedgerEntriesForRow, error)
@@ -452,6 +457,7 @@ type Querier interface {
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
+	PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error)
 	PaymentByID(ctx context.Context, id uuid.UUID) (PaymentByIDRow, error)
 	PaymentByIdempotency(ctx context.Context, idempotencyKey *string) (FinancePayment, error)
 	PaymentByPSPRef(ctx context.Context, pspReference *string) (FinancePayment, error)
@@ -614,6 +620,7 @@ type Querier interface {
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetVehicleBattery(ctx context.Context, arg SetVehicleBatteryParams) error
 	SetVehicleEngineSwap(ctx context.Context, arg SetVehicleEngineSwapParams) error
+	SettleCheckout(ctx context.Context, arg SettleCheckoutParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
 	SetupTokenByHashForUpdate(ctx context.Context, tokenHash string) (SetupTokenByHashForUpdateRow, error)
 	ShiftByID(ctx context.Context, id uuid.UUID) (OperationsShift, error)

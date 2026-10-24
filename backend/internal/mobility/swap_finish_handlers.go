@@ -14,7 +14,7 @@ import (
 )
 
 type sessionIn struct {
-	Mode     *string      `json:"payment_mode" validate:"omitempty,oneof=PLAN WALLET CREDIT CASH"`
+	Mode     *string      `json:"payment_mode" validate:"omitempty,oneof=PLAN WALLET CREDIT CASH PAYSTACK"`
 	Amount   *int64       `json:"amount_kobo"`
 	Code     string       `json:"discount_code" validate:"max=40"`
 	PinGrant string       `json:"rider_pin_grant"`

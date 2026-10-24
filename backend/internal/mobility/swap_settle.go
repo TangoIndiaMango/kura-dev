@@ -107,6 +107,8 @@ func (b *Bay) settle(ctx context.Context, q *db.Queries, in settleIn) (settled, 
 		}
 		p, err := credit.ConsumeSwapCredit(ctx, q, in.Account, in.Fee, ref, &in.Hub.ID)
 		return settled{Payment: &p.ID}, err
+	case "PAYSTACK":
+		return paidWithPaystack(ctx, q, in.SwapKey, in.Fee)
 	}
 	return settled{}, apperr.New("PAYMENT_MODE_UNSUPPORTED", "Unsupported payment mode "+in.Mode+".")
 }

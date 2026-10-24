@@ -36,6 +36,7 @@ import { SetPinStep } from './components/SetPinStep'
 import { ForgotPinFlow } from './components/ForgotPinFlow'
 import { ReservationCodeStep } from './components/ReservationCodeStep'
 import { InsufficientBalanceStep } from './components/InsufficientBalanceStep'
+import { useSwapPayment } from './hooks/use-swap-payment'
 import { useMySwaps } from './hooks/use-swap-live'
 import { swapsPausedMessage } from '../../shared/session/accountStatus'
 
@@ -122,6 +123,9 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const [inProgressSwap, setInProgressSwap] = useState<SwapRecentItem | null>(
     null,
   )
+  const swapPayment = useSwapPayment(() => setInProgressSwap(null))
+  const inProgressPaystack =
+    inProgressSwap?.paymentMode?.toUpperCase() === 'PAYSTACK'
   const [incompleteSwap, setIncompleteSwap] = useState<SwapRecentItem | null>(
     null,
   )
@@ -142,7 +146,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const [findingOpen, setFindingOpen] = useState(false)
   const [swapProgressOpen, setSwapProgressOpen] = useState(false)
   const [countdownOpen, setCountdownOpen] = useState(false)
-  const [paymentMode, setPaymentMode] = useState<BookingPaymentMode>('WALLET')
+  const [paymentMode, setPaymentMode] = useState<BookingPaymentMode>('PAYSTACK')
   const [pendingDueNaira, setPendingDueNaira] = useState(450)
   const [pendingDiscountCode, setPendingDiscountCode] = useState('')
 
@@ -203,7 +207,9 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const paymentLabel =
     effectiveMode === 'PLAN'
       ? `Included · ${vehicle?.plan} plan`
-      : effectiveMode === 'CASH_AT_HUB'
+      : effectiveMode === 'PAYSTACK'
+        ? `₦${listPriceNaira.toLocaleString()} · Paystack at swap`
+        : effectiveMode === 'CASH_AT_HUB'
         ? `₦${listPriceNaira.toLocaleString()} · cash at hub`
         : effectiveMode === 'CREDIT'
           ? `₦${listPriceNaira.toLocaleString()} · credit`
@@ -233,16 +239,10 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     }, 2200)
   }
 
+  // Wallet top-ups are coming soon: pay-per-swap defaults to Paystack at the
+  // bay, so there is no balance shortfall to route around.
   const goConfirmOrShortfall = () => {
-    if (!covered) {
-      setPaymentMode(
-        walletOk ? 'WALLET' : creditAvailable ? 'CREDIT' : 'CASH_AT_HUB',
-      )
-    }
-    if (!covered && !walletOk && !creditAvailable) {
-      setBookStep('shortfall')
-      return
-    }
+    if (!covered) setPaymentMode('PAYSTACK')
     setBookStep('confirm')
   }
 
@@ -369,13 +369,27 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         title="Swap in progress"
         description={
           inProgressSwap
-            ? `${inProgressSwap.title} · ${inProgressSwap.amountLabel}. Pay-as-you-go settles when the hub agent finishes the swap — then your receipt appears here.`
+            ? inProgressPaystack
+              ? `${inProgressSwap.title} · ${inProgressSwap.amountLabel}. Pay with Paystack (card, bank transfer or USSD) — the hub completes your swap once it's confirmed.`
+              : `${inProgressSwap.title} · ${inProgressSwap.amountLabel}. Pay-as-you-go settles when the hub agent finishes the swap — then your receipt appears here.`
             : undefined
         }
-        primaryAction={{
-          label: 'Got it',
-          onClick: () => setInProgressSwap(null),
-        }}
+        primaryAction={
+          inProgressPaystack && inProgressSwap
+            ? {
+                label: swapPayment.busy
+                  ? 'Opening Paystack…'
+                  : inProgressSwap.amountLabel.startsWith('₦')
+                    ? `Pay ${inProgressSwap.amountLabel}`
+                    : 'Pay now',
+                loading: swapPayment.busy,
+                onClick: () => void swapPayment.pay(inProgressSwap.id),
+              }
+            : { label: 'Got it', onClick: () => setInProgressSwap(null) }
+        }
+        secondaryAction={
+          inProgressPaystack ? { label: 'Later', onClick: () => setInProgressSwap(null) } : undefined
+        }
       />
       <KuraIllustrationModal
         opened={swapProgressOpen}
@@ -479,7 +493,9 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         expiresAtMs={hold.expiresAt}
         qrPayload={hold.qr}
         paymentHint={
-          hold.paymentMode === 'CASH_AT_HUB'
+          hold.paymentMode === 'PAYSTACK'
+            ? 'Pay with Paystack at the bay when you swap'
+            : hold.paymentMode === 'CASH_AT_HUB'
             ? 'Pay cash at the bay when you swap'
             : hold.paymentMode === 'PLAN'
               ? 'Covered by your plan'

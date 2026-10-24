@@ -35,7 +35,7 @@ const SWAP_FILTERS: { id: SwapHistoryFilter; label: string }[] = [
   { id: 'completed', label: 'Completed' },
   { id: 'cancelled', label: 'Cancelled' },
   { id: 'plan', label: 'Plan' },
-  { id: 'wallet', label: 'Wallet' },
+  { id: 'wallet', label: 'Paid online' },
   { id: 'cash', label: 'Cash at hub' },
 ]
 

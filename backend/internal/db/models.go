@@ -563,6 +563,24 @@ type FinanceWallet struct {
 	AccountID   uuid.UUID
 }
 
+type FinanceWalletcheckout struct {
+	ID               uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Reference        string
+	AmountKobo       int64
+	Status           string
+	AccessCode       string
+	AuthorizationUrl string
+	FailureReason    string
+	AccountID        uuid.UUID
+	UserID           *uuid.UUID
+	PaymentID        *uuid.UUID
+	Purpose          string
+	Channel          string
+	SwapID           *uuid.UUID
+}
+
 type IntegrationsPspwebhookevent struct {
 	ID         uuid.UUID
 	CreatedAt  time.Time

@@ -10,7 +10,8 @@ interface WalletBalanceCardProps {
   bankLabel: string
   nuban: string | null
   accountName: string
-  onFund: () => void
+  /** Omitted while wallet top-ups are coming soon. */
+  onFund?: () => void
   onCredit?: () => void
   /** Default “Apply for credit” */
   creditLabel?: string
@@ -106,11 +107,13 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
         ) : null}
 
         <div
-          className={`mt-4 grid gap-2.5 ${onCredit ? 'grid-cols-2' : 'grid-cols-1'}`}
+          className={`mt-4 grid gap-2.5 ${onCredit && onFund ? 'grid-cols-2' : 'grid-cols-1'}`}
         >
-          <OperatorPrimaryButton tone="amber" onClick={onFund}>
-            Fund wallet
-          </OperatorPrimaryButton>
+          {onFund ? (
+            <OperatorPrimaryButton tone="amber" onClick={onFund}>
+              Fund wallet
+            </OperatorPrimaryButton>
+          ) : null}
           {onCredit ? (
             <button
               type="button"

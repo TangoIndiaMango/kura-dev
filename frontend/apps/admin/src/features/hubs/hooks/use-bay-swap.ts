@@ -200,7 +200,7 @@ export function useSwapSessionComplete() {
   return usePostData<
     {
       swapId: string
-      payment_mode?: 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH' | null
+      payment_mode?: 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH' | null
       amount_kobo?: number | null
       discount_code?: string
       rider_pin_grant?: string
@@ -266,7 +266,7 @@ export type SwapCompletePayload = {
   returned_charge_pct?: number
   issued_charge_pct?: number
   amount_kobo?: number | null
-  payment_mode?: 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH' | null
+  payment_mode?: 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH' | null
   rider_pin_grant?: string
 }
 

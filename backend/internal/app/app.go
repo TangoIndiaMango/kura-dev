@@ -61,6 +61,7 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 		PaystackBank: cfg.PaystackBank, CustomerEmailDomain: cfg.PSPCustomerEmailDom, NombaSecret: cfg.NombaSecret,
 		NombaAccountID: cfg.NombaAccountID}
 	vaSvc := va.New(pool, pspSettings, cfg.AllowDevVA(), cfg.SecretKey, log)
+	vaSvc.Enabled = cfg.VirtualAccountsEnabled
 	identity := accounts.NewIdentityService(pool, cdn, vaSvc, cfg.ConsentPolicyVersion, cfg.SecretKey)
 
 	upstream, err := server.Upstream(cfg.DjangoUpstreamURL, log)
@@ -69,6 +70,8 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 	}
 
 	receiptKey := firstNonEmpty(cfg.ReceiptSecret, cfg.OTPPepper, "kura-dev-receipt-secret")
+	checkoutCfg := finance.CheckoutConfig{PSP: pspSettings, ClientURL: cfg.FrontendClientURL,
+		EmailDomain: cfg.PSPCustomerEmailDom}
 	ops := operations.NewModule(pool, mailer, tokens, receiptKey, cfg.FrontendClientURL, cfg.CashFloatLimit, limiter)
 	return server.New(
 		server.Deps{Config: cfg, Log: log, Auth: authn, Upstream: upstream},
@@ -78,9 +81,9 @@ func Build(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) http.Handler
 			accounts.NewAccountHandler(pool, cdn, spend.Petrol{LitresPerSwap: cfg.PetrolLitresPerSwap,
 				KoboPerLitre: cfg.PetrolKoboPerLitre}, identity, staffSvc), limiter),
 		rbac.NewModule(rbac.NewHandler(rbac.NewService(pool)), limiter),
-		finance.NewModule(finance.NewHandler(pool, receiptKey, cfg.AllowDevVA()), limiter),
+		finance.NewModule(finance.NewHandler(pool, receiptKey, cfg.AllowDevVA(), checkoutCfg), limiter),
 		mobility.NewModule(pool, qr.Signer{Pepper: firstNonEmpty(cfg.QRPepper, cfg.SecretKey)}, mailer, tokens,
-			mobility.BayDeps{Secret: cfg.SecretKey, Ops: ops.Service(), CDN: cdn,
+			mobility.BayDeps{Secret: cfg.SecretKey, Ops: ops.Service(), CDN: cdn, Checkout: checkoutCfg,
 				VerifyPin: func(ctx context.Context, user uuid.UUID, pin string) (string, time.Time, error) {
 					u, err := queries.GetUserRow(ctx, user)
 					if err != nil {

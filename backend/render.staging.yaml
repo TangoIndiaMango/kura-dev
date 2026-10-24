@@ -32,6 +32,8 @@ envVarGroups:
         value: test-bank          # Paystack test-mode bank for dedicated accounts
       - key: PSP_CUSTOMER_EMAIL_DOMAIN
         value: customers.kura.eco
+      - key: PSP_VIRTUAL_ACCOUNTS_ENABLED
+        value: "false"            # pay-at-swap via Paystack Checkout; DVAs need extra KYC
       # Media (Cloudinary) — same account is fine; staging uploads land in their own folder
       - key: CLOUDINARY_CLOUD_NAME
         sync: false

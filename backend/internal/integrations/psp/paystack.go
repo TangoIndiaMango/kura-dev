@@ -81,7 +81,7 @@ func (c *PaystackClient) VerifyTransaction(ctx context.Context, reference string
 	}
 	status := pyStr(data["status"])
 	out := VerifyResult{OK: status == "success", Reference: pyStr(data["reference"]), Status: status,
-		Currency: pyStr(data["currency"])}
+		Currency: pyStr(data["currency"]), Channel: pyStr(data["channel"])}
 	if out.Reference == "" {
 		out.Reference = reference
 	}
@@ -91,6 +91,30 @@ func (c *PaystackClient) VerifyTransaction(ctx context.Context, reference string
 	if a, ok := data["amount"].(float64); ok {
 		k := int64(a)
 		out.AmountKobo = &k
+	}
+	return out, nil
+}
+
+// InitializeCheckout is POST /transaction/initialize: Paystack hosts the
+// payment page; the app opens it in the InlineJS popup with AccessCode, or
+// redirects to AuthorizationURL.
+func (c *PaystackClient) InitializeCheckout(ctx context.Context, in CheckoutRequest) (CheckoutResult, error) {
+	if c.secret == "" {
+		return CheckoutResult{}, c.notConfigured()
+	}
+	body := map[string]any{"email": in.Email, "amount": in.AmountKobo, "reference": in.Reference,
+		"currency": "NGN", "metadata": in.Metadata}
+	if in.CallbackURL != "" {
+		body["callback_url"] = in.CallbackURL
+	}
+	data, err := c.api(ctx, "POST", "/transaction/initialize", body)
+	if err != nil {
+		return CheckoutResult{}, err
+	}
+	out := CheckoutResult{AuthorizationURL: pyStr(data["authorization_url"]), AccessCode: pyStr(data["access_code"]),
+		Reference: pyStr(data["reference"])}
+	if out.AccessCode == "" || out.AuthorizationURL == "" {
+		return out, &Error{Message: "Paystack did not return a checkout link.", Payload: data}
 	}
 	return out, nil
 }

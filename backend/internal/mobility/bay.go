@@ -12,6 +12,8 @@ import (
 
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/auth"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/finance"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/media"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/operations"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/djsign"
@@ -36,6 +38,8 @@ type Bay struct {
 	tokens    *auth.Tokens
 	verifyPin PinVerifier
 	cdn       media.Cloudinary
+	checkout  finance.CheckoutConfig
+	mailer    *mail.Mailer
 }
 
 // BayDeps are what app wiring passes in.
@@ -44,6 +48,7 @@ type BayDeps struct {
 	Ops       *operations.Service
 	VerifyPin PinVerifier
 	CDN       media.Cloudinary
+	Checkout  finance.CheckoutConfig // Paystack pay-at-swap
 }
 
 const identitySalt = "kura.identity.v1"
@@ -190,7 +195,7 @@ func (b *Bay) displayAmount(ctx context.Context, s db.SwapRowsRow, ui string) in
 		return *s.ReservationHold
 	}
 	if mode := strings.ToUpper(s.PaymentMode); (ui == "IN_PROGRESS" || ui == "AT_HUB") &&
-		(mode == "WALLET" || mode == "CREDIT" || mode == "CASH") {
+		(mode == "WALLET" || mode == "CREDIT" || mode == "CASH" || mode == "PAYSTACK") {
 		fee, err := ppsKobo(ctx, b.q, s.VehicleType)
 		if err == nil {
 			return fee

@@ -5,10 +5,11 @@ import { formatNaira } from '../../../shared/utils/currency'
 interface HomeWalletStripProps {
   balanceNaira: number
   nuban: string | null
-  onFund: () => void
+  /** Omitted while wallet top-ups are coming soon. */
+  onFund?: () => void
 }
 
-/** Compact PRD money surface on Home — balance, NUBAN copy, Fund. */
+/** Compact money surface on Home — balance, NUBAN copy (Fund when enabled). */
 export const HomeWalletStrip: React.FC<HomeWalletStripProps> = ({
   balanceNaira,
   nuban,
@@ -47,13 +48,15 @@ export const HomeWalletStrip: React.FC<HomeWalletStripProps> = ({
           </button>
         ) : null}
       </div>
-      <button
-        type="button"
-        onClick={onFund}
-        className="shrink-0 rounded-lg bg-[var(--kura-amber)] px-3 py-2 text-xs font-extrabold text-[#1a1204]"
-      >
-        Fund
-      </button>
+      {onFund ? (
+        <button
+          type="button"
+          onClick={onFund}
+          className="shrink-0 rounded-lg bg-[var(--kura-amber)] px-3 py-2 text-xs font-extrabold text-[#1a1204]"
+        >
+          Fund
+        </button>
+      ) : null}
     </section>
   )
 }

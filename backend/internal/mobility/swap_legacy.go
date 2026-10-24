@@ -277,7 +277,7 @@ func reverseMoney(ctx context.Context, q *db.Queries, s db.MobilitySwap) error {
 			return err
 		}
 		return finance.ReverseCapture(ctx, q, acct, s.AmountKobo, s.ID.String()[:20], pay)
-	case "CASH":
+	case "CASH", "PAYSTACK": // a Paystack refund is issued from the Paystack dashboard
 		if pay != nil && pay.Status == "SUCCESS" {
 			return q.SetPaymentStatus(ctx, db.SetPaymentStatusParams{ID: pay.ID, Status: "REVERSED"})
 		}

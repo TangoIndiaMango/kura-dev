@@ -35,7 +35,7 @@ const MODES: Array<{
   needsCredit?: boolean
   needsWallet?: boolean
 }> = [
-  { id: 'WALLET', label: 'Wallet', hint: 'Held now, paid at swap', needsWallet: true },
+  { id: 'PAYSTACK', label: 'Pay at swap', hint: 'Card, transfer, USSD' },
   { id: 'CREDIT', label: 'Credit', hint: 'Draw on confirm', needsCredit: true },
   { id: 'CASH_AT_HUB', label: 'Cash at hub', hint: 'Pay at the bay' },
 ]
@@ -64,7 +64,9 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
   const walletOk = walletBalanceNaira >= due
 
   const settleHint =
-    paymentMode === 'CASH_AT_HUB'
+    paymentMode === 'PAYSTACK'
+      ? 'Nothing is charged now. At the bay, pay with Paystack (card, bank transfer or USSD) and the hub completes your swap.'
+      : paymentMode === 'CASH_AT_HUB'
       ? 'No wallet debit now — pay cash when the hub completes your swap.'
       : paymentMode === 'CREDIT'
         ? 'Charges your open credit line — wallet balance stays the same. Daily repay continues as scheduled.'
@@ -88,7 +90,9 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
         {
           label: 'Payment',
           value:
-            paymentMode === 'CASH_AT_HUB'
+            paymentMode === 'PAYSTACK'
+              ? `${formatNaira(due)} · Paystack at swap`
+              : paymentMode === 'CASH_AT_HUB'
               ? `${formatNaira(due)} · cash at hub`
               : paymentMode === 'CREDIT'
                 ? `${formatNaira(due)} · credit`
@@ -144,9 +148,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
           onApplied={(next) => {
             setDiscount(next)
             if (next && paymentMode === 'WALLET' && walletBalanceNaira < next.dueNaira) {
-              onPaymentModeChange(
-                creditAvailable ? 'CREDIT' : 'CASH_AT_HUB',
-              )
+              onPaymentModeChange('PAYSTACK')
             }
           }}
         />

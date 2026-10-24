@@ -13,7 +13,8 @@ export interface OperatorVehicle {
   chargeSource?: string | null
 }
 
-export type BookingPaymentMode = 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
+/** PAYSTACK: pay at the bay with Paystack (card / transfer / USSD). */
+export type BookingPaymentMode = 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
 
 export interface OperatorActiveReservation {
   id: string
@@ -287,13 +288,6 @@ export function deriveNextAction(input: {
   }
   if (!input.hasPin) {
     return { id: 'pin', title: 'Set your PIN', tab: 'account' }
-  }
-  if (
-    !input.hasCompletedFirstSwap &&
-    !input.anyPlanCovered &&
-    input.walletBalanceNaira < SWAP_PRICE_NAIRA
-  ) {
-    return { id: 'fund', title: 'Fund wallet to swap', tab: 'wallet' }
   }
   if (!input.hasCompletedFirstSwap) {
     return { id: 'swap', title: 'Book your first swap', tab: 'swap' }

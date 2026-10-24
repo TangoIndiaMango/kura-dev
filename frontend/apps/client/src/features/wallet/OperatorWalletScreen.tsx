@@ -194,37 +194,22 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
     ? toWalletTxItems(livePayments.payments)
     : []
 
-  const walletUsable = Boolean(nuban) || balanceNaira > 0 || txItems.length > 0
-
-  // The PSP issues the NUBAN against an ID number; without one it never comes.
-  const needsId = session.kycStatus === 'NONE' || session.kycStatus === 'REJECTED'
-  let walletHero = needsId ? (
+  // Kura Wallet top-ups are coming soon: swaps are paid with Paystack at the
+  // bay. A balance a rider already holds still shows (and can still be spent).
+  let walletHero = (
     <OperatorBannerEmptyState
       image="/illustrations/wallet-provisioning.png"
-      badge="Action needed"
-      title="Add your ID to get a transfer account"
-      description="Your bank account number is issued in your name once your NIN or BVN is on file. Then you can top up from any banking app."
-      actionLabel="Add NIN or BVN"
-      onAction={() => {
-        sessionStorage.setItem('kura_account_open', 'identity')
-        onNavigateTab?.('account')
-      }}
-      footnote="Swaps still work in the meantime — pay cash at any hub."
-    />
-  ) : (
-    <OperatorBannerEmptyState
-      image="/illustrations/wallet-provisioning.png"
-      badge="Setting up"
-      title="Your transfer account is on the way"
-      description="We are issuing a dedicated account in your name. It appears here once the bank confirms it, then you can top up from any banking app."
-      footnote="Swaps still work in the meantime — pay cash at any hub."
+      badge="Coming soon"
+      title="Kura Wallet is coming soon"
+      description="For now you pay for each swap with Paystack — card, bank transfer or USSD — when the hub completes it. Your receipts appear below."
+      footnote="Prefer cash? Every hub still takes cash at the bay."
     />
   )
   if (liveWallet.isLoading) {
     walletHero = (
       <div className="h-[196px] animate-pulse rounded-2xl bg-[var(--kura-border)]/40" />
     )
-  } else if (walletUsable) {
+  } else if (balanceNaira > 0) {
     walletHero = (
       <WalletBalanceCard
         balanceNaira={balanceNaira}
@@ -232,7 +217,6 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
         bankLabel={bankLabel}
         nuban={nuban}
         accountName={accountName}
-        onFund={() => setView('fund')}
         onCredit={creditEnabled && creditUi ? openCreditFlow : undefined}
         creditLabel={creditUi?.heroCreditLabel}
         onSync={
@@ -271,7 +255,7 @@ export const OperatorWalletScreen: React.FC<OperatorWalletScreenProps> = ({
         onOpen={openCreditFlow}
       />
 
-      {walletUsable ? (
+      {txItems.length > 0 || livePayments.isLoading ? (
         <TransactionList
           items={txItems}
           pageSize={10}

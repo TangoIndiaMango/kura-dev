@@ -24,6 +24,12 @@ func Worker(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool) *jobs.Runne
 		PaystackBank: cfg.PaystackBank, CustomerEmailDomain: cfg.PSPCustomerEmailDom, NombaSecret: cfg.NombaSecret,
 		NombaAccountID: cfg.NombaAccountID}
 	return &jobs.Runner{Pool: pool, Log: log, Mailer: mailer,
-		VA:      va.New(pool, pspSettings, cfg.AllowDevVA(), cfg.SecretKey, log),
+		VA:      vaService(pool, pspSettings, cfg, log),
 		Billing: mobility.NewBilling(pool, tokens), MockIoT: cfg.MockIoT}
+}
+
+func vaService(pool *pgxpool.Pool, settings psp.Settings, cfg config.Config, log *slog.Logger) *va.Service {
+	s := va.New(pool, settings, cfg.AllowDevVA(), cfg.SecretKey, log)
+	s.Enabled = cfg.VirtualAccountsEnabled
+	return s
 }

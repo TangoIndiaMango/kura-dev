@@ -4,7 +4,7 @@ import type { ReservationRecord } from '@shared/mock/adminMockData'
 
 export { HUB_SWAP_DUE_NAIRA }
 
-export type BaySettleMode = 'PLAN' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
+export type BaySettleMode = 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
 
 export type SettlePlan = {
   dueNaira: number
@@ -26,6 +26,7 @@ export type SettleActor = {
 
 export function settleModeLabel(mode: BaySettleMode) {
   if (mode === 'PLAN') return 'Plan allowance'
+  if (mode === 'PAYSTACK') return 'Paystack (card / transfer / USSD)'
   if (mode === 'WALLET') return 'Operator wallet'
   if (mode === 'CREDIT') return 'Swap credit'
   return 'Cash at hub'
@@ -81,23 +82,23 @@ export function buildSettlePlan(
     allowed.push('PLAN')
   }
   if (creditOk || reservation.paymentMode === 'CREDIT') allowed.push('CREDIT')
-  if (effectiveWallet >= due || bookedWithWallet) allowed.push('WALLET')
+  // Wallet top-ups are coming soon: an existing balance can still pay.
+  if ((wallet > 0 && effectiveWallet >= due) || bookedWithWallet) allowed.push('WALLET')
+  // A booking-time wallet hold is already the payment.
+  if (!hasActiveHold) allowed.push('PAYSTACK')
   allowed.push('CASH_AT_HUB')
 
   let recommended: BaySettleMode = reservation.paymentMode
-  if (isWalkIn) {
-    if (planCovers) recommended = 'PLAN'
-    else if (wallet >= due) recommended = 'WALLET'
-    else if (creditOk) recommended = 'CREDIT'
-    else recommended = 'CASH_AT_HUB'
-  }
+  if (isWalkIn) recommended = planCovers ? 'PLAN' : 'PAYSTACK'
 
   if (!allowed.includes(recommended)) {
-    recommended = allowed.includes('WALLET')
+    recommended = allowed.includes('WALLET') && hasActiveHold
       ? 'WALLET'
       : allowed.includes('PLAN')
         ? 'PLAN'
-        : 'CASH_AT_HUB'
+        : allowed.includes('PAYSTACK')
+          ? 'PAYSTACK'
+          : 'CASH_AT_HUB'
   }
 
   return describeMode(recommended, {
@@ -135,6 +136,18 @@ export function describeMode(
       cashCollect: false,
       riderPinRequired: false,
       label: isWalkIn ? 'Walk-in · plan allowance' : 'Plan covered',
+    }
+  }
+  if (mode === 'PAYSTACK') {
+    return {
+      dueNaira: due,
+      walletBalance: wallet,
+      shortfallNaira: 0,
+      allowed,
+      recommended: mode,
+      cashCollect: false,
+      riderPinRequired: false,
+      label: 'Rider pays with Paystack — complete once it is confirmed',
     }
   }
   if (mode === 'CREDIT') {

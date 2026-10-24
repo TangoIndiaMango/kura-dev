@@ -1,0 +1,18 @@
+{{define "title"}}Pay for your swap{{end}}
+{{define "content"}}
+<p style="margin:0 0 10px;font-size:20px;font-weight:700;color:#003153;">
+  Hi{{if .first_name}} {{.first_name}}{{end}}, your swap is ready to pay
+</p>
+<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#243B4A;">
+  Your battery swap for <strong>{{.vehicle}}</strong> at {{.hub_name}} comes to <strong>{{.amount}}</strong>.
+</p>
+<p style="margin:0 0 22px;">
+  <a href="{{.pay_url}}"
+     style="display:inline-block;background:#0D7C8F;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;padding:12px 20px;border-radius:8px;">
+    Pay {{.amount}} securely
+  </a>
+</p>
+<p style="margin:0;font-size:13px;line-height:1.5;color:#5B6B75;word-break:break-all;">
+  Payments are handled by Paystack. Button not working? Paste this into your browser:<br />{{.pay_url}}
+</p>
+{{end}}

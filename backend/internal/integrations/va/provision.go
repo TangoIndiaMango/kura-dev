@@ -33,6 +33,8 @@ type Service struct {
 	log      *slog.Logger
 	// ports overrides provider lookup (tests).
 	ports func(code string) (psp.Port, error)
+	// Enabled turns on NUBAN provisioning (PSP_VIRTUAL_ACCOUNTS_ENABLED).
+	Enabled bool
 }
 
 func New(pool *pgxpool.Pool, settings psp.Settings, allowDev bool, secret string, log *slog.Logger) *Service {
@@ -54,6 +56,9 @@ type Job struct {
 // a failed call is recorded on the row and retried by the sweep. Accounts
 // already holding a NUBAN are skipped.
 func (s *Service) Schedule(jobs ...Job) {
+	if !s.Enabled {
+		return // virtual accounts off: riders top up through Paystack Checkout
+	}
 	ctx := context.Background()
 	for _, j := range jobs {
 		v, err := s.q.VirtualAccountRow(ctx, j.Account)
