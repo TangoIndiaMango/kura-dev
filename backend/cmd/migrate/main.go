@@ -3,6 +3,7 @@
 //	migrate up              apply pending migrations (adopts Django-built databases)
 //	migrate status          list applied / pending migrations
 //	migrate seed            load demo data into an empty database
+//	migrate reset DBNAME    DELETE all tables and data (type the database name to confirm)
 //	migrate create NAME     new SQL migration in db/migrations (run from backend/)
 package main
 
@@ -27,7 +28,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: migrate up | status | seed | create NAME")
+		return fmt.Errorf("usage: migrate up | status | seed | reset DBNAME | create NAME")
 	}
 	if os.Args[1] == "create" {
 		if len(os.Args) < 3 {
@@ -55,6 +56,12 @@ func run() error {
 		return migrate.Status(ctx, conn)
 	case "seed":
 		return migrate.Seed(ctx, conn, log)
+	case "reset":
+		confirm := ""
+		if len(os.Args) > 2 {
+			confirm = os.Args[2]
+		}
+		return migrate.Reset(ctx, conn, log, confirm)
 	}
 	return fmt.Errorf("unknown command %q", os.Args[1])
 }
