@@ -303,24 +303,39 @@ func (q *Queries) LiveReservationsAtHub(ctx context.Context, hubID uuid.UUID) ([
 	return items, nil
 }
 
-const overdueBatteryForAccount = `-- name: OverdueBatteryForAccount :one
-SELECT v.registration_plate, b.serial FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
+const overdueBatteriesForAccount = `-- name: OverdueBatteriesForAccount :many
+SELECT v.id AS vehicle_id, v.registration_plate, b.serial FROM mobility_battery b
+JOIN mobility_vehicle v ON v.current_battery_id = b.id
 WHERE b.status = 'ISSUED' AND v.account_id = $1
   AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'))
-ORDER BY b.issued_at LIMIT 1
+ORDER BY v.registration_plate
 `
 
-type OverdueBatteryForAccountRow struct {
+type OverdueBatteriesForAccountRow struct {
+	VehicleID         uuid.UUID
 	RegistrationPlate string
 	Serial            string
 }
 
-// The first overdue pack (same rule as AccountHasOverdueBattery), to name it.
-func (q *Queries) OverdueBatteryForAccount(ctx context.Context, accountID uuid.UUID) (OverdueBatteryForAccountRow, error) {
-	row := q.db.QueryRow(ctx, overdueBatteryForAccount, accountID)
-	var i OverdueBatteryForAccountRow
-	err := row.Scan(&i.RegistrationPlate, &i.Serial)
-	return i, err
+// Packs past the 48 h return window, per vehicle (that vehicle can't book).
+func (q *Queries) OverdueBatteriesForAccount(ctx context.Context, accountID uuid.UUID) ([]OverdueBatteriesForAccountRow, error) {
+	rows, err := q.db.Query(ctx, overdueBatteriesForAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OverdueBatteriesForAccountRow{}
+	for rows.Next() {
+		var i OverdueBatteriesForAccountRow
+		if err := rows.Scan(&i.VehicleID, &i.RegistrationPlate, &i.Serial); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const readySlotForUpdate = `-- name: ReadySlotForUpdate :one
@@ -719,4 +734,22 @@ func (q *Queries) UsersForHub(ctx context.Context, dollar_1 uuid.UUID) ([]uuid.U
 		return nil, err
 	}
 	return items, nil
+}
+
+const vehicleOverdueBattery = `-- name: VehicleOverdueBattery :one
+SELECT v.registration_plate, b.serial FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
+WHERE b.status = 'ISSUED' AND v.id = $1
+  AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'))
+`
+
+type VehicleOverdueBatteryRow struct {
+	RegistrationPlate string
+	Serial            string
+}
+
+func (q *Queries) VehicleOverdueBattery(ctx context.Context, id uuid.UUID) (VehicleOverdueBatteryRow, error) {
+	row := q.db.QueryRow(ctx, vehicleOverdueBattery, id)
+	var i VehicleOverdueBatteryRow
+	err := row.Scan(&i.RegistrationPlate, &i.Serial)
+	return i, err
 }

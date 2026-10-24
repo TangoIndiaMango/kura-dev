@@ -122,9 +122,15 @@ UPDATE mobility_battery SET status = $2, updated_at = now() WHERE id = $1;
 -- name: GetUserRow :one
 SELECT * FROM accounts_user WHERE id = $1;
 
--- name: OverdueBatteryForAccount :one
--- The first overdue pack (same rule as AccountHasOverdueBattery), to name it.
-SELECT v.registration_plate, b.serial FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
+-- name: OverdueBatteriesForAccount :many
+-- Packs past the 48 h return window, per vehicle (that vehicle can't book).
+SELECT v.id AS vehicle_id, v.registration_plate, b.serial FROM mobility_battery b
+JOIN mobility_vehicle v ON v.current_battery_id = b.id
 WHERE b.status = 'ISSUED' AND v.account_id = $1
   AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'))
-ORDER BY b.issued_at LIMIT 1;
+ORDER BY v.registration_plate;
+
+-- name: VehicleOverdueBattery :one
+SELECT v.registration_plate, b.serial FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
+WHERE b.status = 'ISSUED' AND v.id = $1
+  AND (b.expected_return_by < now() OR (b.expected_return_by IS NULL AND b.issued_at < now() - interval '48 hours'));

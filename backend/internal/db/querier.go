@@ -423,6 +423,8 @@ type Querier interface {
 	// Same key as Django audit/services.py so both backends serialise appends.
 	LockAuditChain(ctx context.Context) error
 	LockBatteryChain(ctx context.Context, key int64) error
+	// Stage 2 (7 days): still not returned 5 days after the 48 h window.
+	LostBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	MarkAllRead(ctx context.Context, userID uuid.UUID) (int64, error)
 	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
 	MatrixByID(ctx context.Context, id uuid.UUID) (MobilityPricematrix, error)
@@ -455,8 +457,10 @@ type Querier interface {
 	OpsCsvRows(ctx context.Context, arg OpsCsvRowsParams) ([]OpsCsvRowsRow, error)
 	// simplejwt OutstandingToken.get_or_create(jti=...).
 	OutstandToken(ctx context.Context, arg OutstandTokenParams) (int64, error)
-	// The first overdue pack (same rule as AccountHasOverdueBattery), to name it.
-	OverdueBatteryForAccount(ctx context.Context, accountID uuid.UUID) (OverdueBatteryForAccountRow, error)
+	// Packs past the 48 h return window, per vehicle (that vehicle can't book).
+	OverdueBatteriesForAccount(ctx context.Context, accountID uuid.UUID) ([]OverdueBatteriesForAccountRow, error)
+	// Stage 1 (48 h): ISSUED packs past the return window not yet flagged for
+	// this issue (one UNRETURNED_48H risk event per issue).
 	OverdueBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
@@ -723,6 +727,7 @@ type Querier interface {
 	VehicleModelByID(ctx context.Context, id uuid.UUID) (VehicleModelByIDRow, error)
 	VehicleModelForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehiclemodel, error)
 	VehicleModelTypeCounts(ctx context.Context) ([]VehicleModelTypeCountsRow, error)
+	VehicleOverdueBattery(ctx context.Context, id uuid.UUID) (VehicleOverdueBatteryRow, error)
 	VehicleRows(ctx context.Context, ids []uuid.UUID) ([]VehicleRowsRow, error)
 	VehicleStatusCounts(ctx context.Context) ([]VehicleStatusCountsRow, error)
 	// inspect_swap_velocity: completed in the WAT day + open swaps started (or created) that day.

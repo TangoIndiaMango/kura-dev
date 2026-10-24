@@ -158,6 +158,15 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     setBookStep((s) => (s === 'add-vehicle' ? 'vehicle' : s))
   }, [vehicles, vehiclesLoading])
 
+  // Never leave a vehicle with an overdue pack selected for booking.
+  useEffect(() => {
+    const blocked = bookingPrecheck.blockedByVehicle
+    if (!vehicleId || !blocked.has(vehicleId)) return
+    const next = vehicles.find((v) => !blocked.has(v.id))
+    if (next) setVehicleId(next.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- blockedByVehicle is rebuilt from data each render
+  }, [bookingPrecheck.data, vehicleId, vehicles])
+
   useEffect(() => {
     if (intent.view !== 'pass' || !intent.passId) return
     setPassId(intent.passId)
@@ -534,7 +543,15 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     )
   }
 
-  const swapsPaused = swapsPausedMessage(session?.accountStatus) ?? bookingPrecheck.blockedMessage
+  const blockedVehicles = bookingPrecheck.blockedByVehicle
+  const bookable = vehicles.filter((v) => !blockedVehicles.has(v.id))
+  // Every vehicle has an overdue pack: say so instead of a list of disabled cards.
+  const allBlocked =
+    vehicles.length > 0 && bookable.length === 0
+      ? vehicles.map((v) => blockedVehicles.get(v.id)).join(' ')
+      : null
+  const swapsPaused =
+    swapsPausedMessage(session?.accountStatus) ?? bookingPrecheck.blockedMessage ?? allBlocked
   if (bookStep === 'vehicle' && swapsPaused) {
     return (
       <>
@@ -574,6 +591,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
           vehicles={list.map((v) => ({
             ...v,
             plan: vehicleCoveredByPlan(v.plan) ? v.plan : 'Pay-per-swap',
+            blockedReason: blockedVehicles.get(v.id) ?? null,
           }))}
           selectedId={vehicleId}
           onSelect={setVehicleId}
