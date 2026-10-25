@@ -13,7 +13,7 @@ export interface OperatorVehicle {
   chargeSource?: string | null
 }
 
-/** PAYSTACK: pay at the bay with Paystack (card / transfer / USSD). */
+/** PAYSTACK: pay now with Paystack (card / transfer / USSD) — the booking is confirmed once paid. */
 export type BookingPaymentMode = 'PLAN' | 'PAYSTACK' | 'WALLET' | 'CREDIT' | 'CASH_AT_HUB'
 
 export interface OperatorActiveReservation {
@@ -29,6 +29,8 @@ export interface OperatorActiveReservation {
   qr?: string
   discountCode?: string
   dueNaira?: number
+  /** Paystack booking created but not paid yet (no valid code / QR until paid). */
+  awaitingPayment?: boolean
 }
 
 export interface OperatorCreditSchedule {

@@ -32,6 +32,9 @@ import { SetPinStep } from './components/SetPinStep'
 import { ForgotPinFlow } from './components/ForgotPinFlow'
 import { ReservationCodeStep } from './components/ReservationCodeStep'
 import { useSwapPayment } from './hooks/use-swap-payment'
+import { useBookingCheckout, useBookingPayment } from './hooks/use-booking-payment'
+import type { BookingCheckoutApi } from './hooks/use-swap-live'
+import { notify } from '@shared/utils/notify'
 import { useBookingPrecheck, useMySwaps } from './hooks/use-swap-live'
 import { swapsPausedMessage } from '../../shared/session/accountStatus'
 
@@ -118,6 +121,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     null,
   )
   const swapPayment = useSwapPayment(() => setInProgressSwap(null))
+  const bookingPayment = useBookingPayment()
   const inProgressPaystack =
     inProgressSwap?.paymentMode?.toUpperCase() === 'PAYSTACK'
   const [incompleteSwap, setIncompleteSwap] = useState<SwapRecentItem | null>(
@@ -143,6 +147,12 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
   const [paymentMode, setPaymentMode] = useState<BookingPaymentMode>('PAYSTACK')
   const [pendingDueNaira, setPendingDueNaira] = useState(450)
   const [pendingDiscountCode, setPendingDiscountCode] = useState('')
+  const passHold =
+    holds.find((h) => h.id === passId) ?? (pinnedHold?.id === passId ? pinnedHold : null)
+  const passCheckout = useBookingCheckout(
+    passHold?.id ?? null,
+    view === 'pass' && Boolean(passHold?.awaitingPayment),
+  )
 
   useEffect(() => {
     if (vehiclesLoading) return
@@ -209,7 +219,7 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
     effectiveMode === 'PLAN'
       ? `Included · ${vehicle?.plan} plan`
       : effectiveMode === 'PAYSTACK'
-        ? `₦${listPriceNaira.toLocaleString()} · Paystack at the bay`
+        ? `₦${listPriceNaira.toLocaleString()} · pay now with Paystack`
         : effectiveMode === 'CASH_AT_HUB'
         ? `₦${listPriceNaira.toLocaleString()} · cash at hub`
         : effectiveMode === 'CREDIT'
@@ -280,16 +290,43 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         paymentMode: mode,
         ...(created.qr ? { qr: created.qr } : {}),
         dueNaira: created.dueNaira ?? pendingDueNaira,
+        awaitingPayment: Boolean(created.checkout),
       }
       setLocalHold(hold)
       setPinnedHold(hold)
       setPassId(created.id)
+      if (created.checkout) {
+        // Pay at booking: straight to the pass (pay state) and open Paystack.
+        setView('pass')
+        void payForHold(hold, created.checkout)
+        return
+      }
       setSwapProgressOpen(true)
       window.setTimeout(() => {
         setSwapProgressOpen(false)
         setReservedOpen(true)
       }, 2000)
     })
+  }
+
+  /** Paystack popup for a booking, then our verify endpoint confirms it. */
+  const payForHold = async (
+    hold: OperatorActiveReservation,
+    checkout?: BookingCheckoutApi | null,
+  ) => {
+    const outcome = await bookingPayment.pay(hold.id, checkout)
+    if (outcome === 'paid') {
+      const paid = { ...hold, awaitingPayment: false }
+      setLocalHold(paid)
+      setPinnedHold(paid)
+      setReservedOpen(true)
+      return
+    }
+    if (outcome === 'failed') {
+      notify({ title: 'Payment failed — you were not charged. Try again.', tone: 'error' })
+    } else if (outcome === 'pending') {
+      notify({ title: 'Payment received — confirming with Paystack.', tone: 'info' })
+    }
   }
 
   const openPass = (id: string) => {
@@ -486,9 +523,21 @@ export const OperatorSwapScreen: React.FC<OperatorSwapScreenProps> = ({
         holdMinutes={holdMinutes}
         expiresAtMs={hold.expiresAt}
         qrPayload={hold.qr}
+        paid={hold.paymentMode === 'PAYSTACK' && !hold.awaitingPayment}
+        awaitingPayment={
+          hold.awaitingPayment && !(passCheckout.data?.paid ?? false)
+            ? {
+                amountNaira:
+                  hold.dueNaira ??
+                  (passCheckout.data ? passCheckout.data.amount_kobo / 100 : null),
+                busy: bookingPayment.busy,
+                onPay: () => void payForHold(hold),
+              }
+            : undefined
+        }
         paymentHint={
           hold.paymentMode === 'PAYSTACK'
-            ? 'Pay with Paystack at the bay when you swap'
+            ? 'Paid with Paystack'
             : hold.paymentMode === 'CASH_AT_HUB'
             ? 'Pay cash at the bay when you swap'
             : hold.paymentMode === 'PLAN'

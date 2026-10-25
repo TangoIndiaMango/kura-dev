@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,11 +52,17 @@ func (b *Bay) settle(ctx context.Context, q *db.Queries, in settleIn) (settled, 
 	acct := finance.Account{ID: in.Account.ID, KuraID: in.Account.KuraID}
 	if in.Mode != "PAYSTACK" {
 		// Settled another way: a Paystack payment already made for this swap
-		// is refunded to the rider's card.
+		// or its booking is refunded to the rider's card after review.
+		var res *uuid.UUID
+		if in.Reservation != nil {
+			res = &in.Reservation.ID
+		}
 		if id, err := uuid.Parse(in.SwapKey); err == nil {
-			if err := finance.RefundUnusedSwapPayments(ctx, q, id); err != nil {
+			if err := finance.RefundUnusedPayments(ctx, q, &id, res, "swap settled by "+strings.ToLower(in.Mode)); err != nil {
 				return settled{}, err
 			}
+		} else if err := finance.RefundUnusedPayments(ctx, q, nil, res, "swap settled by "+strings.ToLower(in.Mode)); err != nil {
+			return settled{}, err
 		}
 	}
 	if in.Mode == "PLAN" {

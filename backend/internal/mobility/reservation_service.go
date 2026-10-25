@@ -58,6 +58,9 @@ func cancelReservation(ctx context.Context, q *db.Queries, id uuid.UUID, who *ev
 	if err := saveReservation(ctx, q, r); err != nil {
 		return r, err
 	}
+	if err := finance.RefundUnusedPayments(ctx, q, nil, &r.ID, "booking cancelled"); err != nil {
+		return r, err
+	}
 	ev := events.Event{Action: "reservation.cancelled", SubjectType: "reservation", SubjectID: r.ID.String(),
 		SubjectLabel: r.Code, Actor: who}
 	if reason != "" {
@@ -107,6 +110,9 @@ func expireReservation(ctx context.Context, q *db.Queries, id uuid.UUID) (db.Mob
 	}
 	r.Status = "EXPIRED"
 	if err := saveReservation(ctx, q, r); err != nil {
+		return r, err
+	}
+	if err := finance.RefundUnusedPayments(ctx, q, nil, &r.ID, "booking expired before the swap"); err != nil {
 		return r, err
 	}
 	if err := events.Emit(ctx, q, events.Event{Action: "reservation.expired", SubjectType: "reservation",

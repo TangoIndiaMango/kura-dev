@@ -16,6 +16,7 @@ import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
 import { mapShiftToCashRow, useShifts } from './hooks/use-cash-ops'
 import { PaymentsCashTable } from './PaymentsCashTable'
 import { PaymentsLedgerTable } from './PaymentsLedgerTable'
+import { PaymentsRefundsTable } from './PaymentsRefundsTable'
 import {
   cashTabKpis,
   PaymentsMethodBreakdown,
@@ -28,7 +29,8 @@ export function PaymentsPanel() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { can } = useCapabilities()
   const canCash = can('shifts:manage')
-  const [tab, setTab] = useUrlTab('payments', { valid: ['payments', 'cash'] })
+  const canRefunds = can('wallets:manage')
+  const [tab, setTab] = useUrlTab('payments', { valid: ['payments', 'cash', 'refunds'] })
   const [cursor, setCursor] = useState<string | undefined>()
   const [page, setPage] = useState(1)
   const hubScope = searchParams.get('hub')?.trim() || undefined
@@ -184,9 +186,9 @@ export function PaymentsPanel() {
     <>
       <AdminModuleLayout
         title="Payments"
-        subtitle="Wallet funding, swaps, renewals, and hub cash reconciliation"
+        subtitle="Swap and plan payments, hub cash, and refunds"
         dateRangeSlot={
-          <PaymentsScopeControls
+          tab === 'refunds' ? undefined : <PaymentsScopeControls
             hubId={hubScope}
             hubOptions={hubOptionsWithScope}
             onHubChange={(id, label) =>
@@ -212,6 +214,8 @@ export function PaymentsPanel() {
           { id: 'payments', label: 'Payments' },
           // Shift cash needs shifts:manage — finance-read roles see payments only.
           ...(canCash ? [{ id: 'cash', label: 'Cash reconciliation' }] : []),
+          // Unused Paystack payments wait here for finance to approve the refund.
+          ...(canRefunds ? [{ id: 'refunds', label: 'Refunds' }] : []),
         ]}
         activeTab={tab}
         onTabChange={(next) => {
@@ -221,7 +225,9 @@ export function PaymentsPanel() {
         kpis={
           tab === 'payments'
             ? paymentTabKpis(paymentStats)
-            : cashTabKpis(cashMapped, Boolean(hubScope))
+            : tab === 'cash'
+              ? cashTabKpis(cashMapped, Boolean(hubScope))
+              : undefined
         }
         chartsSlot={
           tab === 'payments' ? <PaymentsMethodBreakdown stats={paymentStats} /> : undefined
@@ -248,6 +254,8 @@ export function PaymentsPanel() {
             onRowClick={(item) => navigate(`/payments/${item.id}`)}
             onExport={exportStatement}
           />
+        ) : tab === 'refunds' && canRefunds ? (
+          <PaymentsRefundsTable />
         ) : (
           <PaymentsCashTable
             pageRows={cashPageRows}

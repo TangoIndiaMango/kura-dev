@@ -33,7 +33,7 @@ const MODES: Array<{
   hint: string
   needsCredit?: boolean
 }> = [
-  { id: 'PAYSTACK', label: 'Paystack', hint: 'Card, transfer or USSD at the bay' },
+  { id: 'PAYSTACK', label: 'Paystack', hint: 'Pay now · card, transfer or USSD' },
   { id: 'CREDIT', label: 'Swap credit', hint: 'Drawn at swap', needsCredit: true },
   { id: 'CASH_AT_HUB', label: 'Cash', hint: 'Pay the agent at the bay' },
 ]
@@ -62,7 +62,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
 
   const settleHint =
     paymentMode === 'PAYSTACK'
-      ? 'Nothing is charged now. At the bay, pay with Paystack (card, bank transfer or USSD) and the hub completes your swap.'
+      ? 'Pay now to confirm. Your battery is then held for you. If you don’t swap in time, the payment is refunded after review.'
       : paymentMode === 'CASH_AT_HUB'
       ? 'No wallet debit now — pay cash when the hub completes your swap.'
       : paymentMode === 'CREDIT'
@@ -88,7 +88,7 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
           label: 'Payment',
           value:
             paymentMode === 'PAYSTACK'
-              ? `${formatNaira(due)} · Paystack at the bay`
+              ? `${formatNaira(due)} · pay now with Paystack`
               : paymentMode === 'CASH_AT_HUB'
               ? `${formatNaira(due)} · cash at hub`
               : paymentMode === 'CREDIT'
@@ -186,10 +186,14 @@ export const ConfirmReserveStep: React.FC<ConfirmReserveStepProps> = ({
 
       <HoldFillButton
         onComplete={() => onConfirm(due, discount)}
-        hint="Hold to reserve"
+        hint={paymentMode === 'PAYSTACK' && !coveredByPlan ? 'Hold to continue' : 'Hold to reserve'}
         disabled={confirmBusy}
       >
-        {confirmBusy ? 'Reserving…' : 'Confirm reservation'}
+        {confirmBusy
+          ? 'Reserving…'
+          : paymentMode === 'PAYSTACK' && !coveredByPlan
+            ? `Continue to pay ${formatNaira(due)}`
+            : 'Confirm reservation'}
       </HoldFillButton>
     </div>
   )

@@ -25,7 +25,8 @@ const schema = z.object({
     .trim()
     .regex(/^[1-9]\d*$/, 'Enter a whole-naira amount greater than zero')
     .refine((value) => Number(value) <= 10_000_000, 'Amount is too large'),
-  purpose: z.enum(['SWAP', 'FUND']),
+  // Riders hold no wallet: cash at a hub is only ever for a swap.
+  purpose: z.enum(['SWAP']),
   psp_agent_ref: z.string().trim().max(120),
 })
 
@@ -60,7 +61,7 @@ export function CashDepositFormPanel() {
       account_id: '',
       hub_id: '',
       amount_naira: '',
-      purpose: 'FUND',
+      purpose: 'SWAP',
       psp_agent_ref: '',
     },
   })
@@ -169,11 +170,9 @@ export function CashDepositFormPanel() {
         />
         <Select
           label="Purpose"
-          data={[
-            { value: 'FUND', label: 'Fund wallet' },
-            { value: 'SWAP', label: 'Pay for swap' },
-          ]}
+          data={[{ value: 'SWAP', label: 'Pay for swap' }]}
           allowDeselect={false}
+          readOnly
           {...form.getInputProps('purpose')}
         />
       </div>

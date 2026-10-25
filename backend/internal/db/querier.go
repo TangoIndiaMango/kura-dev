@@ -110,6 +110,8 @@ type Querier interface {
 	CasesPage(ctx context.Context, arg CasesPageParams) ([]uuid.UUID, error)
 	CashDepositByID(ctx context.Context, id uuid.UUID) (OperationsCashdeposit, error)
 	CashDepositReceipt(ctx context.Context, id uuid.UUID) (CashDepositReceiptRow, error)
+	CheckoutByIDForUpdate(ctx context.Context, id uuid.UUID) (FinanceWalletcheckout, error)
+	// approved by finance
 	CheckoutByPayment(ctx context.Context, paymentID *uuid.UUID) (FinanceWalletcheckout, error)
 	CheckoutByReference(ctx context.Context, reference string) (FinanceWalletcheckout, error)
 	CheckoutForUpdate(ctx context.Context, reference string) (FinanceWalletcheckout, error)
@@ -373,6 +375,7 @@ type Querier interface {
 	LatestOpenOTP(ctx context.Context, arg LatestOpenOTPParams) (AccountsOtpchallenge, error)
 	LatestOpenOTPForUpdate(ctx context.Context, arg LatestOpenOTPForUpdateParams) (AccountsOtpchallenge, error)
 	LatestOpenShift(ctx context.Context, arg LatestOpenShiftParams) (OperationsShift, error)
+	LatestReservationCheckout(ctx context.Context, reservationID *uuid.UUID) (FinanceWalletcheckout, error)
 	LatestSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error)
 	LedgerAccountForUpdate(ctx context.Context, code string) (FinanceLedgeraccount, error)
 	// LedgerEntry inherits BaseModel ordering (-created_at).
@@ -467,6 +470,7 @@ type Querier interface {
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
+	PaidReservationCheckout(ctx context.Context, reservationID *uuid.UUID) (FinanceWalletcheckout, error)
 	PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error)
 	PaymentByID(ctx context.Context, id uuid.UUID) (PaymentByIDRow, error)
 	PaymentByIdempotency(ctx context.Context, idempotencyKey *string) (FinancePayment, error)
@@ -503,6 +507,7 @@ type Querier interface {
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
 	RefundDueCheckouts(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
+	RefundsByStatus(ctx context.Context, arg RefundsByStatusParams) ([]RefundsByStatusRow, error)
 	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
 	ReleaseEngine(ctx context.Context, arg ReleaseEngineParams) error
 	// QuerySet.update(): updated_at is left alone.
@@ -705,7 +710,8 @@ type Querier interface {
 	TouchTrustedDevice(ctx context.Context, arg TouchTrustedDeviceParams) (AccountsTrusteddevice, error)
 	TrustedDeviceForUpdate(ctx context.Context, arg TrustedDeviceForUpdateParams) (AccountsTrusteddevice, error)
 	TrustedDeviceSeen(ctx context.Context, accountID uuid.UUID) ([]TrustedDeviceSeenRow, error)
-	UnrecordedSwapCheckouts(ctx context.Context, swapID *uuid.UUID) ([]FinanceWalletcheckout, error)
+	// Paid checkouts for a swap or its booking whose money was never used.
+	UnrecordedCheckouts(ctx context.Context, arg UnrecordedCheckoutsParams) ([]FinanceWalletcheckout, error)
 	UpdateCooperative(ctx context.Context, arg UpdateCooperativeParams) error
 	UpdateHoldPolicy(ctx context.Context, arg UpdateHoldPolicyParams) error
 	UpdateHub(ctx context.Context, arg UpdateHubParams) error

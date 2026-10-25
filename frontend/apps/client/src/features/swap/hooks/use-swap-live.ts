@@ -7,6 +7,7 @@ export const SWAP_API = {
   reservationCancel: (id: string) => `/mobility/reservations/${id}/cancel/`,
   holdPolicy: '/mobility/pricing/hold-policy/',
   swaps: '/mobility/swaps/',
+  reservationCheckout: (id: string) => `/mobility/reservations/${id}/checkout/`,
   precheck: '/mobility/reservations/precheck/',
   swapCheckout: (id: string) => `/mobility/swaps/${id}/checkout/`,
 } as const
@@ -92,6 +93,17 @@ export type ReservationApi = {
   list_price_kobo?: number
   discount_code?: string
   discount_kobo?: number
+  /** Pay at booking: returned on create for a Paystack booking awaiting payment. */
+  checkout?: BookingCheckoutApi
+}
+
+export type BookingCheckoutApi = {
+  reference: string
+  amount_kobo: number
+  status: string
+  access_code: string
+  authorization_url: string
+  paid: boolean
 }
 
 export type HoldPolicyApi = {

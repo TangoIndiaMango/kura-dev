@@ -118,7 +118,8 @@ func abortSwap(ctx context.Context, q *db.Queries, id uuid.UUID, reason string, 
 		}
 	}
 	s.Status = "FAILED"
-	if err := finance.RefundUnusedSwapPayments(ctx, q, s.ID); err != nil { // paid but not swapped: refund it
+	// Paid (at booking or at the bay) but not swapped: refund after review.
+	if err := finance.RefundUnusedPayments(ctx, q, &s.ID, s.ReservationID, "swap cancelled at the bay"); err != nil {
 		return err
 	}
 	if err := saveSwap(ctx, q, s); err != nil {

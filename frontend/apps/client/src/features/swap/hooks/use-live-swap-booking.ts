@@ -19,6 +19,7 @@ import {
   useMyReservations,
   useMyVehicles,
   type ReservationApi,
+  type BookingCheckoutApi,
 } from './use-swap-live'
 import {
   apiPaymentMode,
@@ -45,6 +46,7 @@ function toHold(row: ReservationApi): OperatorActiveReservation {
       : nowMs(),
     paymentMode: uiPaymentMode(row.payment_mode),
     ...(row.qr ? { qr: row.qr } : {}),
+    awaitingPayment: row.status === 'PENDING' && row.payment_mode.toUpperCase() === 'PAYSTACK',
   }
 }
 
@@ -80,8 +82,8 @@ export function useLiveSwapBooking() {
   })
   const holdPolicy = useHoldPolicy({ enabled: isAuthenticated })
   const liveReservationsQuery = useMyReservations({
+    // CONFIRMED and PENDING (a Paystack booking awaiting payment) are both live.
     enabled: isAuthenticated,
-    status: 'CONFIRMED',
   })
   const createReservation = useCreateReservation()
   const cancelReservation = useCancelReservation()
@@ -133,6 +135,7 @@ export function useLiveSwapBooking() {
     expiresAt: number
     qr: string
     dueNaira: number | null
+    checkout: BookingCheckoutApi | null
   } | null> {
     if (bookingBusy) return null
     if (!isAuthenticated) {
@@ -151,7 +154,8 @@ export function useLiveSwapBooking() {
         ...(input.discountCode ? { discount_code: input.discountCode } : {}),
       })
       const qr = (res.qr ?? '').trim()
-      if (!qr) {
+      const awaitingPayment = res.status === 'PENDING' && Boolean(res.checkout)
+      if (!qr && !awaitingPayment) {
         notifications.show({
           color: 'red',
           message: 'Hold booked, but QR token is missing — use the code at the hub',
@@ -162,12 +166,14 @@ export function useLiveSwapBooking() {
         code: res.code,
         expiresAt: new Date(res.expires_at).getTime(),
         qr,
-        dueNaira:
-          typeof res.hold_amount_kobo === 'number'
+        dueNaira: res.checkout
+          ? res.checkout.amount_kobo / 100
+          : typeof res.hold_amount_kobo === 'number'
             ? res.hold_amount_kobo / 100
             : null,
+        checkout: awaitingPayment ? (res.checkout ?? null) : null,
       }
-      if (qr) {
+      if (qr && !awaitingPayment) { // the code only works at the bay once paid
         await cacheHoldForOffline({
           id: created.id,
           code: created.code,
