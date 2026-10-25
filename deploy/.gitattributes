@@ -1,0 +1,3 @@
+*.bat text eol=crlf
+*.sh  text eol=lf
+kura-server.sh text eol=lf

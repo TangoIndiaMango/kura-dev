@@ -46,3 +46,8 @@ backend/reports/
 
 # graphify local build output (rebuilt by git hooks)
 graphify-out/
+
+# deploy kit: secrets and run logs stay on this PC
+deploy/production.env
+deploy/server.txt
+deploy/*.log
