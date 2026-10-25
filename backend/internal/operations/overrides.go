@@ -55,9 +55,15 @@ func (s *Service) RecordOverride(ctx context.Context, q *db.Queries, in Override
 			WithDetails(apperr.Details{"note": []string{"required"}})
 	}
 	id := ids.New()
-	if err := q.InsertOverride(ctx, db.InsertOverrideParams{ID: id, Reason: reason, Note: note, AgentID: in.Agent.ID,
-		SwapID: in.Swap}); err != nil {
+	n, err := q.InsertOverride(ctx, db.InsertOverrideParams{ID: id, Reason: reason, Note: note, AgentID: in.Agent.ID,
+		SwapID: in.Swap})
+	if err != nil {
 		return uuid.Nil, err
+	}
+	if n == 0 && in.Swap != nil {
+		// Already authorized for this swap (a resumed session, a retry): keep the
+		// first override — no second audit row, no extra count toward the limit.
+		return q.OverrideIDForSwap(ctx, in.Swap)
 	}
 	now := time.Now().UTC()
 	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)

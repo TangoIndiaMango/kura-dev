@@ -333,7 +333,8 @@ type Querier interface {
 	InsertOffer(ctx context.Context, arg InsertOfferParams) error
 	InsertOfferAssignment(ctx context.Context, arg InsertOfferAssignmentParams) error
 	InsertOperatorUser(ctx context.Context, arg InsertOperatorUserParams) error
-	InsertOverride(ctx context.Context, arg InsertOverrideParams) error
+	// One override per swap: a second authorization for the same swap is a no-op.
+	InsertOverride(ctx context.Context, arg InsertOverrideParams) (int64, error)
 	InsertPayment(ctx context.Context, arg InsertPaymentParams) (FinancePayment, error)
 	InsertPlan(ctx context.Context, arg InsertPlanParams) error
 	// PSP webhook events (integrations.PspWebhookEvent).
@@ -468,6 +469,7 @@ type Querier interface {
 	// this issue (one UNRETURNED_48H risk event per issue).
 	OverdueBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID, error)
 	OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDRow, error)
+	OverrideIDForSwap(ctx context.Context, swapID *uuid.UUID) (uuid.UUID, error)
 	// user.accounts: Account inherits BaseModel ordering (-created_at).
 	OwnedAccountIDs(ctx context.Context, ownerUserID uuid.UUID) ([]uuid.UUID, error)
 	PaidReservationCheckout(ctx context.Context, reservationID *uuid.UUID) (FinanceWalletcheckout, error)

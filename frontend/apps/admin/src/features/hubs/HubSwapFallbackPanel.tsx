@@ -1289,7 +1289,9 @@ export function HubSwapFallbackPanel() {
         driver_id: identified.liveMeta.driverId,
         account_id: identified.liveMeta.accountId,
       })
-      startedSessionId = session.id
+      // Only a session this override created is ours to cancel if it fails —
+      // a resumed one is the rider's live session (pack may already be back).
+      startedSessionId = session.resumed ? null : session.id
       await recordOverride.mutateAsync({
         reason: reason ?? 'ops_discretion',
         note: label,
