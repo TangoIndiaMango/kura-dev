@@ -50,21 +50,21 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
     }
   }, [])
 
-  const start = async (sendEmail: boolean) => {
+  const start = async (opts: { email?: boolean; renew?: boolean }) => {
     if (!swapId) return
-    setBusy(sendEmail ? 'email' : 'link')
+    setBusy(opts.email ? 'email' : 'link')
     try {
       const { data } = await axiosInstance.post<SwapCheckout>(
         checkoutUrl(swapId),
-        { send_email: sendEmail },
+        { send_email: Boolean(opts.email), renew: Boolean(opts.renew) },
         { silentError: true },
       )
       apply(data)
-      if (sendEmail && data.emailed) {
-        notifications.show({ color: 'teal', message: 'Payment link emailed to the rider' })
+      if (opts.email && data.emailed) {
+        notifications.show({ color: 'teal', message: 'Payment link sent to the rider’s email' })
         onLogRef.current?.('Paystack', `Link emailed · ${formatNaira(data.amount_kobo / 100)}`)
       } else if (!data.paid) {
-        onLogRef.current?.('Paystack', `Link ready · ${formatNaira(data.amount_kobo / 100)}`)
+        onLogRef.current?.('Paystack', `${opts.renew ? 'New link' : 'Link ready'} · ${formatNaira(data.amount_kobo / 100)}`)
       }
     } catch (err) {
       notifications.show({ color: 'red', message: apiErrorMessage(err, 'Could not create the payment link') })
@@ -120,66 +120,52 @@ export function HubPaystackPay({ swapId, onPaid, onLog }: Props) {
     }
   }
 
-  if (!swapId) {
-    return <p className="mt-3 text-[12.5px] text-[var(--mu)]">Start the swap session to take a Paystack payment.</p>
-  }
+  if (!swapId) return null
 
   if (checkout?.paid) {
     return (
       <div className="mt-3 rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-3">
-        <p className="text-[13px] font-bold text-[var(--tx)]">Paid with Paystack</p>
-        <p className="mt-1 text-[12px] text-[var(--mu)]">
-          {formatNaira(checkout.amount_kobo / 100)} confirmed · {checkout.reference}. Complete the swap.
+        <p className="text-[13px] font-bold text-[var(--tx)]">
+          Paid · {formatNaira(checkout.amount_kobo / 100)}
         </p>
+        <p className="mt-0.5 text-[12px] text-[var(--mu)]">Ready to complete.</p>
       </div>
     )
   }
 
+  if (!checkout) {
+    return (
+      <Button mt="sm" color="brand" fullWidth loading={busy === 'link'} onClick={() => void start({})}>
+        Generate payment link
+      </Button>
+    )
+  }
+
+  const failed = checkout.status === 'FAILED'
   return (
     <div className="mt-3 rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-3">
-      {!checkout ? (
-        <>
-          <p className="text-[12.5px] text-[var(--mu)]">
-            The rider pays by card, bank transfer or USSD. Generate their link, then share it or open it here.
-          </p>
-          <Button mt="sm" color="brand" fullWidth loading={busy === 'link'} onClick={() => void start(false)}>
-            Generate payment link
-          </Button>
-        </>
-      ) : (
-        <>
-          <p className="text-[13px] font-bold text-[var(--tx)]">
-            {checkout.status === 'FAILED' ? 'Payment failed' : 'Waiting for payment'} ·{' '}
-            {formatNaira(checkout.amount_kobo / 100)}
-          </p>
-          <p className="mt-1 text-[12px] text-[var(--mu)]">
-            {checkout.status === 'FAILED'
-              ? 'The rider was not charged. Generate a new link to retry.'
-              : 'This updates on its own once Paystack confirms.'}
-          </p>
-          <TextInput mt="sm" readOnly value={checkout.authorization_url} aria-label="Payment link" />
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <CopyButton value={checkout.authorization_url}>
-              {({ copied, copy }) => (
-                <Button variant="light" onClick={copy}>
-                  {copied ? 'Copied' : 'Copy link'}
-                </Button>
-              )}
-            </CopyButton>
-            <Button variant="light" loading={busy === 'email'} onClick={() => void start(true)}>
-              Email to rider
+      <p className="text-[13px] font-bold text-[var(--tx)]">
+        {failed ? 'Payment failed — not charged' : 'Waiting for payment'} · {formatNaira(checkout.amount_kobo / 100)}
+      </p>
+      <TextInput mt="sm" readOnly value={checkout.authorization_url} aria-label="Payment link" />
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <CopyButton value={checkout.authorization_url}>
+          {({ copied, copy }) => (
+            <Button variant="light" onClick={copy} disabled={failed}>
+              {copied ? 'Copied' : 'Copy link'}
             </Button>
-            <Button color="brand" onClick={() => void openPopup()} disabled={checkout.status !== 'PENDING'}>
-              Pay here
-            </Button>
-          </div>
-          {checkout.status === 'FAILED' ? (
-            <Button mt="xs" variant="subtle" fullWidth loading={busy === 'link'} onClick={() => void start(false)}>
-              New payment link
-            </Button>
-          ) : null}
-        </>
-      )}
+          )}
+        </CopyButton>
+        <Button variant="light" loading={busy === 'email'} disabled={failed} onClick={() => void start({ email: true })}>
+          Email link
+        </Button>
+        <Button variant="light" loading={busy === 'link'} onClick={() => void start({ renew: true })}>
+          New link
+        </Button>
+        <Button color="brand" onClick={() => void openPopup()} disabled={failed}>
+          Pay here
+        </Button>
+      </div>
     </div>
   )
 }

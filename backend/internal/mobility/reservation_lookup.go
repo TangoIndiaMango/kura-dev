@@ -146,7 +146,10 @@ func (b *Bay) lookupPayload(ctx context.Context, row db.ReservationRowsRow) (map
 	case row.PaymentMode == "WALLET":
 		reason = "Wallet hold ₦" + nairaCommas(row.HoldAmountKobo) + "."
 	case row.PaymentMode == "PAYSTACK":
-		reason = "Pays with Paystack at the bay."
+		reason = "Not paid yet — take payment with Paystack at the bay."
+		if _, ok, perr := b.paidAtBooking(ctx, &row.ID); perr == nil && ok {
+			reason = "Paid with Paystack at booking."
+		}
 	default:
 		reason = "Payment mode " + row.PaymentMode + "."
 	}

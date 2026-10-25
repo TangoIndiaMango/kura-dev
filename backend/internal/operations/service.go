@@ -115,8 +115,10 @@ func (s *Service) Record(ctx context.Context, q *db.Queries, in DepositIn) (db.O
 	if purpose == "" {
 		purpose = "SWAP"
 	}
-	if purpose != "SWAP" && purpose != "FUND" {
-		return db.OperationsCashdeposit{}, apperr.New("VALIDATION_ERROR", "purpose must be SWAP or FUND.").
+	// Riders hold no wallet, so cash can't fund one — it only pays for a swap.
+	if purpose != "SWAP" {
+		return db.OperationsCashdeposit{}, apperr.New("VALIDATION_ERROR",
+			"Cash at a hub can only pay for a swap — riders don't hold a wallet.").
 			WithDetails(apperr.Details{"purpose": []string{"invalid"}})
 	}
 	key := strings.TrimSpace(in.IdemKey)

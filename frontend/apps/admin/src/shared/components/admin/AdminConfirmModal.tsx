@@ -23,7 +23,7 @@ export interface AdminConfirmModalProps {
   /** When set (and no reasonOptions), reason is a number input. */
   reasonNumber?: { min?: number; max: number; suffix?: string }
   confirmTone?: 'primary' | 'danger'
-  /** confirm-action (default) or confirm-delete for destructive */
+  /** confirm-action (default); pass confirm-delete only when a record is deleted */
   illustrationId?: KuraIllustrationId
   loading?: boolean
   /**
@@ -74,7 +74,9 @@ export function AdminConfirmModal({
   reasonOptions,
   reasonNumber,
   confirmTone = 'primary',
-  illustrationId = confirmTone === 'danger' ? 'confirm-delete' : 'confirm-action',
+  // Trash can only for real deletes (pass 'confirm-delete'); blocking,
+  // aborting or suspending is not deleting anything.
+  illustrationId = 'confirm-action',
   loading = false,
   pinRequired = false,
   pinLength = 6,

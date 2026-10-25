@@ -44,14 +44,14 @@ export function SwapDetailConfirmModals({
             ? 'Why abort this session?'
             : 'Why reverse this session?'
         }
-        illustrationId="confirm-delete"
+        illustrationId="confirm-action"
         loading={loading}
         onConfirm={onConfirm}
       />
       <KuraIllustrationModal
         opened={doneKind !== null}
         onClose={onCloseDone}
-        illustrationId="confirm-delete"
+        illustrationId="record-saved"
         title={doneKind === 'abort' ? 'Session aborted' : 'Swap reversed'}
         description={
           doneKind === 'abort'

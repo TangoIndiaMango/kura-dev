@@ -151,6 +151,8 @@ func (m *Module) Register(mux *http.ServeMux) {
 	rv.Cap("POST", "/", "swaps:read", bay.createReservationHandler)
 	rv.Cap("POST", "/lookup/", "swaps:read", bay.lookup)
 	rv.User("GET", "/{id}/", bay.getReservation)
+	rv.User("POST", "/{id}/checkout/", bay.reservationCheckoutStart)
+	rv.User("GET", "/{id}/checkout/", bay.reservationCheckoutStatus)
 	rv.Cap("POST", "/{id}/cancel/", "swaps:read", bay.cancelReservationHandler)
 	rv.Cap("POST", "/{id}/extend/", "swaps:override", bay.extendHandler)
 

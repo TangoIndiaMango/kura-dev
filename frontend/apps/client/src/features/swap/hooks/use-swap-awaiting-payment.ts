@@ -5,6 +5,13 @@ import type { SwapCheckout } from './use-swap-payment'
 
 const OPEN = ['STARTED', 'RETURN_RECORDED', 'ISSUED']
 
+/** A swap whose booking lapsed or was cancelled is about to be cancelled — never ask to pay for it. */
+export function bookingLapsed(s: Pick<SwapListApi, 'reservation_status' | 'reservation_expires_at'>) {
+  const status = (s.reservation_status || '').toUpperCase()
+  if (status === 'EXPIRED' || status === 'CANCELLED') return true
+  return Boolean(s.reservation_expires_at) && new Date(s.reservation_expires_at!).getTime() <= Date.now()
+}
+
 type CursorPage<T> = { results: T[] }
 
 /**
@@ -27,7 +34,10 @@ export function useSwapAwaitingPayment(enabled: boolean, fastPoll: boolean) {
   })
   const swap =
     swaps.data?.find(
-      (s) => s.payment_mode?.toUpperCase() === 'PAYSTACK' && OPEN.includes(s.status.toUpperCase()),
+      (s) =>
+        s.payment_mode?.toUpperCase() === 'PAYSTACK' &&
+        OPEN.includes(s.status.toUpperCase()) &&
+        !bookingLapsed(s),
     ) ?? null
   const checkout = useQuery({
     queryKey: swap ? [SWAP_API.swapCheckout(swap.id)] : ['no-swap-checkout'],

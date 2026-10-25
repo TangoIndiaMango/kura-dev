@@ -21,7 +21,8 @@ export function swapUiStatus(s: SwapListApi): string {
     rsv === 'EXPIRED' ||
     (Boolean(s.reservation_expires_at) &&
       new Date(s.reservation_expires_at!).getTime() <= Date.now())
-  if (status === 'STARTED' && expiredHold) return 'INCOMPLETE'
+  // Same as the server: a lapsed booking ends the session at any step.
+  if (expiredHold || rsv === 'CANCELLED') return 'INCOMPLETE'
   if (status === 'RETURN_RECORDED' || status === 'ISSUED') return 'AT_HUB'
   if (['STARTED', 'RETURN_RECORDED', 'ISSUED'].includes(status)) return 'IN_PROGRESS'
   return status

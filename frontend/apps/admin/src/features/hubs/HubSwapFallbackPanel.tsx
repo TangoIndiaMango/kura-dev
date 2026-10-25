@@ -51,6 +51,7 @@ import {
 } from './HubBayVelocityGate'
 import {
   useHubBayBatteries,
+  useHubOpenSessions,
   useHubReservations,
   useIdentityMismatch,
   useLookupReservation,
@@ -60,7 +61,10 @@ import {
   useSwapIssue,
   useSwapReturn,
   useSwapSessionComplete,
+  type OpenSwapSessionApi,
 } from './hooks/use-bay-swap'
+import { HubBayOpenSessions } from './HubBayOpenSessions'
+import { axiosInstance } from '@lib/api/client'
 import { packStubFromSerial, resumeStepFromSwap } from './hubBayResume'
 import { useVerifyAgentPin, useVerifyRiderPin, useRecordBayOverride } from './hooks/use-bay-pins'
 import {
@@ -416,6 +420,7 @@ export function HubSwapFallbackPanel() {
 
   const [step, setStep] = useState<SessionStep>('lookup')
   const codeFromUrl = searchParams.get('code')?.trim().toUpperCase() || null
+  const sessionFromUrl = searchParams.get('session')?.trim() || null
   const [identifyMode, setIdentifyMode] = useState<IdentifyMode>('hold')
   const [selectedCode, setSelectedCode] = useState<string | null>(codeFromUrl)
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null)
@@ -907,6 +912,74 @@ export function HubSwapFallbackPanel() {
     [applyReservation, hub, pushLog],
   )
 
+  // In-progress sessions at this bay (server status is the truth).
+  const openSessions = useHubOpenSessions(liveHubId ?? undefined)
+  const [sessionBusyId, setSessionBusyId] = useState<string | null>(null)
+  const sessionUrlTriedRef = useRef<string | null>(null)
+
+  /** Re-identify the session's rider (face check stays); starting the swap
+   *  then resumes it at its step. A booking that is no longer live is
+   *  continued by vehicle — the server resumes the same session either way. */
+  const continueSession = useCallback(
+    async (s: OpenSwapSessionApi) => {
+      setSessionBusyId(s.id)
+      try {
+        pushLog('Continue', `${s.vehicle_plate ?? 'Vehicle'} · ${s.status}`)
+        if (s.reservation) {
+          const res = await axiosInstance
+            .get<{ code: string; status: string }>(`/mobility/reservations/${s.reservation}/`, {
+              silentError: true,
+            })
+            .catch(() => null)
+          const live = res?.data && (res.data.status === 'CONFIRMED' || res.data.status === 'PENDING')
+          if (live) {
+            await runLookup(res.data.code)
+            return
+          }
+        }
+        if (s.vehicle_plate) await applyWalkIn(s.vehicle_plate)
+      } finally {
+        setSessionBusyId(null)
+      }
+    },
+    [applyWalkIn, pushLog, runLookup],
+  )
+
+  const endSession = useCallback(
+    async (s: OpenSwapSessionApi, reason: string) => {
+      setSessionBusyId(s.id)
+      try {
+        await abortMut.mutateAsync({ swapId: s.id, reason })
+        pushLog('Session', `${s.vehicle_plate ?? 'Vehicle'} · ${reason}`, true)
+        await Promise.all([openSessions.refetch(), liveBatteries.refetch()])
+      } catch (err) {
+        notifications.show({ color: 'red', message: apiErrorMessage(err, 'Could not cancel the session.') })
+        throw err
+      } finally {
+        setSessionBusyId(null)
+      }
+    },
+    [abortMut, liveBatteries, openSessions, pushLog],
+  )
+
+  const restartSession = useCallback(
+    async (s: OpenSwapSessionApi) => {
+      await endSession(s, 'Restarted at bay')
+      if (s.vehicle_plate) await applyWalkIn(s.vehicle_plate)
+    },
+    [applyWalkIn, endSession],
+  )
+
+  // Deep link from the swap detail page / hub feed: /hubs/:id/swap?session=<swap id>
+  useEffect(() => {
+    if (!sessionFromUrl || step !== 'lookup' || identified || openSessions.isPending) return
+    if (sessionUrlTriedRef.current === sessionFromUrl) return
+    sessionUrlTriedRef.current = sessionFromUrl
+    const hit = openSessions.sessions.find((x) => x.id === sessionFromUrl)
+    if (hit) void continueSession(hit)
+    else setLookupError('That session is no longer in progress at this bay.')
+  }, [continueSession, identified, openSessions.isPending, openSessions.sessions, sessionFromUrl, step])
+
   useEffect(() => {
     if (!hub || !liveHubId || !codeFromUrl || step !== 'lookup' || identified) return
     if (urlCodeTriedRef.current === codeFromUrl) return
@@ -1075,7 +1148,11 @@ export function HubSwapFallbackPanel() {
     setConfirmOpen(false)
     setPinLocked(false)
     setLogs([])
-    urlCodeTriedRef.current = null
+    // A fresh session starts blank: drop ?code= / ?session= so the page never
+    // re-opens the hold or session it was linked with.
+    if (codeFromUrl || sessionFromUrl) {
+      navigate(`/hubs/${resolvedHubId ?? routeId}/swap`, { replace: true })
+    }
   }
 
   const acceptFace = async () => {
@@ -1097,15 +1174,22 @@ export function HubSwapFallbackPanel() {
       setSwapSessionId(session.id)
       setLookupError(null)
       setVelocityHit(null)
-      const next = resumeStepFromSwap(session, identified.skipReturn)
+      // A resumed session is the truth: once its return is recorded the
+      // vehicle has no pack mounted, which must not read as a first swap.
+      const returnedOnServer = Boolean(session.returned_serial)
+      const skipReturn = identified.skipReturn && !returnedOnServer
+      if (skipReturn !== identified.skipReturn) setIdentified({ ...identified, skipReturn })
+      const next = resumeStepFromSwap(session, skipReturn)
       const returnedPack = packStubFromSerial(session.returned_serial, catalogue)
       const issuedPack = packStubFromSerial(session.issued_serial, catalogue)
       if (returnedPack) setReturned(returnedPack)
+      if (session.returned_charge_pct != null) setReturnCharge(String(session.returned_charge_pct))
       if (issuedPack) setIssued(issuedPack)
       setStep(next)
+      void openSessions.refetch()
       pushLog(
         'Triage',
-        next === 'settle' || next === 'issue' || next === 'return'
+        session.resumed
           ? `Resume · session ${session.id.slice(0, 8)} · ${session.status}`
           : identified.skipReturn
             ? `Matches · session ${session.id.slice(0, 8)} · first swap`
@@ -1262,7 +1346,7 @@ export function HubSwapFallbackPanel() {
       setBayConfirm(null)
       setStep('lookup')
       setLookupError(`Swap aborted · ${label}`)
-      await liveBatteries.refetch()
+      await Promise.all([liveBatteries.refetch(), openSessions.refetch()])
     } catch (err) {
       setLookupError(apiErrorMessage(err, 'Could not abort swap session.'))
     }
@@ -1317,6 +1401,7 @@ export function HubSwapFallbackPanel() {
       })
       await liveHolds.refetch()
       await liveBatteries.refetch()
+      void openSessions.refetch()
 
       if (settleMode === 'CASH_AT_HUB' && cashReceiptRef) {
         setCashDepositRef(formatNaira(dueAmt))
@@ -1591,6 +1676,15 @@ export function HubSwapFallbackPanel() {
                 onDismiss={() => setVelocityHit(null)}
               />
             ) : null}
+            {step === 'lookup' && !identified ? (
+              <HubBayOpenSessions
+                sessions={openSessions.sessions}
+                busyId={sessionBusyId}
+                onContinue={(s) => void continueSession(s)}
+                onRestart={restartSession}
+                onCancel={(s) => endSession(s, 'Cancelled at bay')}
+              />
+            ) : null}
             {step === 'lookup' ? (
               <section className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)]">
                 <h3 className="mb-1 text-[14px] font-bold text-[var(--tx)]">Identify</h3>
@@ -1844,7 +1938,7 @@ export function HubSwapFallbackPanel() {
                   title="Issue battery"
                   hint={
                     identified.skipReturn
-                      ? 'First swap — no return needed. Pick a ready pack of this vehicle’s type.'
+                      ? 'No pack on this vehicle — nothing to return. Pick a ready pack of its type.'
                       : hubReady.length
                         ? 'Charged pack matching this vehicle type at this hub.'
                         : 'No compatible ready pack at this hub.'
@@ -2081,18 +2175,14 @@ export function HubSwapFallbackPanel() {
           verifyAgentPin.isPending ||
           recordOverride.isPending
         }
-        illustrationId={
-          bayConfirm === 'mismatch' || bayConfirm === 'abort'
-            ? 'confirm-delete'
-            : 'confirm-action'
-        }
+        illustrationId={bayConfirm === 'mismatch' ? 'dispute-opened' : 'confirm-action'}
         onConfirm={onBayConfirm}
       />
 
       <KuraIllustrationModal
         opened={mismatchAckOpen}
         onClose={() => setMismatchAckOpen(false)}
-        illustrationId="confirm-delete"
+        illustrationId="dispute-opened"
         title="Swap blocked"
         description={
           mismatchCaseQuery

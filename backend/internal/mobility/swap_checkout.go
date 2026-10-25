@@ -51,8 +51,11 @@ func (b *Bay) swapDue(ctx context.Context, s db.SwapRowsRow) (int64, error) {
 }
 
 // swapCheckout returns a usable Paystack checkout for the swap: the paid
-// one, a fresh pending one for the same amount, or a new one.
-func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow) (db.FinanceWalletcheckout, error) {
+// one, a fresh pending one for the same amount (unless renew), or a new one.
+func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow, renew bool) (db.FinanceWalletcheckout, error) {
+	if paid, ok, err := b.paidAtBooking(ctx, s.ReservationID); err != nil || ok {
+		return paid, err // paid at booking: nothing more to collect
+	}
 	c, err := b.q.LatestSwapCheckout(ctx, &s.ID)
 	if err == nil {
 		if c, err = finance.VerifyAndSettle(ctx, b.pool, b.checkout, c); err != nil {
@@ -64,14 +67,14 @@ func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow) (db.FinanceWal
 	} else if !database.IsNoRows(err) {
 		return c, err
 	}
-	if !openSwap(s.Status) {
-		return c, apperr.Conflict("INVALID_TRANSITION", "Swap is "+s.Status+"; it can no longer be paid for.")
+	if !openSwap(s.Status) || uiStatus(s) == "INCOMPLETE" {
+		return c, apperr.Conflict("INVALID_TRANSITION", "This swap has lapsed and can no longer be paid for — start a new one.")
 	}
 	due, err := b.swapDue(ctx, s)
 	if err != nil {
 		return c, err
 	}
-	if c.Status == "PENDING" && c.AmountKobo == due && time.Since(c.CreatedAt) < checkoutReuse {
+	if !renew && c.Status == "PENDING" && c.AmountKobo == due && time.Since(c.CreatedAt) < checkoutReuse {
 		return c, nil
 	}
 	acct, err := b.q.AccountByID(ctx, s.AccountID)
@@ -99,6 +102,7 @@ func checkoutJSON(c db.FinanceWalletcheckout, emailed bool) map[string]any {
 func (b *Bay) swapCheckoutStart(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		SendEmail bool `json:"send_email"`
+		Renew     bool `json:"renew"` // a fresh link even if one is pending
 	}
 	err := decode.JSON(r, &in)
 	var s db.SwapRowsRow
@@ -107,7 +111,7 @@ func (b *Bay) swapCheckoutStart(w http.ResponseWriter, r *http.Request) {
 	}
 	var c db.FinanceWalletcheckout
 	if err == nil {
-		c, err = b.swapCheckout(r.Context(), s)
+		c, err = b.swapCheckout(r.Context(), s, in.Renew)
 	}
 	emailed := false
 	if err == nil && in.SendEmail && c.Status == "PENDING" {
@@ -128,7 +132,11 @@ func (b *Bay) swapCheckoutStatus(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		c, err = b.q.LatestSwapCheckout(r.Context(), &s.ID)
 		if database.IsNoRows(err) {
-			err = apperr.NotFound("No payment started for this swap.")
+			if paid, ok, perr := b.paidAtBooking(r.Context(), s.ReservationID); perr != nil || ok {
+				c, err = paid, perr
+			} else {
+				err = apperr.NotFound("No payment started for this swap.")
+			}
 		}
 	}
 	if err == nil {
@@ -167,7 +175,7 @@ func paidWithPaystack(ctx context.Context, q *db.Queries, in settleIn, acct fina
 	if err != nil {
 		return settled{}, apperr.Conflict("PAYMENT_MODE_UNSUPPORTED", "Paystack payment needs a started swap session.")
 	}
-	c, err := q.PaidSwapCheckout(ctx, &id)
+	c, err := paidCheckoutFor(ctx, q, id, in.Reservation)
 	if database.IsNoRows(err) {
 		return settled{}, apperr.Conflict("PAYMENT_REQUIRED",
 			"Waiting for the rider's Paystack payment of "+finance.FormatNaira(in.Fee)+".")
@@ -180,5 +188,38 @@ func paidWithPaystack(ctx context.Context, q *db.Queries, in settleIn, acct fina
 		return settled{}, apperr.Conflict("PAYMENT_SHORT", "The rider's Paystack payment no longer covers "+
 			finance.FormatNaira(in.Fee)+" — take the difference with a new link or cash.")
 	}
-	return settled{Payment: &p.ID}, err
+	if err != nil {
+		return settled{}, err
+	}
+	// Any other payment for this swap or its booking (paid twice) is refunded.
+	var res *uuid.UUID
+	if in.Reservation != nil {
+		res = &in.Reservation.ID
+	}
+	if err := finance.RefundUnusedPayments(ctx, q, &id, res, "paid twice for the same swap"); err != nil {
+		return settled{}, err
+	}
+	return settled{Payment: &p.ID}, nil
+}
+
+// paidAtBooking is the booking's successful Paystack checkout, if any.
+func (b *Bay) paidAtBooking(ctx context.Context, reservation *uuid.UUID) (db.FinanceWalletcheckout, bool, error) {
+	if reservation == nil {
+		return db.FinanceWalletcheckout{}, false, nil
+	}
+	c, err := b.q.PaidReservationCheckout(ctx, reservation)
+	if database.IsNoRows(err) {
+		return c, false, nil
+	}
+	return c, err == nil, err
+}
+
+// paidCheckoutFor is the Paystack payment a PAYSTACK swap settles with: one
+// taken at the bay, else the one made at booking.
+func paidCheckoutFor(ctx context.Context, q *db.Queries, swap uuid.UUID, r *db.MobilityReservation) (db.FinanceWalletcheckout, error) {
+	c, err := q.PaidSwapCheckout(ctx, &swap)
+	if database.IsNoRows(err) && r != nil {
+		c, err = q.PaidReservationCheckout(ctx, &r.ID)
+	}
+	return c, err
 }

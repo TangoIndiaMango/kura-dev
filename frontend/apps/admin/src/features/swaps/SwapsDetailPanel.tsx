@@ -86,6 +86,13 @@ export function SwapsDetailPanel({ id }: { id: string }) {
     can('swaps:complete')
 
   const actions: AdminDetailAction[] = []
+  if (canAbort && swap.hub) {
+    actions.push({
+      id: 'continue',
+      label: 'Continue at bay',
+      onClick: () => navigate(`/hubs/${swap.hub}/swap?session=${swap.id}`),
+    })
+  }
   if (canAbort) {
     actions.push({
       id: 'abort',

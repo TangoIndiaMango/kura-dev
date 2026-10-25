@@ -50,8 +50,8 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
     activityLoading,
   } = useHomeLiveData()
   const liveHolds = useMyReservations({
+    // CONFIRMED and PENDING (a Paystack booking awaiting payment) are both live.
     enabled: isAuthenticated,
-    status: 'CONFIRMED',
   })
   const liveSwaps = useMySwaps({ enabled: isAuthenticated, page_size: 1 })
 
@@ -68,6 +68,7 @@ export const OperatorHomeScreen: React.FC<OperatorHomeScreenProps> = ({
         expiresAt: new Date(r.expires_at).getTime(),
         createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
         paymentMode: uiPaymentMode(r.payment_mode),
+        awaitingPayment: r.status === 'PENDING' && r.payment_mode.toUpperCase() === 'PAYSTACK',
         ...(r.qr ? { qr: r.qr } : {}),
       }))
     return liveReservations(mapped, nowMs())

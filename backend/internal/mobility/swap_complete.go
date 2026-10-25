@@ -127,6 +127,13 @@ func (b *Bay) completeSession(ctx context.Context, q *db.Queries, id uuid.UUID, 
 		amount = nil // the fee the rider paid Paystack for, never a desk-typed amount
 	}
 	fee, held := swapFee(r, mode, amount, tariff)
+	if mode == "PAYSTACK" { // the price is what the rider paid (a tariff change since doesn't re-price it)
+		if c, err := paidCheckoutFor(ctx, q, s.ID, r); err == nil {
+			fee = c.AmountKobo
+		} else if !database.IsNoRows(err) {
+			return settled{}, err
+		}
+	}
 	key := "swap:" + s.ID.String()
 	fee, discounted, err := swapDiscount(ctx, q, in.Code, r, held, mode, fee, tariff, s.AccountID, key)
 	if err != nil {

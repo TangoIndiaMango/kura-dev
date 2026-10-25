@@ -7,14 +7,45 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
-const checkoutByPayment = `-- name: CheckoutByPayment :one
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE payment_id = $1 LIMIT 1
+const checkoutByIDForUpdate = `-- name: CheckoutByIDForUpdate :one
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE id = $1 FOR UPDATE
 `
 
+func (q *Queries) CheckoutByIDForUpdate(ctx context.Context, id uuid.UUID) (FinanceWalletcheckout, error) {
+	row := q.db.QueryRow(ctx, checkoutByIDForUpdate, id)
+	var i FinanceWalletcheckout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Reference,
+		&i.AmountKobo,
+		&i.Status,
+		&i.AccessCode,
+		&i.AuthorizationUrl,
+		&i.FailureReason,
+		&i.AccountID,
+		&i.UserID,
+		&i.PaymentID,
+		&i.Purpose,
+		&i.Channel,
+		&i.SwapID,
+		&i.ReservationID,
+	)
+	return i, err
+}
+
+const checkoutByPayment = `-- name: CheckoutByPayment :one
+
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE payment_id = $1 LIMIT 1
+`
+
+// approved by finance
 func (q *Queries) CheckoutByPayment(ctx context.Context, paymentID *uuid.UUID) (FinanceWalletcheckout, error) {
 	row := q.db.QueryRow(ctx, checkoutByPayment, paymentID)
 	var i FinanceWalletcheckout
@@ -34,12 +65,13 @@ func (q *Queries) CheckoutByPayment(ctx context.Context, paymentID *uuid.UUID) (
 		&i.Purpose,
 		&i.Channel,
 		&i.SwapID,
+		&i.ReservationID,
 	)
 	return i, err
 }
 
 const checkoutByReference = `-- name: CheckoutByReference :one
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE reference = $1
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE reference = $1
 `
 
 func (q *Queries) CheckoutByReference(ctx context.Context, reference string) (FinanceWalletcheckout, error) {
@@ -61,12 +93,13 @@ func (q *Queries) CheckoutByReference(ctx context.Context, reference string) (Fi
 		&i.Purpose,
 		&i.Channel,
 		&i.SwapID,
+		&i.ReservationID,
 	)
 	return i, err
 }
 
 const checkoutForUpdate = `-- name: CheckoutForUpdate :one
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE reference = $1 FOR UPDATE
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE reference = $1 FOR UPDATE
 `
 
 func (q *Queries) CheckoutForUpdate(ctx context.Context, reference string) (FinanceWalletcheckout, error) {
@@ -88,12 +121,13 @@ func (q *Queries) CheckoutForUpdate(ctx context.Context, reference string) (Fina
 		&i.Purpose,
 		&i.Channel,
 		&i.SwapID,
+		&i.ReservationID,
 	)
 	return i, err
 }
 
 const checkoutsToReverify = `-- name: CheckoutsToReverify :many
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE status = 'PENDING'
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE status = 'PENDING'
   AND created_at < now() - interval '2 minutes' AND created_at > now() - interval '48 hours'
 ORDER BY created_at LIMIT $1
 `
@@ -123,6 +157,7 @@ func (q *Queries) CheckoutsToReverify(ctx context.Context, limit int32) ([]Finan
 			&i.Purpose,
 			&i.Channel,
 			&i.SwapID,
+			&i.ReservationID,
 		); err != nil {
 			return nil, err
 		}
@@ -150,9 +185,9 @@ func (q *Queries) ExpireStaleCheckouts(ctx context.Context) (int64, error) {
 const insertCheckout = `-- name: InsertCheckout :one
 
 INSERT INTO finance_walletcheckout (id, created_at, updated_at, reference, amount_kobo, status, access_code,
-  authorization_url, account_id, user_id, purpose, swap_id)
-VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, 'PENDING', $4, $5, $6, $7, $8, $9)
-RETURNING id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id
+  authorization_url, account_id, user_id, purpose, swap_id, reservation_id)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, 'PENDING', $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id
 `
 
 type InsertCheckoutParams struct {
@@ -165,6 +200,7 @@ type InsertCheckoutParams struct {
 	UserID           *uuid.UUID
 	Purpose          string
 	SwapID           *uuid.UUID
+	ReservationID    *uuid.UUID
 }
 
 // Paystack Checkout payments (finance_walletcheckout): top-ups and pay-at-swap.
@@ -179,6 +215,7 @@ func (q *Queries) InsertCheckout(ctx context.Context, arg InsertCheckoutParams) 
 		arg.UserID,
 		arg.Purpose,
 		arg.SwapID,
+		arg.ReservationID,
 	)
 	var i FinanceWalletcheckout
 	err := row.Scan(
@@ -197,12 +234,42 @@ func (q *Queries) InsertCheckout(ctx context.Context, arg InsertCheckoutParams) 
 		&i.Purpose,
 		&i.Channel,
 		&i.SwapID,
+		&i.ReservationID,
+	)
+	return i, err
+}
+
+const latestReservationCheckout = `-- name: LatestReservationCheckout :one
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE reservation_id = $1
+ORDER BY (status = 'SUCCESS') DESC, created_at DESC LIMIT 1
+`
+
+func (q *Queries) LatestReservationCheckout(ctx context.Context, reservationID *uuid.UUID) (FinanceWalletcheckout, error) {
+	row := q.db.QueryRow(ctx, latestReservationCheckout, reservationID)
+	var i FinanceWalletcheckout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Reference,
+		&i.AmountKobo,
+		&i.Status,
+		&i.AccessCode,
+		&i.AuthorizationUrl,
+		&i.FailureReason,
+		&i.AccountID,
+		&i.UserID,
+		&i.PaymentID,
+		&i.Purpose,
+		&i.Channel,
+		&i.SwapID,
+		&i.ReservationID,
 	)
 	return i, err
 }
 
 const latestSwapCheckout = `-- name: LatestSwapCheckout :one
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE swap_id = $1 ORDER BY (status = 'SUCCESS') DESC, created_at DESC LIMIT 1
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE swap_id = $1 ORDER BY (status = 'SUCCESS') DESC, created_at DESC LIMIT 1
 `
 
 func (q *Queries) LatestSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error) {
@@ -224,12 +291,41 @@ func (q *Queries) LatestSwapCheckout(ctx context.Context, swapID *uuid.UUID) (Fi
 		&i.Purpose,
 		&i.Channel,
 		&i.SwapID,
+		&i.ReservationID,
+	)
+	return i, err
+}
+
+const paidReservationCheckout = `-- name: PaidReservationCheckout :one
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE reservation_id = $1 AND status = 'SUCCESS' ORDER BY created_at LIMIT 1
+`
+
+func (q *Queries) PaidReservationCheckout(ctx context.Context, reservationID *uuid.UUID) (FinanceWalletcheckout, error) {
+	row := q.db.QueryRow(ctx, paidReservationCheckout, reservationID)
+	var i FinanceWalletcheckout
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Reference,
+		&i.AmountKobo,
+		&i.Status,
+		&i.AccessCode,
+		&i.AuthorizationUrl,
+		&i.FailureReason,
+		&i.AccountID,
+		&i.UserID,
+		&i.PaymentID,
+		&i.Purpose,
+		&i.Channel,
+		&i.SwapID,
+		&i.ReservationID,
 	)
 	return i, err
 }
 
 const paidSwapCheckout = `-- name: PaidSwapCheckout :one
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE swap_id = $1 AND status = 'SUCCESS' ORDER BY created_at LIMIT 1
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE swap_id = $1 AND status = 'SUCCESS' ORDER BY created_at LIMIT 1
 `
 
 func (q *Queries) PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (FinanceWalletcheckout, error) {
@@ -251,12 +347,13 @@ func (q *Queries) PaidSwapCheckout(ctx context.Context, swapID *uuid.UUID) (Fina
 		&i.Purpose,
 		&i.Channel,
 		&i.SwapID,
+		&i.ReservationID,
 	)
 	return i, err
 }
 
 const refundDueCheckouts = `-- name: RefundDueCheckouts :many
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE status = 'REFUND_PENDING' ORDER BY updated_at LIMIT $1
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE status = 'REFUND_PENDING' ORDER BY updated_at LIMIT $1
 `
 
 func (q *Queries) RefundDueCheckouts(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error) {
@@ -284,6 +381,154 @@ func (q *Queries) RefundDueCheckouts(ctx context.Context, limit int32) ([]Financ
 			&i.Purpose,
 			&i.Channel,
 			&i.SwapID,
+			&i.ReservationID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const refundStats = `-- name: RefundStats :one
+SELECT
+  count(*) FILTER (WHERE c.status = 'REFUND_REVIEW')::int AS review_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUND_REVIEW'), 0)::bigint AS review_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUND_PENDING')::int AS approved_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUND_PENDING'), 0)::bigint AS approved_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUNDED')::int AS sent_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUNDED'), 0)::bigint AS sent_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUND_REJECTED')::int AS rejected_count
+FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
+WHERE c.status IN ('REFUND_REVIEW', 'REFUND_PENDING', 'REFUNDED', 'REFUND_REJECTED')
+  AND ($1::text IS NULL OR c.reference ILIKE '%' || $1 || '%'
+       OR a.display_name ILIKE '%' || $1 || '%' OR a.kura_id ILIKE '%' || $1 || '%')
+  AND ($2::timestamptz IS NULL OR c.created_at >= $2)
+  AND ($3::timestamptz IS NULL OR c.created_at < $3)
+`
+
+type RefundStatsParams struct {
+	Q      *string
+	FromAt *time.Time
+	ToAt   *time.Time
+}
+
+type RefundStatsRow struct {
+	ReviewCount   int32
+	ReviewKobo    int64
+	ApprovedCount int32
+	ApprovedKobo  int64
+	SentCount     int32
+	SentKobo      int64
+	RejectedCount int32
+}
+
+// Counts and totals per refund status for the KPI cards (search + date range).
+func (q *Queries) RefundStats(ctx context.Context, arg RefundStatsParams) (RefundStatsRow, error) {
+	row := q.db.QueryRow(ctx, refundStats, arg.Q, arg.FromAt, arg.ToAt)
+	var i RefundStatsRow
+	err := row.Scan(
+		&i.ReviewCount,
+		&i.ReviewKobo,
+		&i.ApprovedCount,
+		&i.ApprovedKobo,
+		&i.SentCount,
+		&i.SentKobo,
+		&i.RejectedCount,
+	)
+	return i, err
+}
+
+const refundsPage = `-- name: RefundsPage :many
+SELECT c.id, c.created_at, c.updated_at, c.reference, c.amount_kobo, c.status, c.access_code, c.authorization_url, c.failure_reason, c.account_id, c.user_id, c.payment_id, c.purpose, c.channel, c.swap_id, c.reservation_id, a.kura_id, a.display_name FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
+WHERE c.status IN ('REFUND_REVIEW', 'REFUND_PENDING', 'REFUNDED', 'REFUND_REJECTED')
+  AND ($1::text IS NULL OR c.status = $1)
+  AND ($2::text IS NULL OR c.reference ILIKE '%' || $2 || '%'
+       OR a.display_name ILIKE '%' || $2 || '%' OR a.kura_id ILIKE '%' || $2 || '%')
+  AND ($3::timestamptz IS NULL OR c.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR c.created_at < $4)
+  AND ($5::timestamptz IS NULL
+       OR ($6::bool AND (c.created_at, c.id) > ($5, $7::uuid))
+       OR (NOT $6::bool AND (c.created_at, c.id) < ($5, $7::uuid)))
+ORDER BY CASE WHEN $6::bool THEN c.created_at END, CASE WHEN $6::bool THEN c.id END,
+  c.created_at DESC, c.id DESC
+LIMIT $8
+`
+
+type RefundsPageParams struct {
+	Status  *string
+	Q       *string
+	FromAt  *time.Time
+	ToAt    *time.Time
+	AfterAt *time.Time
+	Back    bool
+	AfterID uuid.UUID
+	Lim     int32
+}
+
+type RefundsPageRow struct {
+	ID               uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Reference        string
+	AmountKobo       int64
+	Status           string
+	AccessCode       string
+	AuthorizationUrl string
+	FailureReason    string
+	AccountID        uuid.UUID
+	UserID           *uuid.UUID
+	PaymentID        *uuid.UUID
+	Purpose          string
+	Channel          string
+	SwapID           *uuid.UUID
+	ReservationID    *uuid.UUID
+	KuraID           string
+	DisplayName      string
+}
+
+// Refunds (any refund status, or one) with search + Lagos date range; cursor
+// on (created_at, id) newest first, like the payments list.
+func (q *Queries) RefundsPage(ctx context.Context, arg RefundsPageParams) ([]RefundsPageRow, error) {
+	rows, err := q.db.Query(ctx, refundsPage,
+		arg.Status,
+		arg.Q,
+		arg.FromAt,
+		arg.ToAt,
+		arg.AfterAt,
+		arg.Back,
+		arg.AfterID,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RefundsPageRow{}
+	for rows.Next() {
+		var i RefundsPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Reference,
+			&i.AmountKobo,
+			&i.Status,
+			&i.AccessCode,
+			&i.AuthorizationUrl,
+			&i.FailureReason,
+			&i.AccountID,
+			&i.UserID,
+			&i.PaymentID,
+			&i.Purpose,
+			&i.Channel,
+			&i.SwapID,
+			&i.ReservationID,
+			&i.KuraID,
+			&i.DisplayName,
 		); err != nil {
 			return nil, err
 		}
@@ -333,13 +578,21 @@ func (q *Queries) SettleCheckout(ctx context.Context, arg SettleCheckoutParams) 
 	return err
 }
 
-const unrecordedSwapCheckouts = `-- name: UnrecordedSwapCheckouts :many
-SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id FROM finance_walletcheckout WHERE swap_id = $1 AND status = 'SUCCESS' AND payment_id IS NULL
+const unrecordedCheckouts = `-- name: UnrecordedCheckouts :many
+SELECT id, created_at, updated_at, reference, amount_kobo, status, access_code, authorization_url, failure_reason, account_id, user_id, payment_id, purpose, channel, swap_id, reservation_id FROM finance_walletcheckout WHERE status = 'SUCCESS' AND payment_id IS NULL
+  AND (($1::uuid IS NOT NULL AND swap_id = $1)
+    OR ($2::uuid IS NOT NULL AND reservation_id = $2))
 ORDER BY created_at FOR UPDATE
 `
 
-func (q *Queries) UnrecordedSwapCheckouts(ctx context.Context, swapID *uuid.UUID) ([]FinanceWalletcheckout, error) {
-	rows, err := q.db.Query(ctx, unrecordedSwapCheckouts, swapID)
+type UnrecordedCheckoutsParams struct {
+	Swap        *uuid.UUID
+	Reservation *uuid.UUID
+}
+
+// Paid checkouts for a swap or its booking whose money was never used.
+func (q *Queries) UnrecordedCheckouts(ctx context.Context, arg UnrecordedCheckoutsParams) ([]FinanceWalletcheckout, error) {
+	rows, err := q.db.Query(ctx, unrecordedCheckouts, arg.Swap, arg.Reservation)
 	if err != nil {
 		return nil, err
 	}
@@ -363,6 +616,7 @@ func (q *Queries) UnrecordedSwapCheckouts(ctx context.Context, swapID *uuid.UUID
 			&i.Purpose,
 			&i.Channel,
 			&i.SwapID,
+			&i.ReservationID,
 		); err != nil {
 			return nil, err
 		}

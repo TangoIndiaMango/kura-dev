@@ -63,7 +63,9 @@ export const ActiveSwapBanner: React.FC<ActiveSwapBannerProps> = ({
                 ? `${count} batteries reserved`
                 : expired
                   ? 'Hold expired'
-                  : 'Battery reserved'}
+                  : primary.awaitingPayment
+                    ? 'Pay to confirm'
+                    : 'Battery reserved'}
             </span>
             {!expired && !multi ? (
               <span className="rounded-md bg-black/25 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-white">
@@ -72,7 +74,7 @@ export const ActiveSwapBanner: React.FC<ActiveSwapBannerProps> = ({
             ) : null}
           </div>
           <p className="mt-0.5 truncate text-[15px] font-extrabold tracking-tight text-white">
-            {multi ? 'Open hold & QR' : primary.code}
+            {multi ? 'Open hold & QR' : primary.awaitingPayment ? 'Booking not paid yet' : primary.code}
             {!multi ? (
               <>
                 <span className="mx-1.5 font-normal text-white/40">·</span>
@@ -87,7 +89,9 @@ export const ActiveSwapBanner: React.FC<ActiveSwapBannerProps> = ({
               ? 'Tap to show your soonest QR'
               : expired
                 ? 'Tap to rebook or manage'
-                : `Show QR · ${primary.vehicleLabel}`}
+                : primary.awaitingPayment
+                  ? `Pay with Paystack · ${primary.vehicleLabel}`
+                  : `Show QR · ${primary.vehicleLabel}`}
           </p>
         </div>
         <ArrowRight01Icon

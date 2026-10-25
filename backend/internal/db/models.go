@@ -579,6 +579,7 @@ type FinanceWalletcheckout struct {
 	Purpose          string
 	Channel          string
 	SwapID           *uuid.UUID
+	ReservationID    *uuid.UUID
 }
 
 type IntegrationsPspwebhookevent struct {

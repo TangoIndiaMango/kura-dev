@@ -280,7 +280,7 @@ func reverseMoney(ctx context.Context, q *db.Queries, s db.MobilitySwap) error {
 			return err
 		}
 		if mode == "PAYSTACK" && pay != nil { // no balance to keep it in: back to the card
-			return finance.RefundSwapPayment(ctx, q, pay.ID)
+			return finance.RefundSwapPayment(ctx, q, pay.ID, "swap reversed")
 		}
 		return nil
 	case "CASH":

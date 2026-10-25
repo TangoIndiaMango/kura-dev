@@ -180,6 +180,76 @@ func (q *Queries) OpenSwapForReservation(ctx context.Context, reservationID *uui
 	return i, err
 }
 
+const openSwapForVehicle = `-- name: OpenSwapForVehicle :one
+SELECT s.id, s.created_at, s.updated_at, s.returned_charge_pct, s.issued_charge_pct, s.payment_mode, s.amount_kobo, s.vat_kobo, s.mismatch_flag, s.status, s.client_event_id, s.account_id, s.agent_id, s.driver_id, s.hub_id, s.issued_battery_id, s.reservation_id, s.returned_battery_id, s.vehicle_id, s.source, s.completed_at, s.mismatch_reason, s.started_at, s.payment_id, s.subscription_id, h.code AS hub_code FROM mobility_swap s JOIN mobility_hub h ON h.id = s.hub_id
+WHERE s.vehicle_id = $1 AND s.status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED')
+ORDER BY s.started_at DESC NULLS FIRST LIMIT 1
+`
+
+type OpenSwapForVehicleRow struct {
+	ID                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ReturnedChargePct int32
+	IssuedChargePct   int32
+	PaymentMode       string
+	AmountKobo        int64
+	VatKobo           int64
+	MismatchFlag      bool
+	Status            string
+	ClientEventID     string
+	AccountID         uuid.UUID
+	AgentID           *uuid.UUID
+	DriverID          uuid.UUID
+	HubID             uuid.UUID
+	IssuedBatteryID   *uuid.UUID
+	ReservationID     *uuid.UUID
+	ReturnedBatteryID *uuid.UUID
+	VehicleID         uuid.UUID
+	Source            string
+	CompletedAt       *time.Time
+	MismatchReason    string
+	StartedAt         *time.Time
+	PaymentID         *uuid.UUID
+	SubscriptionID    *uuid.UUID
+	HubCode           string
+}
+
+// A vehicle's in-progress bay session (at most one: starts lock the vehicle).
+func (q *Queries) OpenSwapForVehicle(ctx context.Context, vehicleID uuid.UUID) (OpenSwapForVehicleRow, error) {
+	row := q.db.QueryRow(ctx, openSwapForVehicle, vehicleID)
+	var i OpenSwapForVehicleRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReturnedChargePct,
+		&i.IssuedChargePct,
+		&i.PaymentMode,
+		&i.AmountKobo,
+		&i.VatKobo,
+		&i.MismatchFlag,
+		&i.Status,
+		&i.ClientEventID,
+		&i.AccountID,
+		&i.AgentID,
+		&i.DriverID,
+		&i.HubID,
+		&i.IssuedBatteryID,
+		&i.ReservationID,
+		&i.ReturnedBatteryID,
+		&i.VehicleID,
+		&i.Source,
+		&i.CompletedAt,
+		&i.MismatchReason,
+		&i.StartedAt,
+		&i.PaymentID,
+		&i.SubscriptionID,
+		&i.HubCode,
+	)
+	return i, err
+}
+
 const openSwapsForVehicle = `-- name: OpenSwapsForVehicle :many
 SELECT id FROM mobility_swap WHERE vehicle_id = $1 AND status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED')
 ORDER BY started_at, created_at
@@ -601,19 +671,20 @@ WHERE ($1::bool
        OR (NOT $2::bool AND s.account_id = ANY($4::uuid[])))
   AND ($5::uuid IS NULL OR s.account_id = $5)
   AND ($6::text IS NULL OR s.status = $6)
-  AND ($7::text IS NULL OR s.payment_mode = $7)
-  AND ($8::uuid IS NULL OR s.hub_id = $8)
-  AND ($9::uuid IS NULL OR s.vehicle_id = $9)
-  AND ($10::uuid IS NULL OR s.agent_id = $10)
-  AND ($11::uuid IS NULL OR s.returned_battery_id = $11 OR s.issued_battery_id = $11)
-  AND ($12::timestamptz IS NULL OR s.created_at >= $12)
-  AND ($13::timestamptz IS NULL OR s.created_at < $13)
-  AND ($14::timestamptz IS NULL
-       OR ($15::bool AND (s.created_at, s.id) > ($14, $16::uuid))
-       OR (NOT $15::bool AND (s.created_at, s.id) < ($14, $16::uuid)))
-ORDER BY CASE WHEN $15::bool THEN s.created_at END, CASE WHEN $15::bool THEN s.id END,
+  AND (NOT $7::bool OR s.status IN ('STARTED', 'RETURN_RECORDED', 'ISSUED'))
+  AND ($8::text IS NULL OR s.payment_mode = $8)
+  AND ($9::uuid IS NULL OR s.hub_id = $9)
+  AND ($10::uuid IS NULL OR s.vehicle_id = $10)
+  AND ($11::uuid IS NULL OR s.agent_id = $11)
+  AND ($12::uuid IS NULL OR s.returned_battery_id = $12 OR s.issued_battery_id = $12)
+  AND ($13::timestamptz IS NULL OR s.created_at >= $13)
+  AND ($14::timestamptz IS NULL OR s.created_at < $14)
+  AND ($15::timestamptz IS NULL
+       OR ($16::bool AND (s.created_at, s.id) > ($15, $17::uuid))
+       OR (NOT $16::bool AND (s.created_at, s.id) < ($15, $17::uuid)))
+ORDER BY CASE WHEN $16::bool THEN s.created_at END, CASE WHEN $16::bool THEN s.id END,
   s.created_at DESC, s.id DESC
-LIMIT $17
+LIMIT $18
 `
 
 type SwapsPageParams struct {
@@ -623,6 +694,7 @@ type SwapsPageParams struct {
 	Own         []uuid.UUID
 	Account     *uuid.UUID
 	Status      *string
+	OpenOnly    bool
 	PaymentMode *string
 	Hub         *uuid.UUID
 	Vehicle     *uuid.UUID
@@ -645,6 +717,7 @@ func (q *Queries) SwapsPage(ctx context.Context, arg SwapsPageParams) ([]uuid.UU
 		arg.Own,
 		arg.Account,
 		arg.Status,
+		arg.OpenOnly,
 		arg.PaymentMode,
 		arg.Hub,
 		arg.Vehicle,

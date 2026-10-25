@@ -132,6 +132,9 @@ func (b *Bay) createReservation(ctx context.Context, q *db.Queries, in CreateIn)
 	r := db.MobilityReservation{ID: ids.New(), Status: "CONFIRMED", PaymentMode: mode, AccountID: in.Account.ID,
 		BatteryID: &bat.ID, DriverID: in.Driver.ID, HubID: in.Hub.ID, VehicleID: in.Vehicle.ID, Source: source,
 		ExpiresAt: time.Now().Add(time.Duration(pol.DefaultHoldMinutes) * time.Minute)}
+	if mode == "PAYSTACK" { // pay at booking: held briefly until Paystack confirms
+		r.Status, r.ExpiresAt = "PENDING", time.Now().Add(bookingPayWindow)
+	}
 	for i := 0; i < 8 && r.Code == ""; i++ {
 		c := reservationCode()
 		if taken, err := q.ReservationCodeTaken(ctx, c); err != nil {
@@ -168,6 +171,9 @@ func (b *Bay) createReservation(ctx context.Context, q *db.Queries, in CreateIn)
 	}
 	if err := saveReservation(ctx, q, r); err != nil {
 		return uuid.Nil, err
+	}
+	if mode == "PAYSTACK" {
+		return r.ID, nil // announced once paid (confirmPaidReservation)
 	}
 	return r.ID, b.announceReservation(ctx, q, r, in, pol.DefaultHoldMinutes)
 }

@@ -103,5 +103,23 @@ func (b *Bay) createReservationHandler(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, r, err)
 		return
 	}
-	respond.JSON(w, http.StatusCreated, b.reservationDTO(row))
+	dto := b.reservationDTO(row)
+	if row.PaymentMode != "PAYSTACK" || row.Status != "PENDING" {
+		respond.JSON(w, http.StatusCreated, dto)
+		return
+	}
+	// Pay at booking: hand back the Paystack checkout for the in-app popup. If
+	// Paystack can't be reached the hold is released rather than left unpaid.
+	c, cerr := b.bookingCheckout(ctx, row.ID, false)
+	if cerr != nil {
+		_ = b.tx(ctx, func(q *db.Queries, who *events.Actor) error {
+			_, err := cancelReservation(ctx, q, row.ID, who, "Payment could not be started — please try again.")
+			return err
+		})
+		respond.Error(w, r, cerr)
+		return
+	}
+	out := structMap(dto)
+	out["checkout"] = bookingCheckoutJSON(c)
+	respond.JSON(w, http.StatusCreated, out)
 }

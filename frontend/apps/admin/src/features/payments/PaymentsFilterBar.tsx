@@ -42,24 +42,28 @@ export function PaymentsScopeControls({
   onHubChange: (hubId: string | null, label: string | null) => void
   dateRangeSlot: ReactNode
 }) {
+  // One hub to choose from means "All hubs" is that hub — no picker needed.
+  const showHub = hubOptions.length > 1 || Boolean(hubId)
   return (
     <Group gap="sm" wrap="wrap" justify="flex-end">
-      <Select
-        aria-label="Hub"
-        placeholder="All hubs"
-        w={220}
-        radius="md"
-        data={hubOptions}
-        value={hubId ?? null}
-        searchable
-        clearable
-        nothingFoundMessage="No hub matches"
-        styles={fieldStyles}
-        onChange={(v) =>
-          onHubChange(v, v ? (hubOptions.find((o) => o.value === v)?.label ?? null) : null)
-        }
-        comboboxProps={{ withinPortal: true }}
-      />
+      {showHub ? (
+        <Select
+          aria-label="Hub"
+          placeholder="All hubs"
+          w={220}
+          radius="md"
+          data={hubOptions}
+          value={hubId ?? null}
+          searchable
+          clearable
+          nothingFoundMessage="No hub matches"
+          styles={fieldStyles}
+          onChange={(v) =>
+            onHubChange(v, v ? (hubOptions.find((o) => o.value === v)?.label ?? null) : null)
+          }
+          comboboxProps={{ withinPortal: true }}
+        />
+      ) : null}
       {dateRangeSlot}
     </Group>
   )
@@ -102,5 +106,36 @@ export function PaymentsListFilters({
         comboboxProps={{ withinPortal: true }}
       />
     </>
+  )
+}
+
+const REFUND_STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'REFUND_REVIEW', label: 'To review' },
+  { value: 'REFUND_PENDING', label: 'Approved' },
+  { value: 'REFUNDED', label: 'Refunded' },
+  { value: 'REFUND_REJECTED', label: 'Rejected' },
+]
+
+/** Status filter in the refunds table toolbar (all statuses by default). */
+export function RefundsListFilters({
+  status,
+  onStatusChange,
+}: {
+  status: string | undefined
+  onStatusChange: (value: string) => void
+}) {
+  return (
+    <Select
+      aria-label="Refund status"
+      w={160}
+      radius="md"
+      data={REFUND_STATUS_OPTIONS}
+      value={status ?? ''}
+      allowDeselect={false}
+      styles={fieldStyles}
+      onChange={(v) => onStatusChange(v ?? '')}
+      comboboxProps={{ withinPortal: true }}
+    />
   )
 }
