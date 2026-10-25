@@ -1,0 +1,239 @@
+@import 'tailwindcss';
+
+/* Theme tokens. Light is the default; dark comes from the system or the
+   toggle (index.html sets data-theme before first paint). */
+:root {
+  --bg: oklch(0.968 0.009 88);
+  --surface: oklch(0.993 0.004 88);
+  --surface-2: oklch(0.935 0.013 88);
+  --fg: oklch(0.19 0.012 230);
+  --fg-muted: oklch(0.43 0.012 230);
+  --fg-subtle: oklch(0.56 0.01 230);
+  --line: oklch(0.19 0.012 230 / 0.12);
+  --line-strong: oklch(0.19 0.012 230 / 0.24);
+  --accent: oklch(0.47 0.075 195);
+  --accent-strong: oklch(0.4 0.07 195);
+  --accent-soft: oklch(0.47 0.075 195 / 0.1);
+  --on-accent: oklch(0.985 0.005 88);
+  --gold: oklch(0.79 0.135 78);
+  --on-gold: oklch(0.2 0.03 70);
+  --gold-ink: oklch(0.52 0.11 70);
+  --inverse: oklch(0.17 0.01 230);
+  --on-inverse: oklch(0.96 0.008 88);
+  --on-inverse-muted: oklch(0.96 0.008 88 / 0.62);
+  --live: oklch(0.7 0.16 150);
+  --shadow: 0 1px 2px oklch(0.2 0.02 230 / 0.06), 0 12px 32px -12px oklch(0.2 0.02 230 / 0.18);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: oklch(0.16 0.01 230);
+  --surface: oklch(0.205 0.012 230);
+  --surface-2: oklch(0.245 0.013 230);
+  --fg: oklch(0.95 0.008 88);
+  --fg-muted: oklch(0.76 0.01 88);
+  --fg-subtle: oklch(0.62 0.01 88);
+  --line: oklch(0.95 0.008 88 / 0.1);
+  --line-strong: oklch(0.95 0.008 88 / 0.2);
+  --accent: oklch(0.7 0.09 192);
+  --accent-strong: oklch(0.78 0.09 192);
+  --accent-soft: oklch(0.7 0.09 192 / 0.14);
+  --on-accent: oklch(0.16 0.02 230);
+  --gold: oklch(0.82 0.13 80);
+  --gold-ink: oklch(0.84 0.13 80);
+  --inverse: oklch(0.24 0.014 230);
+  --on-inverse: oklch(0.96 0.008 88);
+  --on-inverse-muted: oklch(0.96 0.008 88 / 0.62);
+  --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -16px oklch(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-gold: var(--gold);
+  --color-on-gold: var(--on-gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-inverse: var(--inverse);
+  --color-on-inverse: var(--on-inverse);
+  --color-on-inverse-muted: var(--on-inverse-muted);
+  --color-live: var(--live);
+  --shadow-card: var(--shadow);
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    scroll-padding-top: 6rem;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background-color 0.3s,
+      color 0.3s;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+    line-height: 1.02;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--gold);
+    color: var(--on-gold);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* Condensed, heavy display face for the few hero-level statements. */
+  .display {
+    font-stretch: 68%;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 0.92;
+    text-transform: uppercase;
+  }
+  .kicker {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1.4rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition:
+      background-color 0.25s var(--ease-out-soft),
+      color 0.25s,
+      transform 0.25s var(--ease-out-soft),
+      box-shadow 0.25s;
+  }
+  .btn:active {
+    transform: scale(0.98);
+  }
+  .btn-primary {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .btn-primary:hover {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .btn-secondary {
+    box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  }
+  .btn-secondary:hover {
+    box-shadow: inset 0 0 0 1.5px var(--fg);
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1.5rem;
+  }
+}
+
+/* Motion: reveal on scroll (see useReveal), marquee, live dot. */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.9s var(--ease-out-soft),
+    transform 0.9s var(--ease-out-soft);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  animation: marquee 40s linear infinite;
+}
+.marquee-wrap:hover .marquee,
+.marquee-wrap:focus-within .marquee {
+  animation-play-state: paused;
+}
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.16 150 / 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 10px oklch(0.7 0.16 150 / 0);
+  }
+}
+.live-dot {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .marquee,
+  .live-dot {
+    animation: none;
+  }
+}
+
+/* Leaflet: our own tile/attribution styling; map tiles dim in dark mode. */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--surface-2);
+}
+:root[data-theme='dark'] .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+}
