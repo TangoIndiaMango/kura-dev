@@ -737,9 +737,10 @@ func (q *Queries) InsertInventoryCount(ctx context.Context, arg InsertInventoryC
 	return err
 }
 
-const insertOverride = `-- name: InsertOverride :exec
+const insertOverride = `-- name: InsertOverride :execrows
 INSERT INTO operations_override (id, created_at, updated_at, reason, note, agent_id, swap_id)
 VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5)
+ON CONFLICT DO NOTHING
 `
 
 type InsertOverrideParams struct {
@@ -750,15 +751,19 @@ type InsertOverrideParams struct {
 	SwapID  *uuid.UUID
 }
 
-func (q *Queries) InsertOverride(ctx context.Context, arg InsertOverrideParams) error {
-	_, err := q.db.Exec(ctx, insertOverride,
+// One override per swap: a second authorization for the same swap is a no-op.
+func (q *Queries) InsertOverride(ctx context.Context, arg InsertOverrideParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertOverride,
 		arg.ID,
 		arg.Reason,
 		arg.Note,
 		arg.AgentID,
 		arg.SwapID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const inventoryCountByID = `-- name: InventoryCountByID :one
@@ -1027,6 +1032,17 @@ func (q *Queries) OverrideByID(ctx context.Context, id uuid.UUID) (OverrideByIDR
 		&i.AgentEmail,
 	)
 	return i, err
+}
+
+const overrideIDForSwap = `-- name: OverrideIDForSwap :one
+SELECT id FROM operations_override WHERE swap_id = $1
+`
+
+func (q *Queries) OverrideIDForSwap(ctx context.Context, swapID *uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, overrideIDForSwap, swapID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const saveAlert = `-- name: SaveAlert :exec

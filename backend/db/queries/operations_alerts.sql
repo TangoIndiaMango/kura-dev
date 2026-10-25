@@ -108,9 +108,14 @@ SELECT count(*) FROM operations_override WHERE sqlc.narg(agent)::uuid IS NULL OR
 -- name: OverrideByID :one
 SELECT o.*, u.email AS agent_email FROM operations_override o JOIN accounts_user u ON u.id = o.agent_id WHERE o.id = $1;
 
--- name: InsertOverride :exec
+-- name: InsertOverride :execrows
+-- One override per swap: a second authorization for the same swap is a no-op.
 INSERT INTO operations_override (id, created_at, updated_at, reason, note, agent_id, swap_id)
-VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5);
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5)
+ON CONFLICT DO NOTHING;
+
+-- name: OverrideIDForSwap :one
+SELECT id FROM operations_override WHERE swap_id = $1;
 
 -- name: AgentOverridesSince :one
 SELECT count(*)::int FROM operations_override WHERE agent_id = $1 AND created_at >= $2;
