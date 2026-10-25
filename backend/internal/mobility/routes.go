@@ -40,6 +40,10 @@ func NewModule(pool *pgxpool.Pool, signer qr.Signer, mailer *mail.Mailer, tokens
 
 // Register mounts the mobility routes.
 func (m *Module) Register(mux *http.ServeMux) {
+	// The landing page's live network: hubs, plans, swap prices (no sign-in).
+	pub := router.New(mux, "/api/v1/public", m.limiter)
+	pub.Throttle(throttle.AnonBurst).Public("GET", "/network/", m.hubs.publicNetwork)
+
 	h := router.New(mux, "/api/v1/mobility/hubs", m.limiter) // HubViewSet capability_map
 	h.Cap("GET", "/", "hubs:read", m.hubs.list)
 	h.Cap("POST", "/", "hubs:manage", m.hubs.create)
