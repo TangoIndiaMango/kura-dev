@@ -19,7 +19,7 @@ export type Path = '/' | '/privacy' | '/terms' | '/contact'
 
 export const PAGES: Record<Path, { title: string; description: string }> = {
   '/': {
-    title: 'KURA Mobility — A full EV battery in 60 seconds',
+    title: 'KURA Mobility | A full EV battery in 60 seconds',
     description:
       'Swap an empty EV battery for a full one in about a minute at a KURA hub in Lagos. For okada, keke and boat operators and fleets. Live hubs and prices.',
   },
@@ -28,11 +28,11 @@ export const PAGES: Record<Path, { title: string; description: string }> = {
     description: 'Talk to KURA about swaps, bookings, fleets, partnerships or your data. WhatsApp and email.',
   },
   '/privacy': {
-    title: 'Privacy policy — KURA Mobility',
+    title: 'Privacy policy | KURA Mobility',
     description: 'What personal data KURA collects, why, who we share it with and your rights under the NDPA 2023.',
   },
   '/terms': {
-    title: 'Terms of service — KURA Mobility',
+    title: 'Terms of service | KURA Mobility',
     description: 'The rules for using KURA battery-swap hubs, bookings, plans and fleet accounts.',
   },
 }

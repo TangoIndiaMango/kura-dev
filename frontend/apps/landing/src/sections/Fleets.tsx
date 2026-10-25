@@ -9,11 +9,11 @@ const FLEET = [
   { icon: <IconBolt />, title: 'Every vehicle, one account', body: 'Bikes, kekes and boats together, with each one’s battery and last swap.' },
   { icon: <IconUsers />, title: 'Assign drivers', body: 'Each driver gets their vehicle and swaps with their own phone and PIN.' },
   { icon: <IconGauge />, title: 'Daily limits per driver', body: 'Cap swaps or spend per driver per day, so nobody runs up your bill.' },
-  { icon: <IconReceipt />, title: 'Swap history', body: 'Every swap by vehicle and driver, with a receipt — ready for your books.' },
+  { icon: <IconReceipt />, title: 'Swap history', body: 'Every swap by vehicle and driver, with a receipt, ready for your books.' },
 ]
 
 const TRUST = [
-  { icon: <IconSolar />, title: 'Solar powered', body: 'Hubs charge on solar with battery backup — outages don’t stop a swap.' },
+  { icon: <IconSolar />, title: 'Solar powered', body: 'Hubs charge on solar with battery backup, so outages don’t stop a swap.' },
   { icon: <IconWifiOff />, title: 'Pass works offline', body: 'Your booking code and QR stay on your phone when data drops at the hub.' },
   { icon: <IconReceipt />, title: 'Every naira visible', body: 'Receipts for every swap, and unused payments go back to how you paid.' },
 ]

@@ -17,7 +17,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Your account',
     body: (
       <ul>
-        <li>You sign up with a phone number you control and set a 4-digit PIN. Keep your PIN private — anyone with it can confirm bookings on your account.</li>
+        <li>You sign up with a phone number you control and set a 4-digit PIN. Keep your PIN private: anyone with it can confirm bookings on your account.</li>
         <li>Give accurate details. We may ask you to verify your identity before you can use some features.</li>
         <li>Tell us straight away if you think someone else has used your account.</li>
       </ul>
@@ -106,7 +106,7 @@ export function Terms() {
   return (
     <LegalPage
       title="Terms of service"
-      intro={<p>The rules for using KURA hubs, bookings and plans — written to be read, not skimmed past.</p>}
+      intro={<p>The rules for using KURA hubs, bookings and plans, written to be read, not skimmed past.</p>}
       sections={SECTIONS}
     />
   )

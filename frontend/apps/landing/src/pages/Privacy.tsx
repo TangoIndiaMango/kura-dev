@@ -24,7 +24,7 @@ const SECTIONS: LegalSection[] = [
         <li><strong>Identity verification:</strong> the ID you choose to verify with (for example NIN, BVN, voter’s card, passport or driver’s licence), its number and photos. Staff see only the last four digits.</li>
         <li><strong>Vehicles:</strong> registration, model and the battery pack currently fitted.</li>
         <li><strong>Swaps and bookings:</strong> which hub, when, which packs went in and out, charge levels and the agent who served you.</li>
-        <li><strong>Payments:</strong> amounts, method and references. Card and bank details are handled by Paystack — we never see or store your full card number.</li>
+        <li><strong>Payments:</strong> amounts, method and references. Card and bank details are handled by Paystack. We never see or store your full card number.</li>
         <li><strong>Location:</strong> only if you allow it, to show hubs near you. For vehicles fitted with a tracker, location and battery readings from the vehicle.</li>
         <li><strong>Device and usage:</strong> a device identifier and basic technical data used to keep your account secure and spot fraud.</li>
         <li><strong>Support:</strong> messages you send us and the case history.</li>

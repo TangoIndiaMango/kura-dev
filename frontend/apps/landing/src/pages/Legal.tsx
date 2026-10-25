@@ -12,7 +12,7 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
         <h1 className="mt-4 text-5xl font-bold sm:text-6xl">{title}</h1>
         <p className="mt-4 text-fg-muted">Last updated {COMPANY.legalUpdated}</p>
         <div role="note" className="mt-8 rounded-2xl border border-gold/50 bg-gold/10 p-5 text-[0.95rem]">
-          <strong>Draft — pending legal review.</strong> This page describes how KURA works today and will be
+          <strong>Draft, pending legal review.</strong> This page describes how KURA works today and will be
           finalised by our legal advisers. Questions? Write to{' '}
           <a href={`mailto:${COMPANY.email}`} className="font-semibold underline">{COMPANY.email}</a>.
         </div>

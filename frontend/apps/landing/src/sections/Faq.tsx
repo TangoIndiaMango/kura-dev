@@ -15,11 +15,11 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Do I need to book before I go?',
-    a: 'No — you can walk into any open hub. Booking holds a charged pack for you so it’s waiting when you arrive. A Paystack booking is held once it’s paid.',
+    a: 'No. You can walk into any open hub. Booking holds a charged pack for you so it’s waiting when you arrive. A Paystack booking is held once it’s paid.',
   },
   {
     q: 'What if I book and can’t make it?',
-    a: 'Cancel in the app any time. If you paid and the booking is cancelled or runs out before your swap, the money goes back to the card or account you paid from after a quick review — we let you know when it’s sent.',
+    a: 'Cancel in the app any time. If you paid and the booking is cancelled or runs out before your swap, the money goes back to the card or account you paid from after a quick review, and we let you know when it’s sent.',
   },
   {
     q: 'What if the hub runs out of packs?',
@@ -27,11 +27,11 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Do I own the battery?',
-    a: 'No — packs belong to KURA and you swap them for a full one each time. Bring your pack back when you swap: if a pack is kept for more than 48 hours, new bookings for that vehicle pause until it’s returned.',
+    a: 'No. Packs belong to KURA and you swap them for a full one each time. Bring your pack back when you swap: if a pack is kept for more than 48 hours, new bookings for that vehicle pause until it’s returned.',
   },
   {
     q: 'Do I need a smartphone?',
-    a: 'KURA runs in your phone’s web browser — there’s nothing to download from an app store. At the hub, the agent can also find your booking with your code.',
+    a: 'KURA runs in your phone’s web browser, so there’s nothing to download from an app store. At the hub, the agent can also find your booking with your code.',
   },
   {
     q: 'I own several vehicles. Can I manage them together?',
@@ -92,7 +92,7 @@ export function Faq() {
     <Section id="faq">
       <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
         <div>
-          <Heading kicker="FAQ" title="Questions riders ask" lede="Can’t find your answer? Message us — a real person replies." />
+          <Heading kicker="FAQ" title="Questions riders ask" lede="Can’t find your answer? Message us and a real person replies." />
           <a href={whatsappLink('Hi KURA, I have a question: ')} className="btn btn-secondary reveal mt-8">
             Ask on WhatsApp
           </a>

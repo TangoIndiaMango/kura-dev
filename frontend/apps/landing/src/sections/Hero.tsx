@@ -32,7 +32,7 @@ function Stat({ value, prefix = '', suffix = '', label }: { value: number | null
   return (
     <div className="px-1">
       <p className="num text-3xl font-bold sm:text-4xl">
-        <span ref={ref as React.Ref<HTMLSpanElement>}>{value === null ? '—' : `${prefix}${n.toLocaleString('en-NG')}${suffix}`}</span>
+        <span ref={ref as React.Ref<HTMLSpanElement>}>{value === null ? '' : `${prefix}${n.toLocaleString('en-NG')}${suffix}`}</span>
       </p>
       <p className="mt-1 text-sm text-fg-muted">{label}</p>
     </div>
@@ -61,7 +61,7 @@ export function Hero({ net }: { net: NetworkState }) {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <a href={APP_URL} className="btn btn-primary px-7 text-[1.05rem]">
-              Get started — it’s free
+              Get started free
               <IconArrow />
             </a>
             <a

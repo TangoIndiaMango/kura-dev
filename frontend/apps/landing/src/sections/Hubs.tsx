@@ -101,7 +101,7 @@ export function Hubs({ net }: { net: NetworkState }) {
         <div className="card reveal flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold">No hub near you yet?</p>
-            <p className="text-sm text-fg-muted">Tell us where you ride — we’ll tell you when one opens.</p>
+            <p className="text-sm text-fg-muted">Tell us where you ride and we’ll tell you when one opens.</p>
           </div>
           <a
             href={whatsappLink('Hi KURA, please let me know when a hub opens near me. I ride around: ')}

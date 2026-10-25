@@ -48,7 +48,7 @@ export function Cta() {
           </div>
           {USSD_CODE ? (
             <p className="mt-8 opacity-85">
-              No smartphone? Dial <strong className="text-xl">{USSD_CODE}</strong> — works on every network.
+              No smartphone? Dial <strong className="text-xl">{USSD_CODE}</strong>. It works on every network.
             </p>
           ) : null}
         </div>

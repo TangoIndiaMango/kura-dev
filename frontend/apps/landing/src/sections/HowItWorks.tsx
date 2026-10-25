@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     Illo: IlloReserve,
-    title: 'Book a pack — or just walk in',
+    title: 'Book a pack or just walk in',
     body: 'See which hubs have charged packs. Reserve one and pay ahead, or walk in and pay at the hub.',
   },
   {
@@ -25,8 +25,8 @@ const STEPS = [
 
 const BLURB: Record<VehicleType, string> = {
   MOTORCYCLE: 'More trips a day, no fuel queue, and a quieter ride for passengers.',
-  TRICYCLE: 'Keep the keke earning all day — swap at the hub instead of buying fuel.',
-  BOAT: 'No more fuel runs before dawn — swap and go straight out on the water.',
+  TRICYCLE: 'Keep the keke earning all day. Swap at the hub instead of buying fuel.',
+  BOAT: 'No more fuel runs before dawn. Swap and go straight out on the water.',
 }
 
 const PHOTO: Record<VehicleType, { name: ImageName; alt: string }> = {

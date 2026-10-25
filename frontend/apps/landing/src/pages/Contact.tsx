@@ -30,7 +30,7 @@ export function Contact() {
           <Card icon={<IconChat />} title="WhatsApp" body="Help with a swap, a booking, a payment or a refund.">
             <a href={whatsappLink('Hi KURA, I need help with: ')} className={link}>{WHATSAPP_DISPLAY}</a>
           </Card>
-          <Card icon={<IconMail />} title="Email" body="Fleets, partnerships, press, privacy requests — one inbox for everything.">
+          <Card icon={<IconMail />} title="Email" body="Fleets, partnerships, press, privacy requests. One inbox for everything.">
             <a href={`mailto:${COMPANY.email}`} className={link}>{COMPANY.email}</a>
           </Card>
           <Card icon={<IconPin />} title="Office" body={COMPANY.hours}>
@@ -43,7 +43,7 @@ export function Contact() {
           <div>
             <p className="font-semibold">Already a rider?</p>
             <p className="mt-1 text-fg-muted">
-              Your bookings, receipts and support cases are in the app — you can open a support case there too.
+              Your bookings, receipts and support cases are in the app, and you can open a support case there too.
             </p>
           </div>
           <a href={APP_URL} className="btn btn-primary shrink-0">Open the KURA app</a>

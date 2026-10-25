@@ -31,7 +31,7 @@ export function Features({ net }: { net: NetworkState }) {
       <Heading
         kicker="The system"
         title="Everything around the swap, in one app"
-        lede="Find a pack, hold it, pay how you like and keep every receipt — on any phone with a browser."
+        lede="Find a pack, hold it, pay how you like and keep every receipt, on any phone with a browser."
       />
       <div className="mt-14 grid gap-5 md:grid-cols-6">
         <Tile i={0} className="md:col-span-4">
@@ -76,7 +76,7 @@ export function Features({ net }: { net: NetworkState }) {
           </span>
           <h3 className="mt-5 text-2xl font-bold">Reserve ahead</h3>
           <p className="mt-2 opacity-85">
-            Hold a pack at the hub you’re heading to. You get a code and QR to show the agent — it works even when
+            Hold a pack at the hub you’re heading to. You get a code and QR to show the agent. It works even when
             data drops.
           </p>
         </Tile>
@@ -85,7 +85,7 @@ export function Features({ net }: { net: NetworkState }) {
           <TileHead
             icon={<IconCard />}
             title="Pay your way"
-            body="Card, bank transfer or USSD through Paystack — or cash to the agent at the hub."
+            body="Card, bank transfer or USSD through Paystack, or cash to the agent at the hub."
           />
           <div className="mt-5 flex flex-wrap gap-2">
             {[

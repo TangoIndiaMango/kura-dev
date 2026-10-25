@@ -7,7 +7,7 @@ const OPTIONS = [
   {
     name: 'Pay per swap',
     tag: 'No commitment',
-    body: 'Pay only when you swap — by Paystack in the app, or cash at the hub.',
+    body: 'Pay only when you swap, by Paystack in the app, or cash at the hub.',
     perks: ['Nothing to sign up for', 'Any KURA hub', 'Receipt for every swap'],
   },
   {
@@ -37,7 +37,7 @@ export function Plans() {
       <Heading
         kicker="Plans"
         title="Plans that pay for themselves"
-        lede="Swap one at a time or cover your day, week or month. Plans are per vehicle — okada, keke or boat — and you see today’s prices in the app before you pay."
+        lede="Swap one at a time or cover your day, week or month. Plans are per vehicle (okada, keke or boat), and you see today’s prices in the app before you pay."
       />
 
       <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

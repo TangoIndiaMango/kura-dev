@@ -19,7 +19,7 @@ export function Footer({ home = true }: { home?: boolean }) {
           <div>
             <Logo invert />
             <p className="mt-4 max-w-xs text-on-inverse-muted">
-              Battery swaps for Nigeria’s okada, keke and boat operators — cheaper than petrol, ready in a
+              Battery swaps for Nigeria’s okada, keke and boat operators. Cheaper than petrol, ready in a
               minute.
             </p>
             <a href={APP_URL} className="btn mt-6 bg-on-inverse text-inverse hover:bg-gold hover:text-on-gold">

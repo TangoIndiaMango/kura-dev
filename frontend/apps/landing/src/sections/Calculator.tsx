@@ -96,7 +96,7 @@ export function Calculator() {
 
             <p className="mt-6 text-xs text-on-inverse-muted">
               Estimate based on a typical day’s petrol against a typical day of KURA swaps. Your numbers will
-              vary — see today’s prices in the app.
+              vary. See today’s prices in the app.
             </p>
             <a href={APP_URL} className="btn mt-6 w-full bg-gold text-on-gold hover:bg-white">
               Start saving today
