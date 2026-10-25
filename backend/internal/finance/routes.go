@@ -28,6 +28,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	// Refunds wait for a finance review (wallets:manage) before Paystack is asked.
 	rf := router.New(mux, "/api/v1/finance/refunds", m.limiter)
 	rf.Cap("GET", "/", "wallets:manage", m.h.refunds)
+	rf.Cap("GET", "/stats/", "wallets:manage", m.h.refundStats)
 	rf.Cap("POST", "/{id}/approve/", "wallets:manage", m.h.reviewRefund(true))
 	rf.Cap("POST", "/{id}/reject/", "wallets:manage", m.h.reviewRefund(false))
 

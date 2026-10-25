@@ -1,3 +1,4 @@
+import type { RefundStatsApi } from './hooks/use-refunds'
 import type { PaymentStatsApi } from '@features/finance/hooks/use-finance'
 import { formatNaira } from '@shared/utils/currency'
 import { paymentChannelLabel } from './paymentDetailHelpers'
@@ -124,4 +125,45 @@ export function PaymentsMethodBreakdown({ stats }: { stats: PaymentStatsApi | nu
       )}
     </div>
   )
+}
+
+/** Refunds KPIs: what needs a decision first, then what went out. */
+export function refundTabKpis(stats: RefundStatsApi | null) {
+  return [
+    {
+      title: 'To review',
+      value: stats ? naira(stats.review_kobo) : '—',
+      sub: stats ? `${stats.review_count} awaiting a decision` : 'Awaiting a decision',
+      tone: ((stats?.review_count ?? 0) > 0 ? 'warning' : 'default') as 'warning' | 'default',
+    },
+    {
+      title: 'Approved',
+      value: stats ? naira(stats.approved_kobo) : '—',
+      sub: stats ? `${stats.approved_count} being sent` : 'Being sent',
+    },
+    {
+      title: 'Refunded',
+      value: stats ? naira(stats.sent_kobo) : '—',
+      sub: stats ? `${stats.sent_count} sent via Paystack` : 'Sent via Paystack',
+      tone: 'success' as const,
+    },
+    {
+      title: 'Rejected',
+      value: stats ? stats.rejected_count : '—',
+      sub: 'Kept, with a note',
+    },
+  ]
+}
+
+/** KPI cards for the active Payments tab. */
+export function kpisForTab(
+  tab: string,
+  payments: PaymentStatsApi | null,
+  cash: CashTableRow[],
+  hubScoped: boolean,
+  refunds: RefundStatsApi | null,
+) {
+  if (tab === 'cash') return cashTabKpis(cash, hubScoped)
+  if (tab === 'refunds') return refundTabKpis(refunds)
+  return paymentTabKpis(payments)
 }

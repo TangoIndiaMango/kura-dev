@@ -1,45 +1,40 @@
-import { useState } from 'react'
-import { Button, SegmentedControl } from '@mantine/core'
+import { useState, type ReactNode } from 'react'
+import { Button } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   AdminConfirmModal,
   DynamicTableSection,
   TableStatusBadge,
   type TableHeader,
+  type TablePaginationConfig,
 } from '@shared/components'
-import { useFetchData, usePostData } from '@shared/hooks/api'
+import { usePostData } from '@shared/hooks/api'
 import { apiErrorMessage } from '@lib/api/auth'
 import { formatNaira } from '@shared/utils/currency'
-
-const REFUNDS_API = '/finance/refunds/'
-
-type RefundRow = {
-  id: string
-  reference: string
-  amount_kobo: number
-  status: string
-  reason: string
-  channel: string
-  kura_id: string
-  account_name: string
-  purpose: string
-  created_at: string
-  updated_at: string
-}
-
-const STATUS_TABS = [
-  { value: 'REFUND_REVIEW', label: 'To review' },
-  { value: 'REFUND_PENDING', label: 'Approved' },
-  { value: 'REFUNDED', label: 'Sent' },
-  { value: 'REFUND_REJECTED', label: 'Rejected' },
-]
+import { REFUNDS_API, type RefundApi } from './hooks/use-refunds'
 
 const HEADERS: TableHeader[] = [
-  { key: 'rider', label: 'RIDER' },
+  { key: 'ref', label: 'REFUND' },
+  { key: 'account', label: 'ACCOUNT' },
+  { key: 'why', label: 'REASON' },
   { key: 'amount', label: 'AMOUNT' },
-  { key: 'reason', label: 'WHY' },
+  { key: 'status', label: 'STATUS' },
   { key: 'action', label: '' },
 ]
+
+export const REFUND_STATUS_LABEL: Record<RefundApi['status'], string> = {
+  REFUND_REVIEW: 'To review',
+  REFUND_PENDING: 'Approved',
+  REFUNDED: 'Refunded',
+  REFUND_REJECTED: 'Rejected',
+}
+
+const STATUS_TONE: Record<RefundApi['status'], 'warning' | 'info' | 'success' | 'neutral'> = {
+  REFUND_REVIEW: 'warning',
+  REFUND_PENDING: 'info',
+  REFUNDED: 'success',
+  REFUND_REJECTED: 'neutral',
+}
 
 const WHEN = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
@@ -50,105 +45,112 @@ const WHEN = new Intl.DateTimeFormat('en-GB', {
 })
 
 /**
- * Paystack refunds are never sent automatically: a rider's unused payment
- * waits here until finance approves it (the worker then refunds it to the
- * card / account it came from) or rejects it with a note.
+ * Paystack refunds, newest first. None is sent automatically: rows "To
+ * review" need finance to approve (the worker then refunds via Paystack) or
+ * reject with a note.
  */
-export function PaymentsRefundsTable() {
-  const [status, setStatus] = useState('REFUND_REVIEW')
-  const [pending, setPending] = useState<{ action: 'approve' | 'reject'; row: RefundRow } | null>(null)
-  const list = useFetchData<{ results: RefundRow[] }>(REFUNDS_API, { status }, { refetchOnWindowFocus: true })
+export function PaymentsRefundsTable({
+  refunds,
+  pending,
+  pagination,
+  searchQuery,
+  onSearchChange,
+  filters,
+  onReviewed,
+}: {
+  refunds: RefundApi[]
+  pending: boolean
+  pagination: TablePaginationConfig
+  searchQuery: string
+  onSearchChange: (v: string) => void
+  /** Status select shown in the toolbar. */
+  filters: ReactNode
+  onReviewed: () => void
+}) {
+  const [decision, setDecision] = useState<{ action: 'approve' | 'reject'; row: RefundApi } | null>(null)
   const review = usePostData<{ id: string; action: 'approve' | 'reject'; note?: string }, unknown>(
     (v) => `${REFUNDS_API}${v.id}/${v.action}/`,
     [REFUNDS_API],
     { body: (v) => ({ note: v.note ?? '' }), silentError: true },
   )
-  const rows = list.data?.results ?? []
-  const reviewing = status === 'REFUND_REVIEW'
+  const amount = decision ? formatNaira(decision.row.amount_kobo, { fromKobo: true }) : ''
 
   return (
     <>
-      <DynamicTableSection<RefundRow>
+      <DynamicTableSection<RefundApi>
         variant="embedded"
-        headers={reviewing ? HEADERS : HEADERS.filter((h) => h.key !== 'action')}
-        data={rows}
-        getRowKey={(r) => r.id}
-        emptyTitle={reviewing ? 'Nothing to review' : 'No refunds here'}
-        emptyMessage={
-          reviewing
-            ? 'Unused Paystack payments (cancelled or lapsed bookings, cancelled swaps) appear here for approval.'
-            : 'Refunds move here as they are reviewed and sent.'
-        }
+        headers={HEADERS}
+        data={refunds}
+        loading={pending}
+        pagination={pagination}
+        getRowKey={(item) => item.id}
         toolbar={{
           title: 'Refunds',
+          searchQuery,
+          onSearchChange,
+          searchPlaceholder: 'Search rider, KURA ID or Paystack ref…',
           showFilter: false,
-          actions: (
-            <SegmentedControl size="xs" value={status} onChange={setStatus} data={STATUS_TABS} />
-          ),
+          filters,
         }}
-        renderItems={(r) => [
-          <span key="rider" className="text-xs">
-            <span className="font-bold text-[var(--tx)]">{r.account_name || r.kura_id}</span>
-            <span className="block text-[var(--mu)]">
-              {r.kura_id} · {WHEN.format(new Date(reviewing ? r.created_at : r.updated_at))}
+        emptyTitle="No refunds"
+        emptyMessage="Nothing matches this date range and filters."
+        renderItems={(item) => [
+          <span key="ref" className="flex flex-col gap-0.5">
+            <span className="font-mono text-xs font-bold text-[var(--pr)]">{item.reference}</span>
+            <span className="text-[11.5px] text-[var(--mu)]">{WHEN.format(new Date(item.created_at))}</span>
+          </span>,
+          <span key="account" className="flex max-w-[260px] flex-col gap-0.5">
+            <span className="truncate text-[13px] font-semibold text-[var(--tx)]" title={item.account_name || undefined}>
+              {item.account_name || '—'}
             </span>
+            <span className="font-mono text-[11px] text-[var(--mu)]">{item.kura_id}</span>
           </span>,
-          <span key="amount" className="text-xs font-bold tabular-nums text-[var(--tx)]">
-            {formatNaira(r.amount_kobo / 100)}
+          <span key="why" className="max-w-[240px] text-[13px] text-[var(--tx)]">
+            {item.reason || '—'}
           </span>,
-          <span key="reason" className="text-xs text-[var(--tx)]">
-            {r.reason || '—'}
-            <span className="mt-0.5 block font-mono text-[10.5px] text-[var(--mu)]">{r.reference}</span>
+          <span key="amount" className="font-mono text-[13px] font-bold tabular-nums text-[var(--tx)]">
+            {formatNaira(item.amount_kobo, { fromKobo: true })}
           </span>,
-          ...(reviewing
-            ? [
-                <span key="action" className="flex justify-end gap-2">
-                  <Button size="xs" color="brand" onClick={() => setPending({ action: 'approve', row: r })}>
-                    Approve
-                  </Button>
-                  <Button size="xs" variant="subtle" color="red" onClick={() => setPending({ action: 'reject', row: r })}>
-                    Reject
-                  </Button>
-                </span>,
-              ]
-            : [
-                <TableStatusBadge
-                  key="action"
-                  label={STATUS_TABS.find((s) => s.value === r.status)?.label ?? r.status}
-                  tone={r.status === 'REFUNDED' ? 'success' : r.status === 'REFUND_REJECTED' ? 'warning' : 'neutral'}
-                />,
-              ]),
+          <TableStatusBadge key="status" label={REFUND_STATUS_LABEL[item.status]} tone={STATUS_TONE[item.status]} />,
+          item.status === 'REFUND_REVIEW' ? (
+            <span key="action" className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <Button size="xs" color="brand" onClick={() => setDecision({ action: 'approve', row: item })}>
+                Approve
+              </Button>
+              <Button size="xs" variant="subtle" color="red" onClick={() => setDecision({ action: 'reject', row: item })}>
+                Reject
+              </Button>
+            </span>
+          ) : (
+            <span key="action" />
+          ),
         ]}
       />
       <AdminConfirmModal
-        opened={Boolean(pending)}
-        onClose={() => setPending(null)}
-        title={
-          pending?.action === 'approve'
-            ? `Refund ${pending ? formatNaira(pending.row.amount_kobo / 100) : ''}?`
-            : 'Reject this refund?'
-        }
+        opened={Boolean(decision)}
+        onClose={() => setDecision(null)}
+        title={decision?.action === 'approve' ? `Refund ${amount}?` : 'Reject this refund?'}
         body={
-          pending?.action === 'approve'
-            ? `Paystack sends ${pending ? formatNaira(pending.row.amount_kobo / 100) : ''} back to how ${pending?.row.account_name || 'the rider'} paid (${pending?.row.reason}). It usually reaches them in a few working days.`
-            : 'The payment is kept and the rider is not refunded. Note why — it is kept with the record.'
+          decision?.action === 'approve'
+            ? `Paystack sends ${amount} back to how ${decision.row.account_name || 'the rider'} paid (${decision.row.reason}). It usually reaches them in a few working days.`
+            : 'The payment is kept and the rider is not refunded. Note why — it stays with the record.'
         }
-        confirmLabel={pending?.action === 'approve' ? 'Approve refund' : 'Reject refund'}
-        confirmTone={pending?.action === 'approve' ? 'primary' : 'danger'}
-        reasonRequired={pending?.action === 'reject'}
+        confirmLabel={decision?.action === 'approve' ? 'Approve refund' : 'Reject refund'}
+        confirmTone={decision?.action === 'approve' ? 'primary' : 'danger'}
+        reasonRequired={decision?.action === 'reject'}
         reasonLabel="Note"
         reasonPlaceholder="e.g. Rider was served with cash on the same visit"
         loading={review.isPending}
         onConfirm={async (note) => {
-          if (!pending) return
+          if (!decision) return
           try {
-            await review.mutateAsync({ id: pending.row.id, action: pending.action, note })
+            await review.mutateAsync({ id: decision.row.id, action: decision.action, note })
             notifications.show({
               color: 'teal',
-              message: pending.action === 'approve' ? 'Refund approved — sending to Paystack' : 'Refund rejected',
+              message: decision.action === 'approve' ? 'Refund approved — sending to Paystack' : 'Refund rejected',
             })
-            setPending(null)
-            void list.refetch()
+            setDecision(null)
+            onReviewed()
           } catch (err) {
             notifications.show({ color: 'red', message: apiErrorMessage(err, 'Could not update the refund') })
           }

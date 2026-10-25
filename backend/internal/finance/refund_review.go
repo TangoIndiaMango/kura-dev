@@ -14,6 +14,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/events"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/apperr"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/decode"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/paginate"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/respond"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/database"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/jsontime"
@@ -26,40 +27,105 @@ import (
 var refundStatuses = map[string]bool{"REFUND_REVIEW": true, "REFUND_PENDING": true, "REFUNDED": true,
 	"REFUND_REJECTED": true}
 
-func refundJSON(r db.RefundsByStatusRow) map[string]any {
-	out := map[string]any{"id": r.ID.String(), "reference": r.Reference, "amount_kobo": r.AmountKobo,
-		"status": r.Status, "reason": r.FailureReason, "channel": r.Channel, "account": r.AccountID.String(),
-		"kura_id": r.KuraID, "account_name": r.DisplayName, "purpose": r.Purpose,
-		"created_at": jsontime.FormatISO(r.CreatedAt), "updated_at": jsontime.FormatISO(r.UpdatedAt)}
-	if r.SwapID != nil {
-		out["swap"] = r.SwapID.String()
-	}
-	if r.ReservationID != nil {
-		out["reservation"] = r.ReservationID.String()
-	}
-	return out
+// RefundDTO is one row of the refunds list.
+type RefundDTO struct {
+	ID          string         `json:"id"`
+	Reference   string         `json:"reference"`
+	AmountKobo  int64          `json:"amount_kobo"`
+	Status      string         `json:"status"`
+	Reason      string         `json:"reason"`
+	Channel     string         `json:"channel"`
+	Account     string         `json:"account"`
+	KuraID      string         `json:"kura_id"`
+	AccountName string         `json:"account_name"`
+	Purpose     string         `json:"purpose"`
+	Swap        *string        `json:"swap"`
+	Reservation *string        `json:"reservation"`
+	CreatedAt   jsontime.Field `json:"created_at"`
+	UpdatedAt   jsontime.Field `json:"updated_at"`
 }
 
-// refunds is GET /finance/refunds/?status=REFUND_REVIEW (default).
+// refundFilter is ?status=&search=&start_date=&end_date= (Lagos days).
+type refundFilter struct {
+	status, q *string
+	from, to  *time.Time
+}
+
+func parseRefundFilter(r *http.Request) (refundFilter, error) {
+	var f refundFilter
+	qp := decode.Params(r)
+	if st := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("status"))); st != "" {
+		if !refundStatuses[st] {
+			return f, apperr.Field("status", "Unknown refund status.")
+		}
+		f.status = &st
+	}
+	if q := strings.TrimSpace(r.URL.Query().Get("search")); q != "" {
+		q = escapeLike(q)
+		f.q = &q
+	}
+	if d := qp.Date("start_date"); d != nil {
+		t := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, lagos)
+		f.from = &t
+	}
+	if d := qp.Date("end_date"); d != nil {
+		t := time.Date(d.Year(), d.Month(), d.Day()+1, 0, 0, 0, 0, lagos)
+		f.to = &t
+	}
+	return f, qp.Err()
+}
+
+// refunds is GET /finance/refunds/: every refund (newest first, cursor
+// pages), narrowed by status, search and date range.
 func (h *Handler) refunds(w http.ResponseWriter, r *http.Request) {
-	status := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("status")))
-	if status == "" {
-		status = "REFUND_REVIEW"
+	f, err := parseRefundFilter(r)
+	var at *paginate.Key
+	if err == nil {
+		at, err = paginate.Cursor(r)
 	}
-	if !refundStatuses[status] {
-		respond.Error(w, r, apperr.Field("status", "Unknown refund status."))
-		return
-	}
-	rows, err := h.q.RefundsByStatus(r.Context(), db.RefundsByStatusParams{Status: status, Limit: 200})
 	if err != nil {
 		respond.Error(w, r, err)
 		return
 	}
-	out := make([]map[string]any, 0, len(rows))
-	for _, x := range rows {
-		out = append(out, refundJSON(x))
+	size := paginate.Size(r)
+	p := db.RefundsPageParams{Status: f.status, Q: f.q, FromAt: f.from, ToAt: f.to, Lim: int32(size + 1)}
+	if at != nil {
+		p.AfterAt, p.Back = &at.CreatedAt, at.Back
+		p.AfterID, _ = uuid.Parse(at.ID)
 	}
-	respond.OK(w, map[string]any{"results": out})
+	rows, err := h.q.RefundsPage(r.Context(), p)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	rows = paginate.Display(rows, size, p.Back)
+	out := make([]RefundDTO, len(rows))
+	for i, x := range rows {
+		out[i] = RefundDTO{ID: x.ID.String(), Reference: x.Reference, AmountKobo: x.AmountKobo, Status: x.Status,
+			Reason: x.FailureReason, Channel: x.Channel, Account: x.AccountID.String(), KuraID: x.KuraID,
+			AccountName: x.DisplayName, Purpose: x.Purpose, Swap: idPtr(x.SwapID), Reservation: idPtr(x.ReservationID),
+			CreatedAt: jsontime.Field(x.CreatedAt), UpdatedAt: jsontime.Field(x.UpdatedAt)}
+	}
+	respond.OK(w, paginate.BuildCursorPage(r, out, size, at, func(d RefundDTO) paginate.Key {
+		return paginate.Key{CreatedAt: time.Time(d.CreatedAt), ID: d.ID}
+	}))
+}
+
+// refundStats is GET /finance/refunds/stats/ (same search + dates): the KPIs.
+func (h *Handler) refundStats(w http.ResponseWriter, r *http.Request) {
+	f, err := parseRefundFilter(r)
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	s, err := h.q.RefundStats(r.Context(), db.RefundStatsParams{Q: f.q, FromAt: f.from, ToAt: f.to})
+	if err != nil {
+		respond.Error(w, r, err)
+		return
+	}
+	respond.OK(w, map[string]any{"review_count": s.ReviewCount, "review_kobo": s.ReviewKobo,
+		"approved_count": s.ApprovedCount, "approved_kobo": s.ApprovedKobo, "sent_count": s.SentCount,
+		"sent_kobo": s.SentKobo, "rejected_count": s.RejectedCount})
 }
 
 // reviewRefund is POST /finance/refunds/{id}/approve/ and /reject/ {note}.

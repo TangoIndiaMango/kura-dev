@@ -1,4 +1,5 @@
-import { PaymentsListFilters, PaymentsScopeControls } from './PaymentsFilterBar'
+import { PaymentsListFilters, PaymentsScopeControls, RefundsListFilters } from './PaymentsFilterBar'
+import { useRefundsTab } from './hooks/use-refunds'
 import { useHubs } from '@features/hubs/hooks/use-hubs'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -18,9 +19,8 @@ import { PaymentsCashTable } from './PaymentsCashTable'
 import { PaymentsLedgerTable } from './PaymentsLedgerTable'
 import { PaymentsRefundsTable } from './PaymentsRefundsTable'
 import {
-  cashTabKpis,
+  kpisForTab,
   PaymentsMethodBreakdown,
-  paymentTabKpis,
 } from './paymentsPanelMetrics'
 import { CASH_STATUS_OPTIONS, PAYMENT_STATUS_OPTIONS } from './paymentsPanelShared'
 
@@ -58,6 +58,7 @@ export function PaymentsPanel() {
   // Hub / method / status live in the URL so links and refreshes keep scope.
   const statusFilter = searchParams.get('status')?.trim() || undefined
   const channelFilter = searchParams.get('channel')?.trim() || undefined
+  const refundStatusFilter = searchParams.get('refund_status')?.trim() || undefined
   const setParam = (key: string, value: string | null) =>
     setSearchParams(
       (prev) => {
@@ -96,6 +97,7 @@ export function PaymentsPanel() {
     statusFilter,
     channelFilter,
     paymentsControls.search,
+    refundStatusFilter,
     hubScope,
   ])
 
@@ -157,6 +159,16 @@ export function PaymentsPanel() {
     pageSize: ADMIN_LIST_PAGE_SIZE,
   })
 
+  const refundsTab = useRefundsTab({
+    enabled: tab === 'refunds' && canRefunds,
+    status: refundStatusFilter,
+    dateRange,
+    cursor,
+    setCursor,
+    page,
+    setPage,
+  })
+
   const cashMapped = useMemo(
     () => liveShifts.map(mapShiftToCashRow),
     [liveShifts],
@@ -188,7 +200,8 @@ export function PaymentsPanel() {
         title="Payments"
         subtitle="Swap and plan payments, hub cash, and refunds"
         dateRangeSlot={
-          tab === 'refunds' ? undefined : <PaymentsScopeControls
+          // Refunds aren't per hub: the page's date range only.
+          tab === 'refunds' ? controls.dateRangeSlot : <PaymentsScopeControls
             hubId={hubScope}
             hubOptions={hubOptionsWithScope}
             onHubChange={(id, label) =>
@@ -222,13 +235,7 @@ export function PaymentsPanel() {
           resetCursor()
           setTab(next)
         }}
-        kpis={
-          tab === 'payments'
-            ? paymentTabKpis(paymentStats)
-            : tab === 'cash'
-              ? cashTabKpis(cashMapped, Boolean(hubScope))
-              : undefined
-        }
+        kpis={kpisForTab(tab, paymentStats, cashMapped, Boolean(hubScope), refundsTab.stats)}
         chartsSlot={
           tab === 'payments' ? <PaymentsMethodBreakdown stats={paymentStats} /> : undefined
         }
@@ -255,7 +262,20 @@ export function PaymentsPanel() {
             onExport={exportStatement}
           />
         ) : tab === 'refunds' && canRefunds ? (
-          <PaymentsRefundsTable />
+          <PaymentsRefundsTable
+            {...refundsTab}
+            onSearchChange={(v) => {
+              resetCursor()
+              refundsTab.setSearchQuery(v)
+            }}
+            onReviewed={refundsTab.refresh}
+            filters={
+              <RefundsListFilters
+                status={refundStatusFilter}
+                onStatusChange={(v) => setParam('refund_status', v || null)}
+              />
+            }
+          />
         ) : (
           <PaymentsCashTable
             pageRows={cashPageRows}

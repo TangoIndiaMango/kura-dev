@@ -104,3 +104,34 @@ export function PaymentsListFilters({
     </>
   )
 }
+
+const REFUND_STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'REFUND_REVIEW', label: 'To review' },
+  { value: 'REFUND_PENDING', label: 'Approved' },
+  { value: 'REFUNDED', label: 'Refunded' },
+  { value: 'REFUND_REJECTED', label: 'Rejected' },
+]
+
+/** Status filter in the refunds table toolbar (all statuses by default). */
+export function RefundsListFilters({
+  status,
+  onStatusChange,
+}: {
+  status: string | undefined
+  onStatusChange: (value: string) => void
+}) {
+  return (
+    <Select
+      aria-label="Refund status"
+      w={160}
+      radius="md"
+      data={REFUND_STATUS_OPTIONS}
+      value={status ?? ''}
+      allowDeselect={false}
+      styles={fieldStyles}
+      onChange={(v) => onStatusChange(v ?? '')}
+      comboboxProps={{ withinPortal: true }}
+    />
+  )
+}

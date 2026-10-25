@@ -57,6 +57,36 @@ SELECT * FROM finance_walletcheckout WHERE reservation_id = $1 AND status = 'SUC
 -- name: CheckoutByIDForUpdate :one
 SELECT * FROM finance_walletcheckout WHERE id = $1 FOR UPDATE;
 
--- name: RefundsByStatus :many
+-- name: RefundsPage :many
+-- Refunds (any refund status, or one) with search + Lagos date range; cursor
+-- on (created_at, id) newest first, like the payments list.
 SELECT c.*, a.kura_id, a.display_name FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
-WHERE c.status = $1 ORDER BY c.updated_at DESC LIMIT $2;
+WHERE c.status IN ('REFUND_REVIEW', 'REFUND_PENDING', 'REFUNDED', 'REFUND_REJECTED')
+  AND (sqlc.narg(status)::text IS NULL OR c.status = sqlc.narg(status))
+  AND (sqlc.narg(q)::text IS NULL OR c.reference ILIKE '%' || sqlc.narg(q) || '%'
+       OR a.display_name ILIKE '%' || sqlc.narg(q) || '%' OR a.kura_id ILIKE '%' || sqlc.narg(q) || '%')
+  AND (sqlc.narg(from_at)::timestamptz IS NULL OR c.created_at >= sqlc.narg(from_at))
+  AND (sqlc.narg(to_at)::timestamptz IS NULL OR c.created_at < sqlc.narg(to_at))
+  AND (sqlc.narg(after_at)::timestamptz IS NULL
+       OR (sqlc.arg(back)::bool AND (c.created_at, c.id) > (sqlc.narg(after_at), sqlc.arg(after_id)::uuid))
+       OR (NOT sqlc.arg(back)::bool AND (c.created_at, c.id) < (sqlc.narg(after_at), sqlc.arg(after_id)::uuid)))
+ORDER BY CASE WHEN sqlc.arg(back)::bool THEN c.created_at END, CASE WHEN sqlc.arg(back)::bool THEN c.id END,
+  c.created_at DESC, c.id DESC
+LIMIT sqlc.arg(lim);
+
+-- name: RefundStats :one
+-- Counts and totals per refund status for the KPI cards (search + date range).
+SELECT
+  count(*) FILTER (WHERE c.status = 'REFUND_REVIEW')::int AS review_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUND_REVIEW'), 0)::bigint AS review_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUND_PENDING')::int AS approved_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUND_PENDING'), 0)::bigint AS approved_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUNDED')::int AS sent_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUNDED'), 0)::bigint AS sent_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUND_REJECTED')::int AS rejected_count
+FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
+WHERE c.status IN ('REFUND_REVIEW', 'REFUND_PENDING', 'REFUNDED', 'REFUND_REJECTED')
+  AND (sqlc.narg(q)::text IS NULL OR c.reference ILIKE '%' || sqlc.narg(q) || '%'
+       OR a.display_name ILIKE '%' || sqlc.narg(q) || '%' OR a.kura_id ILIKE '%' || sqlc.narg(q) || '%')
+  AND (sqlc.narg(from_at)::timestamptz IS NULL OR c.created_at >= sqlc.narg(from_at))
+  AND (sqlc.narg(to_at)::timestamptz IS NULL OR c.created_at < sqlc.narg(to_at));

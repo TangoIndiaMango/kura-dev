@@ -507,7 +507,11 @@ type Querier interface {
 	RedemptionForPayment(ctx context.Context, paymentID *uuid.UUID) (RedemptionForPaymentRow, error)
 	RedemptionsPage(ctx context.Context, arg RedemptionsPageParams) ([]RedemptionsPageRow, error)
 	RefundDueCheckouts(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
-	RefundsByStatus(ctx context.Context, arg RefundsByStatusParams) ([]RefundsByStatusRow, error)
+	// Counts and totals per refund status for the KPI cards (search + date range).
+	RefundStats(ctx context.Context, arg RefundStatsParams) (RefundStatsRow, error)
+	// Refunds (any refund status, or one) with search + Lagos date range; cursor
+	// on (created_at, id) newest first, like the payments list.
+	RefundsPage(ctx context.Context, arg RefundsPageParams) ([]RefundsPageRow, error)
 	RejectPendingConfig(ctx context.Context, arg RejectPendingConfigParams) error
 	ReleaseEngine(ctx context.Context, arg ReleaseEngineParams) error
 	// QuerySet.update(): updated_at is left alone.

@@ -393,17 +393,83 @@ func (q *Queries) RefundDueCheckouts(ctx context.Context, limit int32) ([]Financ
 	return items, nil
 }
 
-const refundsByStatus = `-- name: RefundsByStatus :many
-SELECT c.id, c.created_at, c.updated_at, c.reference, c.amount_kobo, c.status, c.access_code, c.authorization_url, c.failure_reason, c.account_id, c.user_id, c.payment_id, c.purpose, c.channel, c.swap_id, c.reservation_id, a.kura_id, a.display_name FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
-WHERE c.status = $1 ORDER BY c.updated_at DESC LIMIT $2
+const refundStats = `-- name: RefundStats :one
+SELECT
+  count(*) FILTER (WHERE c.status = 'REFUND_REVIEW')::int AS review_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUND_REVIEW'), 0)::bigint AS review_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUND_PENDING')::int AS approved_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUND_PENDING'), 0)::bigint AS approved_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUNDED')::int AS sent_count,
+  COALESCE(sum(c.amount_kobo) FILTER (WHERE c.status = 'REFUNDED'), 0)::bigint AS sent_kobo,
+  count(*) FILTER (WHERE c.status = 'REFUND_REJECTED')::int AS rejected_count
+FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
+WHERE c.status IN ('REFUND_REVIEW', 'REFUND_PENDING', 'REFUNDED', 'REFUND_REJECTED')
+  AND ($1::text IS NULL OR c.reference ILIKE '%' || $1 || '%'
+       OR a.display_name ILIKE '%' || $1 || '%' OR a.kura_id ILIKE '%' || $1 || '%')
+  AND ($2::timestamptz IS NULL OR c.created_at >= $2)
+  AND ($3::timestamptz IS NULL OR c.created_at < $3)
 `
 
-type RefundsByStatusParams struct {
-	Status string
-	Limit  int32
+type RefundStatsParams struct {
+	Q      *string
+	FromAt *time.Time
+	ToAt   *time.Time
 }
 
-type RefundsByStatusRow struct {
+type RefundStatsRow struct {
+	ReviewCount   int32
+	ReviewKobo    int64
+	ApprovedCount int32
+	ApprovedKobo  int64
+	SentCount     int32
+	SentKobo      int64
+	RejectedCount int32
+}
+
+// Counts and totals per refund status for the KPI cards (search + date range).
+func (q *Queries) RefundStats(ctx context.Context, arg RefundStatsParams) (RefundStatsRow, error) {
+	row := q.db.QueryRow(ctx, refundStats, arg.Q, arg.FromAt, arg.ToAt)
+	var i RefundStatsRow
+	err := row.Scan(
+		&i.ReviewCount,
+		&i.ReviewKobo,
+		&i.ApprovedCount,
+		&i.ApprovedKobo,
+		&i.SentCount,
+		&i.SentKobo,
+		&i.RejectedCount,
+	)
+	return i, err
+}
+
+const refundsPage = `-- name: RefundsPage :many
+SELECT c.id, c.created_at, c.updated_at, c.reference, c.amount_kobo, c.status, c.access_code, c.authorization_url, c.failure_reason, c.account_id, c.user_id, c.payment_id, c.purpose, c.channel, c.swap_id, c.reservation_id, a.kura_id, a.display_name FROM finance_walletcheckout c JOIN accounts_account a ON a.id = c.account_id
+WHERE c.status IN ('REFUND_REVIEW', 'REFUND_PENDING', 'REFUNDED', 'REFUND_REJECTED')
+  AND ($1::text IS NULL OR c.status = $1)
+  AND ($2::text IS NULL OR c.reference ILIKE '%' || $2 || '%'
+       OR a.display_name ILIKE '%' || $2 || '%' OR a.kura_id ILIKE '%' || $2 || '%')
+  AND ($3::timestamptz IS NULL OR c.created_at >= $3)
+  AND ($4::timestamptz IS NULL OR c.created_at < $4)
+  AND ($5::timestamptz IS NULL
+       OR ($6::bool AND (c.created_at, c.id) > ($5, $7::uuid))
+       OR (NOT $6::bool AND (c.created_at, c.id) < ($5, $7::uuid)))
+ORDER BY CASE WHEN $6::bool THEN c.created_at END, CASE WHEN $6::bool THEN c.id END,
+  c.created_at DESC, c.id DESC
+LIMIT $8
+`
+
+type RefundsPageParams struct {
+	Status  *string
+	Q       *string
+	FromAt  *time.Time
+	ToAt    *time.Time
+	AfterAt *time.Time
+	Back    bool
+	AfterID uuid.UUID
+	Lim     int32
+}
+
+type RefundsPageRow struct {
 	ID               uuid.UUID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -424,15 +490,26 @@ type RefundsByStatusRow struct {
 	DisplayName      string
 }
 
-func (q *Queries) RefundsByStatus(ctx context.Context, arg RefundsByStatusParams) ([]RefundsByStatusRow, error) {
-	rows, err := q.db.Query(ctx, refundsByStatus, arg.Status, arg.Limit)
+// Refunds (any refund status, or one) with search + Lagos date range; cursor
+// on (created_at, id) newest first, like the payments list.
+func (q *Queries) RefundsPage(ctx context.Context, arg RefundsPageParams) ([]RefundsPageRow, error) {
+	rows, err := q.db.Query(ctx, refundsPage,
+		arg.Status,
+		arg.Q,
+		arg.FromAt,
+		arg.ToAt,
+		arg.AfterAt,
+		arg.Back,
+		arg.AfterID,
+		arg.Lim,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []RefundsByStatusRow{}
+	items := []RefundsPageRow{}
 	for rows.Next() {
-		var i RefundsByStatusRow
+		var i RefundsPageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
