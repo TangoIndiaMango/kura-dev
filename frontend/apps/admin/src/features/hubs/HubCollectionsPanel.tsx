@@ -5,11 +5,9 @@ import { formatNaira } from '@shared/utils/currency'
 import { DateRangePicker } from '@shared/components/date-range/DateRangePicker'
 import { useState } from 'react'
 import { useHubDetailStats } from './hooks/use-hubs'
-import {
-  mapShiftToCashRow,
-  useShifts,
-} from '@features/payments/hooks/use-cash-ops'
+import { mapShiftToCashRow, useShifts } from '@features/payments/hooks/use-cash-ops'
 import { HubCashLiveTable } from './HubCashLiveTable'
+import { useCapabilities } from '../auth/useCapabilities'
 
 export function HubCollectionsPanel({
   hubId,
@@ -20,6 +18,11 @@ export function HubCollectionsPanel({
   hubName: string
   enabled: boolean
 }) {
+  // Payments needs finance:read and its Cash tab also shifts:manage — a hub
+  // agent sees this hub's collections here but has no Payments page to open.
+  const { can } = useCapabilities()
+  const canPayments = can('finance:read')
+  const canCash = canPayments && can('shifts:manage')
   const [range, setRange] = useState(() => ({
     start_date: dayjs().subtract(13, 'day').format('YYYY-MM-DD'),
     end_date: dayjs().format('YYYY-MM-DD'),
@@ -41,9 +44,7 @@ export function HubCollectionsPanel({
   })
 
   const openRows = (openShiftsQuery.data?.results ?? []).map(mapShiftToCashRow)
-  const periodRows = (periodShiftsQuery.data?.results ?? []).map(
-    mapShiftToCashRow,
-  )
+  const periodRows = (periodShiftsQuery.data?.results ?? []).map(mapShiftToCashRow)
   const cashOnHand = openRows.reduce(
     (s, r) => s + r.openingNaira + Math.max(0, r.collectedNaira ?? 0),
     0,
@@ -64,10 +65,7 @@ export function HubCollectionsPanel({
     `&payments_cash_start_date=${range.start_date}&payments_cash_end_date=${range.end_date}`
 
   const loading =
-    enabled &&
-    (statsQuery.isPending ||
-      openShiftsQuery.isPending ||
-      periodShiftsQuery.isPending)
+    enabled && (statsQuery.isPending || openShiftsQuery.isPending || periodShiftsQuery.isPending)
 
   if (loading) {
     return (
@@ -82,12 +80,10 @@ export function HubCollectionsPanel({
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3 rounded-[14px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)] sm:p-5">
         <div className="min-w-0">
-          <h2 className="m-0 text-[15px] font-bold text-[var(--tx)]">
-            Collections
-          </h2>
+          <h2 className="m-0 text-[15px] font-bold text-[var(--tx)]">Collections</h2>
           <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-[var(--mu)]">
-            Swap fees booked at {hubName}, plus agent cash float and
-            reconciliation. Network ledger lives in Payments.
+            Swap fees booked at {hubName}, plus agent cash float and reconciliation. Network ledger
+            lives in Payments.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -104,18 +100,22 @@ export function HubCollectionsPanel({
             maxDate={new Date()}
             className="scale-95 origin-right"
           />
-          <Link
-            to={paymentsHref}
-            className="rounded-lg border border-[var(--bd)] bg-[var(--in)] px-3 py-2 text-[12px] font-bold text-[var(--tx)] no-underline hover:border-[var(--pr)] hover:text-[var(--pr)]"
-          >
-            View payments
-          </Link>
-          <Link
-            to={paymentsCashHref}
-            className="rounded-lg border border-[var(--bd)] bg-[var(--in)] px-3 py-2 text-[12px] font-bold text-[var(--tx)] no-underline hover:border-[var(--pr)] hover:text-[var(--pr)]"
-          >
-            Cash reconciliation
-          </Link>
+          {canPayments ? (
+            <Link
+              to={paymentsHref}
+              className="rounded-lg border border-[var(--bd)] bg-[var(--in)] px-3 py-2 text-[12px] font-bold text-[var(--tx)] no-underline hover:border-[var(--pr)] hover:text-[var(--pr)]"
+            >
+              View payments
+            </Link>
+          ) : null}
+          {canCash ? (
+            <Link
+              to={paymentsCashHref}
+              className="rounded-lg border border-[var(--bd)] bg-[var(--in)] px-3 py-2 text-[12px] font-bold text-[var(--tx)] no-underline hover:border-[var(--pr)] hover:text-[var(--pr)]"
+            >
+              Cash reconciliation
+            </Link>
+          ) : null}
         </div>
       </header>
 
@@ -125,11 +125,7 @@ export function HubCollectionsPanel({
           value={formatNaira(swapFeesKobo, { fromKobo: true })}
           sub="Completed swaps in period"
         />
-        <Kpi
-          label="Cash on hand"
-          value={formatNaira(cashOnHand)}
-          sub="Open duty windows now"
-        />
+        <Kpi label="Cash on hand" value={formatNaira(cashOnHand)} sub="Open duty windows now" />
         <Kpi
           label="Needs review"
           value={String(needsReview)}
@@ -140,9 +136,7 @@ export function HubCollectionsPanel({
 
       <section className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="m-0 text-[13.5px] font-bold text-[var(--tx)]">
-            Cash reconciliation
-          </h3>
+          <h3 className="m-0 text-[13.5px] font-bold text-[var(--tx)]">Cash reconciliation</h3>
           <p className="m-0 text-[12px] text-[var(--mu)]">
             Duty windows active during the selected dates
           </p>
