@@ -63,6 +63,7 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 			logging.From(r.Context()).Warn("unique violation", "err", err, "field", field,
 				"method", r.Method, "path", r.URL.Path)
 			e = apperr.Duplicate(field)
+			e.Message = duplicateMessage(err)
 		} else {
 			logging.From(r.Context()).Error("unhandled error", "err", err,
 				"method", r.Method, "path", r.URL.Path)
