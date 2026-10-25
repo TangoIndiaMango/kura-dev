@@ -14,3 +14,9 @@ var Migrations embed.FS
 //
 //go:embed seed.sql
 var Seed string
+
+// Reference is the data every database needs (permissions, roles, grants),
+// without demo users or money — what production loads (`migrate bootstrap`).
+//
+//go:embed reference.sql
+var Reference string
