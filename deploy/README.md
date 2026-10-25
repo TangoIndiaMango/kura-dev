@@ -6,11 +6,13 @@ touching them. The two frontends are on Vercel.
 
 | Address | What |
 |---|---|
-| https://kuramobility.com | Driver & Operator Portal (`frontend/apps/client`, Vercel) |
+| https://kuramobility.com | Landing page (`frontend/apps/landing`, Vercel) |
+| https://app.kuramobility.com | Driver & Operator Portal (`frontend/apps/client`, Vercel) |
 | https://admin.kuramobility.com | Operations & Command Center (`frontend/apps/admin`, Vercel) |
 | https://api.kuramobility.com | Go API on the VPS (nginx + Let's Encrypt in front) |
 
-Vercel needs one variable on both projects: `VITE_API_BASE_URL=https://api.kuramobility.com/api/v1`.
+Vercel needs `VITE_API_BASE_URL=https://api.kuramobility.com/api/v1` on all three projects; the landing page
+also needs `VITE_APP_URL=https://app.kuramobility.com` and `VITE_SITE_URL=https://kuramobility.com`.
 
 ## Files
 
@@ -26,8 +28,12 @@ Vercel needs one variable on both projects: `VITE_API_BASE_URL=https://api.kuram
 
 ## Notes
 
-- Migrations run on every API start (`migrate up`). The starter seed (`SEED_DEMO=yes`) only
-  loads into an empty database; it includes demo logins with public passwords: change them.
+- Migrations run on every API start (`migrate up`). Every deploy then runs `migrate bootstrap`:
+  permissions, roles and grants only (no demo riders, money or hubs), safe to repeat.
+- First super admin: set `ADMIN_EMAIL` (and names) in `deploy.conf` for the first deploy; it prints a
+  one-time set-password link (72 hours). Open it, then clear `ADMIN_EMAIL`. More staff are invited
+  from the console.
+- `SEED_DEMO=yes` loads demo data with public passwords — test servers only, never production.
 - Backups: `/opt/kura/backups/kura-YYYY-MM-DD.sql.gz`, nightly, 14 days kept.
 - `server.txt` holds the server IP; `deploy-kura.bat` copies it from `SocialSpot\deploy` if missing.
   SSH uses the PC's key (`%USERPROFILE%\.ssh\id_ed25519`), no password.

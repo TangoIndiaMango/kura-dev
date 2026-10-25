@@ -70,10 +70,18 @@ if [ -z "$ok" ]; then
 fi
 echo "API ready on 127.0.0.1:$API_PORT"
 if [ "${SEED_DEMO:-no}" = "yes" ]; then
-  # roles, permissions and the starter accounts only exist in the seed; it skips itself once
-  # the database has users, so this only ever loads into an empty database
+  # DEMO data (fake riders, wallets, public passwords) — test servers only. It skips itself once
+  # the database has users, so it only ever loads into an empty database.
   "${DC[@]}" exec -T api /app/migrate seed
 fi
+# Production data on every deploy: permissions, roles and their grants (safe to repeat).
+# With ADMIN_EMAIL set and no super admin yet, it also creates one and prints a one-time
+# set-password link (valid 72 hours) — open it, then clear ADMIN_EMAIL.
+BOOT=(/app/migrate bootstrap)
+if [ -n "${ADMIN_EMAIL:-}" ]; then
+  BOOT+=(--admin-email "$ADMIN_EMAIL" --first-name "${ADMIN_FIRST_NAME:-}" --last-name "${ADMIN_LAST_NAME:-}")
+fi
+"${DC[@]}" exec -T api "${BOOT[@]}"
 
 say "nginx site for $API_DOMAIN"
 install -d -m 755 /var/www/kura-acme
