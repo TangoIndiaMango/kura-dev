@@ -109,6 +109,11 @@ func rollbackIssue(ctx context.Context, q *db.Queries, at bayCtx, v *db.Mobility
 	if err != nil {
 		return err
 	}
+	// The pack has moved on since this session issued it (returned at a later
+	// swap, slotted elsewhere): it isn't ours to put back — leave it there.
+	if b.CustodianType != "VEHICLE" || b.CustodianID == nil || *b.CustodianID != v.ID {
+		return nil
+	}
 	fromType, fromID := b.CustodianType, b.CustodianID
 	b.Status, b.IssuedAt, b.ExpectedReturnBy = "AVAILABLE", nil, nil
 	if err := slotOrTransit(ctx, q, &b, at.hub, "READY"); err != nil {

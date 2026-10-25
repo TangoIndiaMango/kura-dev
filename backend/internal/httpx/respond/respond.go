@@ -58,6 +58,10 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 	e, ok := apperr.As(err)
 	if !ok {
 		if field, dup := database.IsUniqueViolation(err); dup {
+			// A clash that reaches here wasn't handled by the flow — log which
+			// key, or the generic 409 leaves nothing to debug from.
+			logging.From(r.Context()).Warn("unique violation", "err", err, "field", field,
+				"method", r.Method, "path", r.URL.Path)
 			e = apperr.Duplicate(field)
 		} else {
 			logging.From(r.Context()).Error("unhandled error", "err", err,
