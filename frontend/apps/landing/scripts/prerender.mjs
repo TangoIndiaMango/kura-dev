@@ -29,7 +29,7 @@ async function hubsLd() {
       .filter((h) => h.status !== 'offline' && Math.abs(h.lat) + Math.abs(h.lng) > 0.02)
       .map((h) => ({
         '@type': 'LocalBusiness',
-        name: `KURA — ${h.name}`,
+        name: `KURA ${h.name}`,
         address: { '@type': 'PostalAddress', streetAddress: h.address, addressCountry: 'NG' },
         geo: { '@type': 'GeoCoordinates', latitude: h.lat, longitude: h.lng },
         parentOrganization: { '@id': `${SITE}/#org` },
