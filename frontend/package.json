@@ -12,6 +12,8 @@
     "build:client": "npm --workspace client run build",
     "build:admin": "npm --workspace admin run build",
     "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "dev:landing": "npm --workspace landing run dev",
+    "build:landing": "npm --workspace landing run build"
   }
 }
