@@ -135,7 +135,7 @@ export const AdminShell: React.FC = () => {
         confirmLabel="Sign out"
         cancelLabel="Stay signed in"
         confirmTone="danger"
-        illustrationId="confirm-delete"
+        illustrationId="confirm-action"
         onConfirm={confirmSignOut}
       />
     </div>

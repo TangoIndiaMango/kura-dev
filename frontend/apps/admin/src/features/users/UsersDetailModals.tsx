@@ -108,7 +108,7 @@ export function UsersDetailModals({
           loading={actionsApi.isPending}
           illustrationId={
             actionsApi.pending === 'revoke' || actionsApi.pending === 'suspend'
-              ? 'confirm-delete'
+              ? 'operator-suspended'
               : 'confirm-action'
           }
           onConfirm={async (reason) => {

@@ -67,15 +67,14 @@ export function HubSwapSettleSection({
   const showDiscount =
     mode !== 'PLAN' && !(mode === 'WALLET' && walletHeld) && !(mode === 'PAYSTACK' && !discountLocked)
 
+  // One line only when it changes what the agent does; Paystack explains itself.
   const settleHint =
-    mode === 'PLAN'
-      ? 'Covered by plan allowance. No bay collection — discount codes do not apply.'
-      : 'List tariff is locked. Agent cannot invent a fee. A discount only applies after the rider’s code is entered and confirmed.'
+    mode === 'PLAN' ? 'Covered by the rider’s plan — nothing to collect.' : null
 
   return (
     <section className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)]">
       <h3 className="text-[14px] font-bold text-[var(--tx)]">Confirm payment</h3>
-      <p className="mt-1 text-[12.5px] text-[var(--mu)]">{settleHint}</p>
+      {settleHint ? <p className="mt-1 text-[12.5px] text-[var(--mu)]">{settleHint}</p> : null}
 
       <div className={`mt-3 grid gap-2 ${walletMode ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1'}`}>
         <div className="rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-2.5">
@@ -141,7 +140,9 @@ export function HubSwapSettleSection({
         allowDeselect={false}
       />
 
-      <p className="mt-2 text-[12.5px] font-medium text-[var(--tx)]">{plan.label}</p>
+      {mode === 'PAYSTACK' || mode === 'PLAN' ? null : (
+        <p className="mt-2 text-[12.5px] font-medium text-[var(--tx)]">{plan.label}</p>
+      )}
 
       {mode === 'CASH_AT_HUB' ? (
         <div className="mt-3 rounded-[10px] border border-[var(--bd)] bg-[var(--in)] px-3 py-3">

@@ -1,6 +1,26 @@
-import { createTheme, type MantineColorsTuple, Button, TextInput, PasswordInput, NumberInput, Select, Modal, Drawer, ActionIcon } from '@mantine/core'
+import {
+  createTheme,
+  type MantineColorsTuple,
+  Button,
+  TextInput,
+  PasswordInput,
+  NumberInput,
+  Select,
+  MultiSelect,
+  Autocomplete,
+  TagsInput,
+  Popover,
+  Menu,
+  Tooltip,
+  Modal,
+  Drawer,
+  ActionIcon,
+} from '@mantine/core'
 import { ArrowDown01Icon } from 'hugeicons-react'
 import { createElement } from 'react'
+
+/** Above our dialogs (z-400), below toasts (9999). */
+const OVERLAY_Z = 1000
 
 export const themeColors = {
   primaryGreen: '#0D7C8F',
@@ -67,8 +87,17 @@ export const theme = createTheme({
         radius: 'md',
         rightSection: createElement(ArrowDown01Icon, { size: 16 }),
         rightSectionPointerEvents: 'none',
+        comboboxProps: { zIndex: OVERLAY_Z },
       },
     }),
+    // Dropdowns, menus and popovers open above our dialogs (KuraIllustrationModal
+    // and sheets sit at z-400; Mantine's default 300 hid options behind them).
+    MultiSelect: MultiSelect.extend({ defaultProps: { comboboxProps: { zIndex: OVERLAY_Z } } }),
+    Autocomplete: Autocomplete.extend({ defaultProps: { comboboxProps: { zIndex: OVERLAY_Z } } }),
+    TagsInput: TagsInput.extend({ defaultProps: { comboboxProps: { zIndex: OVERLAY_Z } } }),
+    Popover: Popover.extend({ defaultProps: { zIndex: OVERLAY_Z } }),
+    Menu: Menu.extend({ defaultProps: { zIndex: OVERLAY_Z } }),
+    Tooltip: Tooltip.extend({ defaultProps: { zIndex: OVERLAY_Z } }),
     Modal: Modal.extend({
       defaultProps: {
         radius: 'md',

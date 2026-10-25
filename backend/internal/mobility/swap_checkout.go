@@ -51,8 +51,8 @@ func (b *Bay) swapDue(ctx context.Context, s db.SwapRowsRow) (int64, error) {
 }
 
 // swapCheckout returns a usable Paystack checkout for the swap: the paid
-// one, a fresh pending one for the same amount, or a new one.
-func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow) (db.FinanceWalletcheckout, error) {
+// one, a fresh pending one for the same amount (unless renew), or a new one.
+func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow, renew bool) (db.FinanceWalletcheckout, error) {
 	c, err := b.q.LatestSwapCheckout(ctx, &s.ID)
 	if err == nil {
 		if c, err = finance.VerifyAndSettle(ctx, b.pool, b.checkout, c); err != nil {
@@ -71,7 +71,7 @@ func (b *Bay) swapCheckout(ctx context.Context, s db.SwapRowsRow) (db.FinanceWal
 	if err != nil {
 		return c, err
 	}
-	if c.Status == "PENDING" && c.AmountKobo == due && time.Since(c.CreatedAt) < checkoutReuse {
+	if !renew && c.Status == "PENDING" && c.AmountKobo == due && time.Since(c.CreatedAt) < checkoutReuse {
 		return c, nil
 	}
 	acct, err := b.q.AccountByID(ctx, s.AccountID)
@@ -99,6 +99,7 @@ func checkoutJSON(c db.FinanceWalletcheckout, emailed bool) map[string]any {
 func (b *Bay) swapCheckoutStart(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		SendEmail bool `json:"send_email"`
+		Renew     bool `json:"renew"` // a fresh link even if one is pending
 	}
 	err := decode.JSON(r, &in)
 	var s db.SwapRowsRow
@@ -107,7 +108,7 @@ func (b *Bay) swapCheckoutStart(w http.ResponseWriter, r *http.Request) {
 	}
 	var c db.FinanceWalletcheckout
 	if err == nil {
-		c, err = b.swapCheckout(r.Context(), s)
+		c, err = b.swapCheckout(r.Context(), s, in.Renew)
 	}
 	emailed := false
 	if err == nil && in.SendEmail && c.Status == "PENDING" {

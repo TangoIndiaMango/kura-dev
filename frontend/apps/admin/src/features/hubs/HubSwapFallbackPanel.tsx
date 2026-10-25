@@ -1148,7 +1148,11 @@ export function HubSwapFallbackPanel() {
     setConfirmOpen(false)
     setPinLocked(false)
     setLogs([])
-    urlCodeTriedRef.current = null
+    // A fresh session starts blank: drop ?code= / ?session= so the page never
+    // re-opens the hold or session it was linked with.
+    if (codeFromUrl || sessionFromUrl) {
+      navigate(`/hubs/${resolvedHubId ?? routeId}/swap`, { replace: true })
+    }
   }
 
   const acceptFace = async () => {
@@ -2171,18 +2175,14 @@ export function HubSwapFallbackPanel() {
           verifyAgentPin.isPending ||
           recordOverride.isPending
         }
-        illustrationId={
-          bayConfirm === 'mismatch' || bayConfirm === 'abort'
-            ? 'confirm-delete'
-            : 'confirm-action'
-        }
+        illustrationId={bayConfirm === 'mismatch' ? 'dispute-opened' : 'confirm-action'}
         onConfirm={onBayConfirm}
       />
 
       <KuraIllustrationModal
         opened={mismatchAckOpen}
         onClose={() => setMismatchAckOpen(false)}
-        illustrationId="confirm-delete"
+        illustrationId="dispute-opened"
         title="Swap blocked"
         description={
           mismatchCaseQuery

@@ -10,9 +10,17 @@ import {
   Modal,
   Drawer,
   ActionIcon,
+  MultiSelect,
+  Autocomplete,
+  Popover,
+  Menu,
+  Tooltip,
 } from '@mantine/core'
 import { ArrowDown01Icon } from 'hugeicons-react'
 import { createElement } from 'react'
+
+/** Above dialogs and sheets (z-400/450), below toasts. */
+const OVERLAY_Z = 1000
 
 export const themeColors = {
   primaryGreen: '#0D7C8F',
@@ -74,6 +82,12 @@ export const theme = createTheme({
   },
   defaultRadius: 'md',
   components: {
+    // Dropdowns, menus and popovers open above dialogs and sheets.
+    MultiSelect: MultiSelect.extend({ defaultProps: { comboboxProps: { zIndex: OVERLAY_Z } } }),
+    Autocomplete: Autocomplete.extend({ defaultProps: { comboboxProps: { zIndex: OVERLAY_Z } } }),
+    Popover: Popover.extend({ defaultProps: { zIndex: OVERLAY_Z } }),
+    Menu: Menu.extend({ defaultProps: { zIndex: OVERLAY_Z } }),
+    Tooltip: Tooltip.extend({ defaultProps: { zIndex: OVERLAY_Z } }),
     Button: Button.extend({
       defaultProps: {
         radius: 'md',
@@ -108,6 +122,7 @@ export const theme = createTheme({
         checkIconPosition: 'right',
         rightSection: createElement(ArrowDown01Icon, { size: 16 }),
         rightSectionPointerEvents: 'none',
+        comboboxProps: { zIndex: OVERLAY_Z },
       },
     }),
     PinInput: PinInput.extend({
