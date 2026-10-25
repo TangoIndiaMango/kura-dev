@@ -80,7 +80,6 @@ export function useRefundStats(params: RefundParams, options?: { enabled?: boole
 export function useRefundsTab(input: {
   enabled: boolean
   status?: string
-  dateRange: { start_date?: string; end_date?: string }
   cursor: string | undefined
   setCursor: (c: string | undefined) => void
   page: number
@@ -97,8 +96,8 @@ export function useRefundsTab(input: {
   const params = {
     status: input.status,
     search: controls.search || undefined,
-    start_date: input.dateRange.start_date,
-    end_date: input.dateRange.end_date,
+    start_date: controls.dateRange.start_date,
+    end_date: controls.dateRange.end_date,
   }
   const list = useRefunds({ ...params, cursor: input.cursor }, { enabled: input.enabled })
   const stats = useRefundStats(params, { enabled: input.enabled })
@@ -113,6 +112,9 @@ export function useRefundsTab(input: {
     pageSize: ADMIN_LIST_PAGE_SIZE,
   })
   return {
+    // The tab's own days — not shared with Payments or Cash.
+    dateRange: controls.dateRange,
+    dateRangeSlot: controls.dateRangeSlot,
     searchQuery: controls.searchQuery,
     setSearchQuery: controls.setSearchQuery,
     refunds: list.refunds,

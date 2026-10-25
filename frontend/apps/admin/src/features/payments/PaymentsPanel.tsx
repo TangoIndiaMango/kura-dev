@@ -1,6 +1,6 @@
 import { PaymentsListFilters, PaymentsScopeControls, RefundsListFilters } from './PaymentsFilterBar'
 import { useRefundsTab } from './hooks/use-refunds'
-import { useHubs } from '@features/hubs/hooks/use-hubs'
+import { useTabHubs } from './hooks/use-tab-hub'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AdminModuleLayout, useAdminModuleControls } from '@shared/components'
@@ -33,8 +33,11 @@ export function PaymentsPanel() {
   const [tab, setTab] = useUrlTab('payments', { valid: ['payments', 'cash', 'refunds'] })
   const [cursor, setCursor] = useState<string | undefined>()
   const [page, setPage] = useState(1)
-  const hubScope = searchParams.get('hub')?.trim() || undefined
-  const hubLabelParam = searchParams.get('hub_label')?.trim() || undefined
+  // Each tab keeps its own hub and days, so one tab's filter never silently
+  // narrows another. Payments: hub / payments_*; Cash: cash_hub / payments_cash_*.
+  const tabHubs = useTabHubs()
+  const hubScope = tabHubs.hubOf('hub')
+  const cashHub = tabHubs.hubOf('cash_hub')
 
   const paymentsControls = useAdminModuleControls({
     scope: 'payments',
@@ -50,10 +53,8 @@ export function PaymentsPanel() {
     filterTitle: 'Filter cash reconciliation',
     pageSize: ADMIN_LIST_PAGE_SIZE,
   })
-  // One date range for the whole page (both tabs, KPIs and export) — tabs used
-  // to keep separate ranges, so arriving from a hub showed different days.
-  const controls = paymentsControls
-  const dateRange = controls.dateRange
+  const dateRange = paymentsControls.dateRange
+  const cashRange = cashControls.dateRange
 
   // Hub / method / status live in the URL so links and refreshes keep scope.
   const statusFilter = searchParams.get('status')?.trim() || undefined
@@ -69,43 +70,18 @@ export function PaymentsPanel() {
       },
       { replace: true },
     )
-  const { hubs: hubList } = useHubs({ page_size: 200 })
-  const hubOptions = useMemo(
-    () => hubList.map((h) => ({ value: h.id, label: h.name })),
-    [hubList],
-  )
-
-  // A hub opened from a link stays labelled even before the hub list loads.
-  const hubOptionsWithScope = useMemo(
-    () =>
-      hubScope && !hubOptions.some((o) => o.value === hubScope)
-        ? [...hubOptions, { value: hubScope, label: hubLabelParam ?? 'Selected hub' }]
-        : hubOptions,
-    [hubOptions, hubScope, hubLabelParam],
-  )
 
   const resetCursor = () => {
     setCursor(undefined)
     setPage(1)
   }
 
-  useEffect(() => {
-    resetCursor()
-  }, [
-    dateRange.start_date,
-    dateRange.end_date,
-    statusFilter,
-    channelFilter,
-    paymentsControls.search,
-    refundStatusFilter,
-    hubScope,
-  ])
 
   const shiftsQuery = useShifts({
     enabled: tab === 'cash' && canCash,
-    hub: hubScope,
-    start_date: dateRange.start_date,
-    end_date: dateRange.end_date,
+    hub: cashHub,
+    start_date: cashRange.start_date,
+    end_date: cashRange.end_date,
   })
   const liveShifts = shiftsQuery.data?.results ?? []
   const {
@@ -162,12 +138,25 @@ export function PaymentsPanel() {
   const refundsTab = useRefundsTab({
     enabled: tab === 'refunds' && canRefunds,
     status: refundStatusFilter,
-    dateRange,
     cursor,
     setCursor,
     page,
     setPage,
   })
+
+  useEffect(() => {
+    resetCursor()
+  }, [
+    dateRange.start_date,
+    dateRange.end_date,
+    statusFilter,
+    channelFilter,
+    paymentsControls.search,
+    refundStatusFilter,
+    hubScope,
+    refundsTab.dateRange.start_date,
+    refundsTab.dateRange.end_date,
+  ])
 
   const cashMapped = useMemo(
     () => liveShifts.map(mapShiftToCashRow),
@@ -200,28 +189,24 @@ export function PaymentsPanel() {
         title="Payments"
         subtitle="Swap and plan payments, hub cash, and refunds"
         dateRangeSlot={
-          // Refunds aren't per hub: the page's date range only.
-          tab === 'refunds' ? controls.dateRangeSlot : <PaymentsScopeControls
-            hubId={hubScope}
-            hubOptions={hubOptionsWithScope}
-            onHubChange={(id, label) =>
-              setSearchParams(
-                (prev) => {
-                  const next = new URLSearchParams(prev)
-                  if (id) {
-                    next.set('hub', id)
-                    if (label) next.set('hub_label', label)
-                  } else {
-                    next.delete('hub')
-                    next.delete('hub_label')
-                  }
-                  return next
-                },
-                { replace: true },
-              )
-            }
-            dateRangeSlot={controls.dateRangeSlot}
-          />
+          // Refunds aren't tied to a hub: that tab has its own days only.
+          tab === 'refunds' ? (
+            refundsTab.dateRangeSlot
+          ) : tab === 'cash' ? (
+            <PaymentsScopeControls
+              hubId={cashHub}
+              hubOptions={tabHubs.optionsFor('cash_hub')}
+              onHubChange={(id, label) => tabHubs.setHub('cash_hub', id, label)}
+              dateRangeSlot={cashControls.dateRangeSlot}
+            />
+          ) : (
+            <PaymentsScopeControls
+              hubId={hubScope}
+              hubOptions={tabHubs.optionsFor('hub')}
+              onHubChange={(id, label) => tabHubs.setHub('hub', id, label)}
+              dateRangeSlot={paymentsControls.dateRangeSlot}
+            />
+          )
         }
         tabs={[
           { id: 'payments', label: 'Payments' },
@@ -235,7 +220,7 @@ export function PaymentsPanel() {
           resetCursor()
           setTab(next)
         }}
-        kpis={kpisForTab(tab, paymentStats, cashMapped, Boolean(hubScope), refundsTab.stats)}
+        kpis={kpisForTab(tab, paymentStats, cashMapped, Boolean(cashHub), refundsTab.stats)}
         chartsSlot={
           tab === 'payments' ? <PaymentsMethodBreakdown stats={paymentStats} /> : undefined
         }

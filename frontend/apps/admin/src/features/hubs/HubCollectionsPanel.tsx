@@ -53,14 +53,15 @@ export function HubCollectionsPanel({
   ).length
   const swapFeesKobo = statsQuery.data?.revenue_kobo_total ?? 0
 
-  // Payments page shares one date range (payments_*) across its tabs.
-  const scopeQuery =
-    `hub=${encodeURIComponent(hubId)}` +
-    `&hub_label=${encodeURIComponent(hubName)}` +
-    `&payments_start_date=${range.start_date}` +
-    `&payments_end_date=${range.end_date}`
-  const paymentsHref = `/payments?tab=payments&${scopeQuery}`
-  const paymentsCashHref = `/payments?tab=cash&${scopeQuery}`
+  // Each Payments tab has its own hub and days; open the right tab scoped to this hub.
+  const hub = encodeURIComponent(hubId)
+  const name = encodeURIComponent(hubName)
+  const paymentsHref =
+    `/payments?tab=payments&hub=${hub}&hub_label=${name}` +
+    `&payments_start_date=${range.start_date}&payments_end_date=${range.end_date}`
+  const paymentsCashHref =
+    `/payments?tab=cash&cash_hub=${hub}&cash_hub_label=${name}` +
+    `&payments_cash_start_date=${range.start_date}&payments_cash_end_date=${range.end_date}`
 
   const loading =
     enabled &&
