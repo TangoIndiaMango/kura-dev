@@ -51,3 +51,4 @@ graphify-out/
 deploy/production.env
 deploy/server.txt
 deploy/*.log
+deploy/reset-database.*

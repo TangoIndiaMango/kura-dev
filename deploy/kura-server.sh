@@ -14,6 +14,8 @@ warn() { printf '!! %s\n' "$*"; }
 die()  { printf '\nSTOPPED: %s\n' "$*"; exit 1; }
 
 [ "$(id -u)" = 0 ] || die "run as root"
+# files checked out on Windows can carry CRLF line endings: strip them before use
+sed -i 's/\r$//' "$IN/deploy.conf" "$IN/production.env" "$IN/docker-compose.yml" "$IN/nginx-kura-api.conf"
 . "$IN/deploy.conf"
 : "${API_DOMAIN:?API_DOMAIN missing in deploy.conf}"
 : "${API_PORT:=8101}"
