@@ -32,7 +32,10 @@ type Config struct {
 	AllowedHosts []string `env:"DJANGO_ALLOWED_HOSTS" envSeparator:","`
 	CORSOrigins  []string `env:"CORS_ORIGINS" envSeparator:","`
 
-	OTPDevCode     string `env:"OTP_DEV_CODE" envDefault:"123456"`
+	OTPDevCode string `env:"OTP_DEV_CODE" envDefault:"123456"`
+	// OTP_SHOW_IN_APP returns sign-in codes in the API response so test riders
+	// can see them (no SMS yet). Ignored when KURA_ENV=production.
+	OTPShowInApp   bool   `env:"OTP_SHOW_IN_APP" envDefault:"false"`
 	OTPPepper      string `env:"OTP_PEPPER"`
 	QRPepper       string `env:"QR_HMAC_PEPPER"`         // signed QR labels; falls back to the secret key
 	ReceiptSecret  string `env:"RECEIPT_SIGNING_SECRET"` // receipt seals; falls back to OTP_PEPPER
@@ -88,6 +91,11 @@ type Config struct {
 	// DjangoUpstreamURL forwards not-yet-ported routes to Django during the
 	// migration (e.g. http://localhost:8001). Empty = Go answers everything.
 	DjangoUpstreamURL string `env:"DJANGO_UPSTREAM_URL"`
+}
+
+// ShowOTP: sign-in codes go back to the app (dev/test servers only, never production).
+func (c Config) ShowOTP() bool {
+	return c.OTPShowInApp && c.Env != "production"
 }
 
 // IsProduction is true for production and staging (both run with DEBUG off).
@@ -172,6 +180,9 @@ func (c Config) Warnings() []string {
 	}
 	if c.RedisURL == "" {
 		w = append(w, "REDIS_URL not set; throttles are per-process")
+	}
+	if c.ShowOTP() {
+		w = append(w, "OTP_SHOW_IN_APP is on: sign-in codes are returned to the app — test servers only")
 	}
 	if c.DefaultPSP == "PAYSTACK" && c.PaystackSecret == "" {
 		w = append(w, "PAYSTACK_SECRET_KEY not set; riders cannot get transfer accounts")

@@ -66,9 +66,13 @@ func (s *AuthService) RequestOTP(ctx context.Context, phone, purpose, channel, d
 		Channel: channel}); err != nil {
 		return nil, err
 	}
-	return map[string]any{"status": "accepted", "next": "otp",
+	out := map[string]any{"status": "accepted", "next": "otp",
 		"message": "If this number can receive SMS, a code is on its way.", "phone": e164,
-		"purpose": purpose, "channel": channel, "has_pin": false}, nil
+		"purpose": purpose, "channel": channel, "has_pin": false}
+	if s.cfg.ShowOTP() { // test servers without SMS: the app shows the code
+		out["dev_code"] = code
+	}
+	return out, nil
 }
 
 // OTPResult is verify_otp's payload.
