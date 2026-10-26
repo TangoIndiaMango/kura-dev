@@ -1,7 +1,9 @@
 @echo off
-rem Commits the deploy kit (this folder + .gitignore) and pushes the current branch to origin.
-rem Only these paths are committed; secrets (production.env, server.txt, *.log) are gitignored.
-rem The result is saved in git-push.log.
+rem Brings main up to date, commits the deploy kit (this folder + .gitignore) and pushes it.
+rem Commits are made as the emicrafttech GitHub account: Vercel's Hobby plan only deploys
+rem commits by the account owner, so this push also makes Vercel deploy the latest main.
+rem With nothing new to commit it pushes an empty "deploy" commit for the same reason.
+rem Secrets (production.env, server.txt, *.log) are gitignored. Result saved in git-push.log.
 setlocal
 cd /d "%~dp0.."
 call :main > "%~dp0git-push.log" 2>&1
@@ -12,18 +14,25 @@ exit /b %RC%
 
 :main
 where git || (echo Git isn't installed. & exit /b 1)
+set "AS=-c user.name=emicrafttech -c user.email=260626668+emicrafttech@users.noreply.github.com"
+for /f "delims=" %%b in ('git branch --show-current') do set "BR=%%b"
+git fetch origin || exit /b 1
+rem files that differ from git only in line endings are reset, so they never block the update
+for /f "delims=" %%f in ('git diff --name-only') do git diff --quiet --ignore-cr-at-eol -- "%%f" && git checkout -q -- "%%f"
+git checkout -q HEAD -- deploy/README.md deploy/production.env.example
+git status --short
+git merge --ff-only origin/%BR% || (echo STOPPED: %BR% has local commits that are not on GitHub. & exit /b 1)
 git add -- deploy .gitignore || exit /b 1
 git diff --cached --name-only | findstr /i /r /c:"production\.env$" /c:"server\.txt$" /c:"\.log$" && (echo STOPPED: a secret file was about to be committed. & git reset -q & exit /b 1)
-git diff --cached --quiet && (echo Nothing new to commit.) && goto push
-set "GITID="
-for /f "delims=" %%e in ('git config user.email') do set "GITID=1"
-if not defined GITID set "GITID=-c user.name=Adefemi -c user.email=oseni.adefemigreat@gmail.com"
-if "%GITID%"=="1" set "GITID="
-git %GITID% commit -q -m "deploy: Hostinger VPS deploy kit for the Go backend" -m "Production docker compose (API, worker, Postgres 17, Redis; no public db/redis ports), nginx site with Let's Encrypt for api.kuramobility.com, nightly pg_dump backups, rollback on failed health check, and Windows scripts to deploy and check status. Frontends stay on Vercel (kuramobility.com, admin.kuramobility.com)." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_01XaXU4Mxfdpxvs53dFR8C3b" || exit /b 1
-git log --oneline -1
+git diff --cached --quiet && goto empty
+git %AS% commit -q -m "deploy: update the VPS deploy kit" -m "Domains: landing page at kuramobility.com, rider app at app.kuramobility.com, admin at admin.kuramobility.com, API at api.kuramobility.com. Adds update-from-github.bat." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_01XaXU4Mxfdpxvs53dFR8C3b" || exit /b 1
+goto push
+:empty
+git %AS% commit -q --allow-empty -m "chore: deploy latest main" -m "Empty commit by the Vercel account owner so the Hobby plan deploys it." || exit /b 1
 :push
-for /f "delims=" %%b in ('git branch --show-current') do set "BR=%%b"
+git log --oneline -3
 git push origin %BR% || exit /b 1
 echo Pushed %BR% to origin.
 git status -sb | findstr /b "##"
+echo PUSH-DONE
 exit /b 0
