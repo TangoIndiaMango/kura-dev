@@ -38,7 +38,7 @@ export function PhonePass({ hub }: { hub?: string }) {
             </p>
           </div>
           <div className="mt-4 flex items-center justify-between rounded-xl bg-[oklch(0.47_0.075_195)] px-4 py-3 text-white">
-            <span className="text-[12px] font-semibold">Paid with Paystack</span>
+            <span className="text-[12px] font-semibold">Paid in the app</span>
             <span className="text-sm font-bold">✓</span>
           </div>
         </div>

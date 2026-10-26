@@ -7,7 +7,7 @@ const OPTIONS = [
   {
     name: 'Pay per swap',
     tag: 'No commitment',
-    body: 'Pay only when you swap, by Paystack in the app, or cash at the hub.',
+    body: 'Pay only when you swap, in the app, or cash at the hub.',
     perks: ['Nothing to sign up for', 'Any KURA hub', 'Receipt for every swap'],
   },
   {
