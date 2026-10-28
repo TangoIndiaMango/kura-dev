@@ -26,7 +26,25 @@ export function notify(input: {
   })
 }
 
-export function notifyCodeSent(channel: 'sms' | 'email', destination: string) {
+/**
+ * One toast per code request. When the API returns `dev_code`
+ * (OTP_SHOW_IN_APP, no SMS yet) the code goes in the same toast and stays up
+ * long enough to type it.
+ */
+export function notifyCodeSent(
+  channel: 'sms' | 'email',
+  destination: string,
+  devCode?: string,
+) {
+  if (devCode) {
+    notify({
+      title: `Your code: ${devCode}`,
+      message: destination,
+      tone: 'success',
+      autoClose: 60_000,
+    })
+    return
+  }
   notify({
     title: channel === 'email' ? 'Code sent to email' : 'Code sent by SMS',
     message: destination,

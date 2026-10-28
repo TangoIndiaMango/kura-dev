@@ -36,11 +36,18 @@ type Response struct {
 // New builds the app on an empty test database (DEBUG on: dev OTP accepted).
 func New(t *testing.T) *Client {
 	t.Helper()
+	return NewWith(t, func(*config.Config) {})
+}
+
+// NewWith is New with the config adjusted first (e.g. production settings).
+func NewWith(t *testing.T, tweak func(*config.Config)) *Client {
+	t.Helper()
 	pool := testkit.DB(t)
 	cfg := config.Config{
 		Env: "local", Debug: true, SecretKey: "test-secret-key-0123456789abcdef-test",
 		AccessTTL: 15 * time.Minute, RefreshTTL: 720 * time.Hour, OTPDevCode: "123456",
 	}
+	tweak(&cfg)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	return &Client{t: t, h: app.Build(cfg, log, pool), Pool: pool}
 }
