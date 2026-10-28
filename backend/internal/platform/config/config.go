@@ -33,8 +33,8 @@ type Config struct {
 	CORSOrigins  []string `env:"CORS_ORIGINS" envSeparator:","`
 
 	OTPDevCode string `env:"OTP_DEV_CODE" envDefault:"123456"`
-	// OTP_SHOW_IN_APP returns sign-in codes in the API response so test riders
-	// can see them (no SMS yet). Ignored when KURA_ENV=production.
+	// OTP_SHOW_IN_APP returns sign-in codes in the API response so riders can
+	// see them while there is no SMS provider. Honoured in every environment.
 	OTPShowInApp   bool   `env:"OTP_SHOW_IN_APP" envDefault:"false"`
 	OTPPepper      string `env:"OTP_PEPPER"`
 	QRPepper       string `env:"QR_HMAC_PEPPER"`         // signed QR labels; falls back to the secret key
@@ -93,9 +93,10 @@ type Config struct {
 	DjangoUpstreamURL string `env:"DJANGO_UPSTREAM_URL"`
 }
 
-// ShowOTP: sign-in codes go back to the app (dev/test servers only, never production).
+// ShowOTP: sign-in codes go back to the app. It is an explicit opt-in that
+// works in production too (no SMS yet); the boot warning keeps it visible.
 func (c Config) ShowOTP() bool {
-	return c.OTPShowInApp && c.Env != "production"
+	return c.OTPShowInApp
 }
 
 // IsProduction is true for production and staging (both run with DEBUG off).
@@ -182,7 +183,7 @@ func (c Config) Warnings() []string {
 		w = append(w, "REDIS_URL not set; throttles are per-process")
 	}
 	if c.ShowOTP() {
-		w = append(w, "OTP_SHOW_IN_APP is on: sign-in codes are returned to the app — test servers only")
+		w = append(w, "OTP_SHOW_IN_APP is on: sign-in codes are returned to the app; turn it off once SMS is live")
 	}
 	if c.DefaultPSP == "PAYSTACK" && c.PaystackSecret == "" {
 		w = append(w, "PAYSTACK_SECRET_KEY not set; riders cannot get transfer accounts")

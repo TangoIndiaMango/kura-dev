@@ -46,8 +46,8 @@ export const ForgotPinFlow: React.FC<ForgotPinFlowProps> = ({
     setBusy(true)
     setOtpError(null)
     try {
-      await requestOtp(phone, 'PIN_RESET', 'WEB', { force_otp: true })
-      notifyCodeSent('sms', phoneDisplay)
+      const sent = await requestOtp(phone, 'PIN_RESET', 'WEB', { force_otp: true })
+      notifyCodeSent('sms', phoneDisplay, sent.dev_code)
     } catch (err) {
       setOtpError(apiErrorMessage(err, 'Could not send code'))
     } finally {

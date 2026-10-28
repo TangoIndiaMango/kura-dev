@@ -94,6 +94,8 @@ export type OtpRequestResult = {
   display_name?: string | null
   purpose?: string
   channel?: string
+  /** Only when the API runs with OTP_SHOW_IN_APP (no SMS yet). */
+  dev_code?: string
 }
 
 export async function beginLogin(phone: string, channel: 'WEB' | 'APP' = 'WEB') {

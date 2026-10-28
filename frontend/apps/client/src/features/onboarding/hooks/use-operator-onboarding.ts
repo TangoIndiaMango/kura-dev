@@ -88,14 +88,14 @@ export function useOperatorOnboarding() {
         setStep('unlock')
         return
       }
-      await requestOtp.mutateAsync({
+      const sent = await requestOtp.mutateAsync({
         phone: national,
         purpose: 'LOGIN',
         channel: AUTH_CHANNEL,
       })
       setPinEntryFromPhone(false)
       setStep('otp')
-      notifyCodeSent('sms', `+234 ${phone}`)
+      notifyCodeSent('sms', `+234 ${phone}`, sent.dev_code)
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not continue'))
     }
@@ -141,12 +141,14 @@ export function useOperatorOnboarding() {
     setOtp(emptyOtp())
     setError(null)
     try {
-      await requestOtp.mutateAsync({
+      // Same purpose the verify step checks, or the resent code never matches.
+      const sent = await requestOtp.mutateAsync({
         phone: nationalPhone(),
-        purpose: 'PIN_RESET',
+        purpose: pinFromForgot ? 'PIN_RESET' : 'LOGIN',
         channel: AUTH_CHANNEL,
+        force_otp: true,
       })
-      notifyCodeSent('sms', `+234 ${phone}`)
+      notifyCodeSent('sms', `+234 ${phone}`, sent.dev_code)
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not resend'))
     }
@@ -181,9 +183,9 @@ export function useOperatorOnboarding() {
   const handleForgotPin = async () => {
     setError(null)
     try {
-      await requestOtp.mutateAsync({
+      const sent = await requestOtp.mutateAsync({
         phone: nationalPhone(),
-        purpose: 'LOGIN',
+        purpose: 'PIN_RESET', // handleVerifyOtp checks PIN_RESET once pinFromForgot is set
         channel: AUTH_CHANNEL,
         force_otp: true,
       })
@@ -191,7 +193,7 @@ export function useOperatorOnboarding() {
       setPinFromForgot(true)
       setOtp(emptyOtp())
       setStep('otp')
-      notifyCodeSent('sms', `+234 ${phone}`)
+      notifyCodeSent('sms', `+234 ${phone}`, sent.dev_code)
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not send reset code'))
     }
