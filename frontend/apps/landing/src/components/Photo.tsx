@@ -6,10 +6,10 @@ const IMAGES = {
   'keke-street': { widths: [640, 1280, 1920], ratio: 0.9865 },
   'kura-bike': { widths: [640], ratio: 0.6257 },
   'kura-boat': { widths: [638], ratio: 0.7524 },
-  'kura-boat-studio': { widths: [640, 1280], ratio: 0.75 },
+  'kura-boat-studio': { widths: [640], ratio: 0.9951 },
   'kura-keke-fleet': { widths: [640], ratio: 0.642 },
   'kura-keke-hub': { widths: [638], ratio: 0.7524 },
-  'kura-keke-studio': { widths: [640, 1280], ratio: 0.75 },
+  'kura-keke-studio': { widths: [640], ratio: 1.0411, fallback: 'png' },
   'kura-okada-studio': { widths: [640, 1280], ratio: 0.75 },
   'kura-rider': { widths: [640], ratio: 0.6667 },
   'lagoon-boats': { widths: [640, 1280, 1920], ratio: 0.75 },
@@ -23,6 +23,9 @@ export type ImageName = keyof typeof IMAGES
 
 const srcset = (name: ImageName, ext: string) =>
   IMAGES[name].widths.map((w) => `/images/${name}-${w}.${ext} ${w}w`).join(', ')
+
+const fallbackExt = (name: ImageName) =>
+  'fallback' in IMAGES[name] ? IMAGES[name].fallback : 'jpg'
 
 /** <picture> with AVIF/WebP/JPEG at several widths; never shifts layout. */
 export function Photo({
@@ -47,14 +50,15 @@ export function Photo({
   const img = IMAGES[name]
   const widths: readonly number[] = img.widths
   const w = widths[Math.min(1, widths.length - 1)]!
+  const ext = fallbackExt(name)
   return (
     <picture className={className}>
       <source type="image/avif" srcSet={srcset(name, 'avif')} sizes={sizes} />
       <source type="image/webp" srcSet={srcset(name, 'webp')} sizes={sizes} />
       <img
         ref={imgRef}
-        src={`/images/${name}-${w}.jpg`}
-        srcSet={srcset(name, 'jpg')}
+        src={`/images/${name}-${w}.${ext}`}
+        srcSet={srcset(name, ext)}
         sizes={sizes}
         alt={alt}
         width={w}

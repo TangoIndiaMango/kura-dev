@@ -31,8 +31,8 @@ const BLURB: Record<VehicleType, string> = {
 
 const PHOTO: Record<VehicleType, { name: ImageName; alt: string }> = {
   MOTORCYCLE: { name: 'kura-okada-studio', alt: 'A KURA electric okada with its swappable battery pack under the seat' },
-  TRICYCLE: { name: 'kura-keke-studio', alt: 'A KURA electric keke with its battery bay on the side' },
-  BOAT: { name: 'kura-boat-studio', alt: 'A KURA electric passenger boat with a battery-powered outboard' },
+  TRICYCLE: { name: 'kura-keke-studio', alt: 'An electric keke tricycle' },
+  BOAT: { name: 'kura-boat-studio', alt: 'A passenger boat with an outboard motor underway' },
 }
 
 export function HowItWorks() {
@@ -68,12 +68,20 @@ export function HowItWorks() {
         {VEHICLES.map((v, i) => {
           return (
             <article key={v.type} className="card group reveal overflow-hidden" style={{ ['--i' as string]: i }}>
-              <div className="aspect-[4/3] overflow-hidden">
+              <div
+                className={`aspect-[4/3] overflow-hidden ${
+                  v.type === 'TRICYCLE' ? 'bg-surface p-3' : ''
+                }`}
+              >
                 <Photo
                   name={PHOTO[v.type].name}
                   alt={PHOTO[v.type].alt}
                   sizes="(min-width: 640px) 33vw, 100vw"
-                  imgClassName="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  imgClassName={
+                    v.type === 'TRICYCLE'
+                      ? 'h-full w-full object-contain'
+                      : 'h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105'
+                  }
                 />
               </div>
               <div className="p-6">

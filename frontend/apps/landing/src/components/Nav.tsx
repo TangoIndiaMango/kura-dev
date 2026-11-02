@@ -16,8 +16,17 @@ export function Logo({ invert = false }: { invert?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
       <img src="/brand/kura-mark-circle.png" alt="" width={34} height={34} className="rounded-full" />
-      <span className={`text-[1.35rem] font-extrabold tracking-tight ${invert ? 'text-on-inverse' : ''}`} style={{ fontStretch: '80%' }}>
-        KURA<span className="text-gold">.</span>
+      <span className={`flex flex-col leading-none ${invert ? 'text-on-inverse' : ''}`}>
+        <span className="text-[1.25rem] font-extrabold tracking-tight" style={{ fontStretch: '80%' }}>
+          KURA<span className="text-gold">.</span>
+        </span>
+        <span
+          className={`mt-[3px] text-[0.52rem] font-semibold tracking-[0.22em] ${
+            invert ? 'text-on-inverse-muted' : 'text-fg-muted'
+          }`}
+        >
+          MOBILITY
+        </span>
       </span>
     </span>
   )

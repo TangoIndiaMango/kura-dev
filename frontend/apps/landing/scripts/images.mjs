@@ -11,11 +11,14 @@ const out = path.join(root, 'public', 'images')
 const WIDTHS = [640, 1280, 1920]
 
 await mkdir(out, { recursive: true })
+const only = new Set(process.argv.slice(2))
 const manifest = {}
 for (const file of (await readdir(src)).filter((f) => /\.(jpe?g|png)$/i.test(f))) {
   const name = file.replace(/\.[^.]+$/, '')
+  if (only.size && !only.has(name)) continue
   const img = sharp(path.join(src, file)).rotate()
   const meta = await img.metadata()
+  const hasAlpha = Boolean(meta.hasAlpha)
   // Never upscale; always emit at least one size.
   const widths = WIDTHS.filter((w) => w <= meta.width)
   if (widths.length === 0) widths.push(meta.width)
@@ -23,9 +26,17 @@ for (const file of (await readdir(src)).filter((f) => /\.(jpe?g|png)$/i.test(f))
     const base = img.clone().resize({ width: w }).modulate({ saturation: 0.92 })
     await base.clone().avif({ quality: 52 }).toFile(path.join(out, `${name}-${w}.avif`))
     await base.clone().webp({ quality: 74 }).toFile(path.join(out, `${name}-${w}.webp`))
-    await base.clone().jpeg({ quality: 78, mozjpeg: true }).toFile(path.join(out, `${name}-${w}.jpg`))
+    if (hasAlpha) {
+      await base.clone().png().toFile(path.join(out, `${name}-${w}.png`))
+    } else {
+      await base.clone().jpeg({ quality: 78, mozjpeg: true }).toFile(path.join(out, `${name}-${w}.jpg`))
+    }
   }
-  manifest[name] = { widths, ratio: +(meta.height / meta.width).toFixed(4) }
+  manifest[name] = {
+    widths,
+    ratio: +(meta.height / meta.width).toFixed(4),
+    ...(hasAlpha ? { fallback: 'png' } : {}),
+  }
   console.log(name, widths.join(','))
 }
 console.log(JSON.stringify(manifest))
