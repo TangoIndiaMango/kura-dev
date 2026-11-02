@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { IconArrow, IconPin } from '../components/Icons'
+import { IconArrow } from '../components/Icons'
 import { Heading, Section } from '../components/Section'
-import { COMING_SOON, whatsappLink } from '../lib/config'
-import { directionsUrl, hubArea, liveStates, mappable, type NetworkState, type PublicHub } from '../lib/network'
+import { whatsappLink } from '../lib/config'
+import { directionsUrl, hubArea, mappable, type NetworkState, type PublicHub } from '../lib/network'
 import { HubMap } from './HubMap'
 
 const STATUS: Record<PublicHub['status'], { label: (n: number) => string; dot: string }> = {
@@ -17,7 +17,6 @@ export function Hubs({ net }: { net: NetworkState }) {
     () => mappable(net.data?.hubs ?? []).sort((a, b) => Number(a.status === 'offline') - Number(b.status === 'offline')),
     [net.data],
   )
-  const states = liveStates(net.data)
   const [focus, setFocus] = useState<string | null>(null)
 
   return (
@@ -27,8 +26,7 @@ export function Hubs({ net }: { net: NetworkState }) {
         title="Find a hub near you"
         lede={
           <>
-            Live in {states.length ? states.join(' and ') : 'Lagos'} today, with more on the way. Counts are charged
-            packs on the shelf right now.
+            The counts are charged packs on the shelf at each hub right now.
           </>
         }
       />
@@ -85,19 +83,7 @@ export function Hubs({ net }: { net: NetworkState }) {
         </div>
       </div>
 
-      <div className="mt-14 grid gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-center">
-        <div className="reveal">
-          <p className="kicker text-fg-subtle">Coming next</p>
-          <ul className="mt-4 flex flex-wrap gap-2.5">
-            {COMING_SOON.map((c) => (
-              <li key={c.name} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2">
-                <IconPin className="h-4 w-4 text-gold" />
-                <span className="font-semibold">{c.name}</span>
-                <span className="text-sm text-fg-muted">{c.state}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="mt-14">
         <div className="card reveal flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold">No hub near you yet?</p>

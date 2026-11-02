@@ -85,7 +85,7 @@ export function Features({ net }: { net: NetworkState }) {
           <TileHead
             icon={<IconCard />}
             title="Pay your way"
-            body="Card, bank transfer or USSD through Paystack, or cash to the agent at the hub."
+            body="Card, bank transfer or USSD in the app, or cash to the agent at the hub."
           />
           <div className="mt-5 flex flex-wrap gap-2">
             {[

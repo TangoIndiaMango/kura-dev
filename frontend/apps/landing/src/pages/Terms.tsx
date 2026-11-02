@@ -40,8 +40,8 @@ const SECTIONS: LegalSection[] = [
     title: 'Bookings, payments and refunds',
     body: (
       <ul>
-        <li>Prices are shown in the app before you pay. You can pay per swap, on a plan, through Paystack, or in cash at the hub.</li>
-        <li>A booking paid with Paystack holds a pack once payment is confirmed, for the time shown in the app.</li>
+        <li>Prices are shown in the app before you pay. You can pay per swap, on a plan, in the app, or in cash at the hub.</li>
+        <li>A booking paid in the app holds a pack once payment is confirmed, for the time shown in the app.</li>
         <li>If you cancel a paid booking, or it runs out before your swap, the amount is refunded to how you paid after a review. We tell you when it’s sent.</li>
         <li>Plans cover the swaps and period shown when you buy them, for the vehicle you choose.</li>
       </ul>

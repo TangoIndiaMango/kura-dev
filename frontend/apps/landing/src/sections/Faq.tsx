@@ -11,11 +11,11 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'How do I pay?',
-    a: 'Pay ahead in the app with Paystack (card, bank transfer or USSD), or pay the agent in cash at the hub. You can also pay per swap or buy a daily, weekly or monthly plan for your vehicle.',
+    a: 'Pay ahead in the app (card, bank transfer or USSD), or pay the agent in cash at the hub. You can also pay per swap or buy a daily, weekly or monthly plan for your vehicle.',
   },
   {
     q: 'Do I need to book before I go?',
-    a: 'No. You can walk into any open hub. Booking holds a charged pack for you so it’s waiting when you arrive. A Paystack booking is held once it’s paid.',
+    a: 'No. You can walk into any open hub. Booking holds a charged pack for you so it’s waiting when you arrive. A booking paid in the app is held once the payment goes through.',
   },
   {
     q: 'What if I book and can’t make it?',

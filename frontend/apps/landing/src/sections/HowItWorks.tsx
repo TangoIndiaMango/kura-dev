@@ -30,9 +30,9 @@ const BLURB: Record<VehicleType, string> = {
 }
 
 const PHOTO: Record<VehicleType, { name: ImageName; alt: string }> = {
-  MOTORCYCLE: { name: 'kura-bike', alt: 'Electric motorcycle with a swappable battery pack' },
-  TRICYCLE: { name: 'keke-street', alt: 'Keke tricycles on a street in Ikeja, Lagos' },
-  BOAT: { name: 'boats', alt: 'Passenger boats on the water in Lagos' },
+  MOTORCYCLE: { name: 'kura-okada-studio', alt: 'A KURA electric okada with its swappable battery pack under the seat' },
+  TRICYCLE: { name: 'kura-keke-studio', alt: 'A KURA electric keke with its battery bay on the side' },
+  BOAT: { name: 'kura-boat-studio', alt: 'A KURA electric passenger boat with a battery-powered outboard' },
 }
 
 export function HowItWorks() {

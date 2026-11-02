@@ -48,9 +48,8 @@ export const OtpScreen: React.FC<OtpScreenProps> = ({
     channel === 'sms' && resendCount >= OTP_RESENDS_BEFORE_EMAIL
 
   const onResend = () => {
-    onResendSms()
+    onResendSms() // the parent toasts once the code is issued
     setResendCount((n) => n + 1)
-    notifyCodeSent('sms', phoneDisplay)
   }
 
   const startEmailFallback = () => {

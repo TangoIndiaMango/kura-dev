@@ -4,16 +4,12 @@ import { PhonePass } from '../components/PhonePass'
 import { IconArrow } from '../components/Icons'
 import { APP_URL } from '../lib/config'
 import { scrollToHash, useCountUp, useParallax } from '../lib/motion'
-import { liveStates, openHubs, type NetworkState } from '../lib/network'
+import { openHubs, type NetworkState } from '../lib/network'
 
 function LiveChip({ net }: { net: NetworkState }) {
   const hubs = openHubs(net.data)
-  const states = liveStates(net.data)
-  const label = net.loading
-    ? 'Checking live hubs…'
-    : hubs.length
-      ? `${hubs.length} ${hubs.length === 1 ? 'hub' : 'hubs'} open now · ${states.join(' & ') || 'Lagos'}`
-      : 'Live in Lagos'
+  if (!net.loading && !hubs.length) return null
+  const label = net.loading ? 'Checking live hubs…' : `${hubs.length} ${hubs.length === 1 ? 'hub' : 'hubs'} open now`
   return (
     <a
       href="#hubs"

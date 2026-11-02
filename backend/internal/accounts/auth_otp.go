@@ -30,8 +30,8 @@ func (s *AuthService) hashOTP(code string) string {
 }
 
 // RequestOTP mirrors request_otp: PIN holders are routed to PIN (unless
-// force), a 60 s resend cooldown applies, and the code is never returned.
-// Delivery (SMS) is not wired yet — same as Django today.
+// force) and a 60 s resend cooldown applies. Delivery (SMS) is not wired yet,
+// so with OTP_SHOW_IN_APP the code is returned as dev_code for the app to show.
 func (s *AuthService) RequestOTP(ctx context.Context, phone, purpose, channel, deviceID string, force bool) (map[string]any, error) {
 	e164, err := NormalizeNGPhone(phone)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *AuthService) RequestOTP(ctx context.Context, phone, purpose, channel, d
 	out := map[string]any{"status": "accepted", "next": "otp",
 		"message": "If this number can receive SMS, a code is on its way.", "phone": e164,
 		"purpose": purpose, "channel": channel, "has_pin": false}
-	if s.cfg.ShowOTP() { // test servers without SMS: the app shows the code
+	if s.cfg.ShowOTP() { // no SMS yet: the app shows the code
 		out["dev_code"] = code
 	}
 	return out, nil

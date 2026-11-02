@@ -45,7 +45,9 @@ mv "$OPT/src.new" "$OPT/src"
 install -m 644 "$IN/docker-compose.yml" "$OPT/docker-compose.yml"
 install -m 600 "$IN/production.env" "$OPT/production.env"
 install -m 644 "$IN/deploy.conf" "$OPT/deploy.conf"
-printf 'API_PORT=%s\n' "$API_PORT" >> "$OPT/production.env"
+# Leading \n: production.env may not end in a newline, and gluing API_PORT
+# onto its last line breaks that setting (e.g. OTP_SHOW_IN_APP=trueAPI_PORT=…).
+printf '\nAPI_PORT=%s\n' "$API_PORT" >> "$OPT/production.env"
 DC=(docker compose --project-directory "$OPT" -f "$OPT/docker-compose.yml" --env-file "$OPT/production.env")
 
 say "Build"
