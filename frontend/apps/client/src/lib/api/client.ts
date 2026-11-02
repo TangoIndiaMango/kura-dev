@@ -12,7 +12,6 @@ import {
   setTokens,
 } from './token-storage'
 import { noteServerTime } from '../../shared/time/serverClock'
-import { showDevOtp } from './dev-otp'
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -124,7 +123,6 @@ axiosInstance.interceptors.request.use((config) => {
 
 axiosInstance.interceptors.response.use(
   (response) => {
-    showDevOtp(response.config?.url, response.data)
     const headers = response.headers ?? {}
     const raw =
       headers['x-kura-server-time'] ??
