@@ -15,5 +15,6 @@ Credit is not required but is given here and on the site.
 | rider-motion | Delivery rider | Habila Mazawaje | https://unsplash.com/photos/079sJy679Zw |
 
 `kura-*` photos are KURA's own (from the original brand site).
-`kura-*-studio` images (the okada, keke and boat cards) are KURA's own 3D renders, made in Blender for this site.
+`kura-okada-studio` is KURA's own 3D render, made in Blender for this site.
+`kura-keke-studio` and `kura-boat-studio` are KURA vehicle photos (the keke sits on a transparent background).
 Originals live in `assets-src/`; regenerate sizes with `npm run images`.
