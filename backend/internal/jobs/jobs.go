@@ -1,6 +1,6 @@
 // Package jobs ports core.management.commands.run_task_worker: the periodic
 // sweeps (Paystack re-verify + refunds, unreturned packs, swap lifecycle, mock IoT, shifts + settlement,
-// subscriptions, price matrices, virtual accounts, daily credit jobs).
+// subscriptions, price matrices, virtual accounts, daily credit jobs, report rollups).
 package jobs
 
 import (
@@ -16,12 +16,13 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/mail"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/mobility"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/operations"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/rollup"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/telemetry"
 )
 
 // Order is the run order of one loop (run_task_worker's enqueue order).
 var Order = []string{"payments", "unreturned", "swaps", "mock_iot", "shifts", "settlement", "subscriptions", "pricing",
-	"virtual_accounts", "credit_scores", "credit_debit"}
+	"virtual_accounts", "credit_scores", "credit_debit", "rollups"}
 
 // Runner holds what the sweeps need.
 type Runner struct {
@@ -33,6 +34,8 @@ type Runner struct {
 	// Checkout is Paystack Checkout's settings (payment re-verify + refunds).
 	Checkout finance.CheckoutConfig
 	MockIoT  bool
+	// ForceRollups ignores the rollup spacing (worker --once).
+	ForceRollups bool
 	// daily remembers the UTC day a once-a-day job last ran (Django keys
 	// this in the cache with cache.add; one worker process here).
 	daily map[string]string
@@ -64,6 +67,8 @@ func (r *Runner) Run(ctx context.Context, name string) (map[string]any, error) {
 		return credit.RecomputeScores(ctx, r.Pool, 200)
 	case "credit_debit":
 		return credit.AutoDebitLoans(ctx, r.Pool, r.Log, 200)
+	case "rollups":
+		return rollup.Run(ctx, r.Pool, r.ForceRollups)
 	}
 	return nil, nil
 }

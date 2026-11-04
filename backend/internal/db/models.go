@@ -24,7 +24,6 @@ type AccountsAccount struct {
 	OwnerUserID         uuid.UUID
 	RegistrationChannel string
 	Psp                 string
-	CooperativeID       *uuid.UUID
 	RiskStatus          string
 }
 
@@ -192,6 +191,14 @@ type AccountsUserUserPermission struct {
 	PermissionID int32
 }
 
+type AnalyticsDailyaccount struct {
+	Day       pgtype.Date
+	AccountID uuid.UUID
+	Payments  int32
+	PaidKobo  int64
+	Swaps     int32
+}
+
 type AnalyticsDailyaccountmetric struct {
 	ID                     uuid.UUID
 	CreatedAt              time.Time
@@ -217,6 +224,26 @@ type AnalyticsDailyhubmetric struct {
 	Overrides            int32
 	Inputs               []byte
 	HubID                uuid.UUID
+}
+
+type AnalyticsDailymoney struct {
+	Day           pgtype.Date
+	HubID         *uuid.UUID
+	CooperativeID *uuid.UUID
+	Purpose       string
+	Channel       string
+	Status        string
+	Payments      int32
+	AmountKobo    int64
+	VatKobo       int64
+}
+
+type AnalyticsDailyswap struct {
+	Day           pgtype.Date
+	HubID         uuid.UUID
+	CooperativeID *uuid.UUID
+	Swaps         int32
+	AmountKobo    int64
 }
 
 type AnalyticsImpactstory struct {
@@ -259,6 +286,12 @@ type AnalyticsReportjob struct {
 	Raw            []byte
 	RequestedByID  *uuid.UUID
 	IdempotencyKey string
+}
+
+type AnalyticsRollupstate struct {
+	Name           string
+	LastRunAt      time.Time
+	BackfilledFrom pgtype.Date
 }
 
 type AuditAuditevent struct {
@@ -928,6 +961,7 @@ type MobilityVehicle struct {
 	PetrolEngineID    *uuid.UUID
 	IotApiKeyHash     string
 	AssignedDriverID  *uuid.UUID
+	CooperativeID     *uuid.UUID
 }
 
 type MobilityVehicleassignment struct {

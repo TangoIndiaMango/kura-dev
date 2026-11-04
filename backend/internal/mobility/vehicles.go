@@ -37,6 +37,8 @@ type VehicleDTO struct {
 	CurrentBatteryChargeAt     *jsontime.Field `json:"current_battery_charge_at"`
 	AssignedDriverID           *string         `json:"assigned_driver_id"`
 	AssignedDriverName         *string         `json:"assigned_driver_name"`
+	CooperativeID              *string         `json:"cooperative_id"`
+	CooperativeName            *string         `json:"cooperative_name"`
 	EstimatedRangeKm           *int64          `json:"estimated_range_km"`
 	PayPerSwapKobo             *int64          `json:"pay_per_swap_kobo"`
 	HardwareID                 *string         `json:"hardware_id"`
@@ -120,7 +122,8 @@ func (h *VehicleHandler) dtos(ctx context.Context, rows []db.VehicleRowsRow) ([]
 			CurrentBatteryCharge: v.BatteryCharge, CurrentBatteryChargeSource: v.BatteryChargeSource,
 			CurrentBatteryChargeAt: jsontime.FieldPtr(v.BatteryChargeAt), AssignedDriverID: idPtr(v.AssignedDriverID),
 			EstimatedRangeKm: estimateRangeKm(v), PayPerSwapKobo: price, HardwareID: v.HardwareID, Vin: v.Vin,
-			Status: v.Status, CreatedAt: jsontime.Field(v.CreatedAt)}
+			Status: v.Status, CreatedAt: jsontime.Field(v.CreatedAt), CooperativeID: idPtr(v.CooperativeID),
+			CooperativeName: v.CooperativeName}
 		if v.AssignedDriverID != nil {
 			d.AssignedDriverName = driverName(v.DriverFirst, v.DriverLast, v.DriverPhone)
 		}
@@ -191,13 +194,13 @@ func vehicleOrdering(raw string) string {
 
 func (h *VehicleHandler) filters(r *http.Request) (db.ListVehicleIDsParams, error) {
 	qp := decode.Params(r)
-	account := qp.UUID("account")
+	account, coop := qp.UUID("account"), qp.UUID("cooperative")
 	if err := qp.Err(); err != nil {
 		return db.ListVehicleIDsParams{}, err
 	}
 	sc, err := h.scope(r.Context())
 	return db.ListVehicleIDsParams{AllRows: sc.all, OwnAccounts: nonNil(sc.own), HubIds: nonNil(sc.hubs),
-		Touching: nonNil(sc.touch), Account: account, Status: listq.Exact(r, "status"), Q: listq.Search(r),
+		Touching: nonNil(sc.touch), Account: account, Cooperative: coop, Status: listq.Exact(r, "status"), Q: listq.Search(r),
 		Ord: vehicleOrdering(r.URL.Query().Get("ordering"))}, err
 }
 
@@ -227,7 +230,7 @@ func (h *VehicleHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	total, err := h.q.CountVehicles(ctx, db.CountVehiclesParams{AllRows: f.AllRows, OwnAccounts: f.OwnAccounts,
-		HubIds: f.HubIds, Touching: f.Touching, Account: f.Account, Status: f.Status, Q: f.Q})
+		HubIds: f.HubIds, Touching: f.Touching, Account: f.Account, Cooperative: f.Cooperative, Status: f.Status, Q: f.Q})
 	if err != nil {
 		respond.Error(w, r, err)
 		return

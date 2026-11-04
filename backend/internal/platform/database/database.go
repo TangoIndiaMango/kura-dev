@@ -75,6 +75,27 @@ func InTx(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) error) (er
 	return tx.Commit(ctx)
 }
 
+// ReadOnly runs fn in a READ ONLY transaction whose statements give up
+// after timeout. Report reads use it: they take no row locks, cannot write,
+// and a runaway range is cancelled instead of holding a connection.
+func ReadOnly(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration, fn func(tx pgx.Tx) error) (err error) {
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return fmt.Errorf("database: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err = tx.Exec(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", timeout.Milliseconds())); err != nil {
+		return err
+	}
+	return fn(tx)
+}
+
+// IsTimeout reports a statement cancelled by statement_timeout (57014).
+func IsTimeout(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "57014"
+}
+
 var uniqueKey = regexp.MustCompile(`(?i)Key \(([^)]+)\)=\([^)]+\) already exists`)
 
 // IsUniqueViolation reports a 23505 and the offending column, for the

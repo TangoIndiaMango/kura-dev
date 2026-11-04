@@ -138,10 +138,10 @@ func (h *VehicleHandler) export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := export.Table{Stem: "vehicles", Title: "Kura vehicles", Headers: []string{"id", "registration_plate", "make",
-		"model", "vehicle_type", "owner_kura_id", "status", "created_at"}}
+		"model", "vehicle_type", "owner_kura_id", "chairman_group", "status", "created_at"}}
 	for _, v := range rows {
 		t.Rows = append(t.Rows, []string{v.ID.String(), v.RegistrationPlate, v.Make, v.Model, v.VehicleType,
-			v.OwnerKuraID, v.Status, jsontime.FormatISO(v.CreatedAt)})
+			v.OwnerKuraID, deref(v.CooperativeName), v.Status, jsontime.FormatISO(v.CreatedAt)})
 	}
 	if err := export.Write(w, r.URL.Query().Get("export"), t); err != nil {
 		respond.Error(w, r, err)

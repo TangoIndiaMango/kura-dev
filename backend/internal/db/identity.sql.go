@@ -80,7 +80,7 @@ func (q *Queries) FirstDriverRow(ctx context.Context, accountID uuid.UUID) (Acco
 }
 
 const firstOwnedAccountForUpdate = `-- name: FirstOwnedAccountForUpdate :one
-SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at LIMIT 1 FOR UPDATE
+SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at LIMIT 1 FOR UPDATE
 `
 
 func (q *Queries) FirstOwnedAccountForUpdate(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error) {
@@ -98,7 +98,6 @@ func (q *Queries) FirstOwnedAccountForUpdate(ctx context.Context, ownerUserID uu
 		&i.OwnerUserID,
 		&i.RegistrationChannel,
 		&i.Psp,
-		&i.CooperativeID,
 		&i.RiskStatus,
 	)
 	return i, err
@@ -169,9 +168,9 @@ func (q *Queries) IdentityDocByTypeForUpdate(ctx context.Context, arg IdentityDo
 
 const insertAccount = `-- name: InsertAccount :one
 INSERT INTO accounts_account (id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status,
-  registration_channel, psp, cooperative_id, owner_user_id, risk_status)
-VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, '', $8, $9, 'NORMAL')
-RETURNING id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status
+  registration_channel, psp, owner_user_id, risk_status)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, '', $8, 'NORMAL')
+RETURNING id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status
 `
 
 type InsertAccountParams struct {
@@ -182,7 +181,6 @@ type InsertAccountParams struct {
 	Status              string
 	KycStatus           string
 	RegistrationChannel string
-	CooperativeID       *uuid.UUID
 	OwnerUserID         uuid.UUID
 }
 
@@ -195,7 +193,6 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		arg.Status,
 		arg.KycStatus,
 		arg.RegistrationChannel,
-		arg.CooperativeID,
 		arg.OwnerUserID,
 	)
 	var i AccountsAccount
@@ -211,7 +208,6 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.OwnerUserID,
 		&i.RegistrationChannel,
 		&i.Psp,
-		&i.CooperativeID,
 		&i.RiskStatus,
 	)
 	return i, err
@@ -374,20 +370,6 @@ func (q *Queries) ResubmitIdentityDoc(ctx context.Context, arg ResubmitIdentityD
 		arg.FrontImageID,
 		arg.BackImageID,
 	)
-	return err
-}
-
-const setAccountCooperative = `-- name: SetAccountCooperative :exec
-UPDATE accounts_account SET cooperative_id = $2, updated_at = now() WHERE id = $1
-`
-
-type SetAccountCooperativeParams struct {
-	ID            uuid.UUID
-	CooperativeID *uuid.UUID
-}
-
-func (q *Queries) SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error {
-	_, err := q.db.Exec(ctx, setAccountCooperative, arg.ID, arg.CooperativeID)
 	return err
 }
 

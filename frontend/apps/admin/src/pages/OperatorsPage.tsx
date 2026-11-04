@@ -1,4 +1,4 @@
-import { useLocation, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useParams } from 'react-router-dom'
 import {
   OperatorFormPanel,
   OperatorsDetailPanel,
@@ -11,7 +11,8 @@ export default function OperatorsPage() {
   const isEdit = Boolean(id && pathname.endsWith('/edit'))
 
   if (id === 'new') return <OperatorFormPanel />
-  if (isEdit && id) return <OperatorFormPanel operatorId={id} />
+  // Riders have nothing staff edit here: the chairman lives on the vehicle.
+  if (isEdit && id) return <Navigate to={`/operators/${id}`} replace />
   if (id) return <OperatorsDetailPanel id={id} />
   return <OperatorsPanel />
 }

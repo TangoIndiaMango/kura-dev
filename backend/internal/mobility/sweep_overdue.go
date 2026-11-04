@@ -72,7 +72,7 @@ func flagOverdueOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, *ma
 		Context: map[string]any{"serial": b.Serial, "vehicle": v.RegistrationPlate}}); err != nil {
 		return false, nil, err
 	}
-	target, owner, err := unreturnedTargets(ctx, q, &acct)
+	target, owner, err := unreturnedTargets(ctx, q, &acct, v.CooperativeID)
 	if err != nil {
 		return false, nil, err
 	}

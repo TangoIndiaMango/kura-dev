@@ -67,12 +67,28 @@ func writeCSV(w http.ResponseWriter, t Table) error {
 
 func writePDF(w http.ResponseWriter, t Table) error {
 	rows, truncated := materialise(t, PDFRowCap)
+	data, err := renderPDF(t.Title, t.Headers, rows, truncated)
+	if err != nil {
+		return err
+	}
+	headers(w, t.Stem+".pdf", "application/pdf", rows, truncated)
+	_, err = w.Write(data)
+	return err
+}
+
+// RenderPDF is the PDF table as bytes, for files stored rather than served;
+// truncated adds the "open CSV for full set" note.
+func RenderPDF(title string, head []string, rows [][]string, truncated bool) ([]byte, error) {
+	return renderPDF(title, head, rows, truncated)
+}
+
+func renderPDF(title string, head []string, rows [][]string, truncated bool) ([]byte, error) {
 	tr := fpdf.New("L", "mm", "A4", "").UnicodeTranslatorFromDescriptor("")
 	pdf := fpdf.New("L", "mm", "A4", "")
 	pdf.SetAutoPageBreak(true, 12)
 	pdf.AddPage()
 	pdf.SetFont("Helvetica", "B", 14)
-	pdf.CellFormat(0, 8, tr(t.Title), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 8, tr(title), "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 8)
 	count := len(rows)
 	note := ""
@@ -82,15 +98,13 @@ func writePDF(w http.ResponseWriter, t Table) error {
 	}
 	pdf.CellFormat(0, 5, fmt.Sprintf("%d rows%s", count, note), "", 1, "L", false, 0, "")
 	pdf.Ln(2)
-	drawTable(pdf, tr, t.Headers, rows)
+	drawTable(pdf, tr, head, rows)
 
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
-		return err
+		return nil, err
 	}
-	headers(w, t.Stem+".pdf", "application/pdf", rows, truncated)
-	_, err := w.Write(buf.Bytes())
-	return err
+	return buf.Bytes(), nil
 }
 
 // drawTable: dark header row repeated on each page, zebra body rows.

@@ -1,5 +1,5 @@
 /** Live cooperative catalogue for CRM selects. */
-import { useFetchData, usePostData } from '@shared/hooks/api'
+import { useFetchData } from '@shared/hooks/api'
 
 export const COOPERATIVES_ENDPOINTS = {
   list: '/cooperatives/',
@@ -41,12 +41,4 @@ export function useCooperatives(params?: { enabled?: boolean; search?: string })
     label: c.region ? `${c.name} (${c.region})` : c.name,
   }))
   return { ...query, options, cooperatives: query.data?.results ?? [] }
-}
-
-export function useSetAccountCooperative(accountId: string) {
-  return usePostData<{ cooperative_id: string | null }, unknown>(
-    accountId ? `/accounts/${accountId}/set-cooperative/` : '/accounts/',
-    ['accounts'],
-    { silentError: true },
-  )
 }

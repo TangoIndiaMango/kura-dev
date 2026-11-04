@@ -1,7 +1,8 @@
 -- name: ListCooperatives :many
 SELECT c.id, c.name, c.region, c.status, c.chairman_user_id, c.created_at, c.updated_at,
   u.email AS chairman_email,
-  (SELECT count(*) FROM accounts_account a WHERE a.cooperative_id = c.id)::int AS member_count
+  (SELECT count(DISTINCT v.account_id) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS member_count,
+  (SELECT count(*) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS vehicle_count
 FROM accounts_cooperative c LEFT JOIN accounts_user u ON u.id = c.chairman_user_id
 WHERE (sqlc.arg(all_rows)::bool OR c.chairman_user_id = sqlc.narg(chairman))
   AND (sqlc.narg(q)::text IS NULL OR c.name ILIKE '%' || sqlc.narg(q) || '%'
@@ -18,12 +19,13 @@ WHERE (sqlc.arg(all_rows)::bool OR c.chairman_user_id = sqlc.narg(chairman))
 -- name: GetCooperative :one
 SELECT c.id, c.name, c.region, c.status, c.chairman_user_id, c.created_at, c.updated_at,
   u.email AS chairman_email,
-  (SELECT count(*) FROM accounts_account a WHERE a.cooperative_id = c.id)::int AS member_count
+  (SELECT count(DISTINCT v.account_id) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS member_count,
+  (SELECT count(*) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS vehicle_count
 FROM accounts_cooperative c LEFT JOIN accounts_user u ON u.id = c.chairman_user_id
 WHERE c.id = $1;
 
 -- name: CooperativeAccountIDs :many
-SELECT id FROM accounts_account WHERE cooperative_id = $1 ORDER BY created_at, id;
+SELECT DISTINCT v.account_id FROM mobility_vehicle v WHERE v.cooperative_id = $1 ORDER BY v.account_id;
 
 -- name: InsertCooperative :exec
 INSERT INTO accounts_cooperative (id, created_at, updated_at, name, region, status)

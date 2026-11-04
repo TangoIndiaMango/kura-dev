@@ -1,5 +1,5 @@
-/** Matches create/edit/send — and bay swap — outside padded app chrome. */
-const FULLSCREEN_FORM_PATH = /\/(new|edit|create|compose|send|swap)\/?$/i
+/** Matches create/edit/send — bay swap and the report builder — outside padded app chrome. */
+const FULLSCREEN_FORM_PATH = /\/(new|edit|create|compose|send|swap|build)\/?$/i
 
 const FULLSCREEN_FORM_EXCLUSIONS = new Set<string>([
   // none yet — add paths that should stay embedded

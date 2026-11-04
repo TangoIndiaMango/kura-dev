@@ -63,15 +63,15 @@ export function RevenueLiveOverview({
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-5">
-      <Alert color="blue" title="Live ledger scope">
-        Collections, VAT, pending payments, and plan counts on this tab are read
-        from KURA&apos;s payment records. Streams, cohorts, and vehicle economics
-        remain planning models on their own tabs.
+      <Alert color="blue" title="What counts as revenue">
+        Successful payments for swaps, plans, bookings and services. Wallet
+        top-ups are left out here and counted when the wallet is spent, so the
+        same naira is never counted twice.
       </Alert>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-[var(--bd)] bg-[var(--sf)] p-4">
-          <h3 className="text-sm font-bold text-[var(--tx)]">Collections by day</h3>
+          <h3 className="text-sm font-bold text-[var(--tx)]">Revenue by day</h3>
           {chartRows.length ? (
             <AdminAreaChart
               data={chartRows}
@@ -110,7 +110,7 @@ export function RevenueLiveOverview({
           row.channel ? `channel-${row.channel}` : `purpose-${row.purpose}`
         }
         showRowAction={false}
-        toolbar={{ title: 'Collection breakdown', showFilter: false }}
+        toolbar={{ title: 'Revenue breakdown', showFilter: false }}
         renderItems={(row) => [
           <span key="name" className="font-semibold text-[var(--tx)]">
             {row.channel || row.purpose || 'Other'}

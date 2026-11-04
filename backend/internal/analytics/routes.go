@@ -27,6 +27,8 @@ func (m *Module) Register(mux *http.ServeMux) {
 	g.Cap("GET", "/demand/hubs/", "hubs:read", m.h.demand)
 	g.Cap("GET", "/revenue/overview/", "analytics:revenue", m.h.revenueOverview)
 	g.Cap("GET", "/revenue/streams/", "analytics:revenue", m.h.revenueStreams)
+	g.Cap("GET", "/revenue/cohorts/", "analytics:revenue", m.h.revenueCohorts)
+	g.Cap("GET", "/revenue/retention/", "analytics:revenue", m.h.revenueRetention)
 	g.Cap("GET", "/impact/", "analytics:impact", m.h.impact)
 	g.Cap("GET", "/cooperative/me/", "analytics:cooperative", m.h.myCooperative)
 	g.Cap("GET", "/cooperative/{id}/", "analytics:cooperative", m.h.cooperative)

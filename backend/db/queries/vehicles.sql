@@ -14,6 +14,7 @@ WHERE (sqlc.arg(all_rows)::bool
      OR v.account_id = ANY(sqlc.arg(touching)::uuid[]))))
   AND (sqlc.narg(account)::uuid IS NULL OR v.account_id = sqlc.narg(account))
   AND (sqlc.narg(status)::text IS NULL OR v.status = sqlc.narg(status))
+  AND (sqlc.narg(cooperative)::uuid IS NULL OR v.cooperative_id = sqlc.narg(cooperative))
   AND (sqlc.narg(q)::text IS NULL OR v.registration_plate ILIKE '%' || sqlc.narg(q) || '%'
        OR v.hardware_id ILIKE '%' || sqlc.narg(q) || '%' OR v.vin ILIKE '%' || sqlc.narg(q) || '%'
        OR a.display_name ILIKE '%' || sqlc.narg(q) || '%' OR a.kura_id ILIKE '%' || sqlc.narg(q) || '%'
@@ -39,6 +40,7 @@ WHERE (sqlc.arg(all_rows)::bool
      OR v.account_id = ANY(sqlc.arg(touching)::uuid[]))))
   AND (sqlc.narg(account)::uuid IS NULL OR v.account_id = sqlc.narg(account))
   AND (sqlc.narg(status)::text IS NULL OR v.status = sqlc.narg(status))
+  AND (sqlc.narg(cooperative)::uuid IS NULL OR v.cooperative_id = sqlc.narg(cooperative))
   AND (sqlc.narg(q)::text IS NULL OR v.registration_plate ILIKE '%' || sqlc.narg(q) || '%'
        OR v.hardware_id ILIKE '%' || sqlc.narg(q) || '%' OR v.vin ILIKE '%' || sqlc.narg(q) || '%'
        OR a.display_name ILIKE '%' || sqlc.narg(q) || '%' OR a.kura_id ILIKE '%' || sqlc.narg(q) || '%'
@@ -53,7 +55,8 @@ SELECT v.id, v.created_at, v.updated_at, v.registration_plate, v.status, v.accou
   b.serial AS battery_serial, b.charge_pct AS battery_charge, b.charge_source AS battery_charge_source,
   b.charge_observed_at AS battery_charge_at, b.health_pct AS battery_health,
   bt.usable_energy_wh AS battery_usable_wh, bt.wh_per_km AS battery_wh_per_km,
-  du.first_name AS driver_first, du.last_name AS driver_last, du.phone AS driver_phone
+  du.first_name AS driver_first, du.last_name AS driver_last, du.phone AS driver_phone,
+  v.cooperative_id, coop.name AS cooperative_name
 FROM mobility_vehicle v
 JOIN mobility_vehiclemodel m ON m.id = v.vehicle_model_id
 JOIN mobility_batterytype t ON t.id = m.battery_type_id
@@ -62,6 +65,7 @@ LEFT JOIN mobility_battery b ON b.id = v.current_battery_id
 LEFT JOIN mobility_batterytype bt ON bt.id = b.battery_type_id
 LEFT JOIN accounts_driver d ON d.id = v.assigned_driver_id
 LEFT JOIN accounts_user du ON du.id = d.user_id
+LEFT JOIN accounts_cooperative coop ON coop.id = v.cooperative_id
 WHERE v.id = ANY(sqlc.arg(ids)::uuid[]);
 
 -- name: VehicleStatusCounts :many
@@ -84,13 +88,16 @@ SELECT EXISTS (SELECT 1 FROM mobility_vehicle WHERE hardware_id = $1 AND id <> s
 -- name: InsertVehicle :exec
 INSERT INTO mobility_vehicle (id, created_at, updated_at, registration_plate, status, account_id, current_battery_id,
   vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash,
-  assigned_driver_id)
-VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL);
+  assigned_driver_id, cooperative_id)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL, $8);
 
 -- name: SaveVehicle :exec
 UPDATE mobility_vehicle SET registration_plate = $2, status = $3, account_id = $4, vehicle_model_id = $5,
   hardware_id = $6, vin = $7, assigned_driver_id = $8, qr_secret = $9, iot_api_key_hash = $10, updated_at = now()
 WHERE id = $1;
+
+-- name: SetVehicleCooperative :exec
+UPDATE mobility_vehicle SET cooperative_id = $2, updated_at = now() WHERE id = $1;
 
 -- name: AccountVehicleTotal :one
 SELECT count(*)::int FROM mobility_vehicle WHERE account_id = $1;

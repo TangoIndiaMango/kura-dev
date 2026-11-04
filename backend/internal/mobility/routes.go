@@ -92,6 +92,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	v.User("GET", "/{id}/", vh.get)
 	v.Cap("PATCH", "/{id}/", "vehicles:manage", vh.patch())
 	v.Cap("POST", "/{id}/assign-driver/", "vehicles:manage", vh.assignDriver())
+	v.Cap("POST", "/{id}/set-cooperative/", "vehicles:manage", vh.setCooperative())
 	v.User("GET", "/{id}/assignments/", vh.assignments)
 	v.Cap("POST", "/{id}/command/", "vehicles:manage", vh.command)
 	v.User("GET", "/{id}/commands/", vh.commands)

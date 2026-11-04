@@ -166,7 +166,6 @@ export type RegisterOperatorPayload = {
   email: string
   id_type?: string
   id_number?: string
-  cooperative_id?: string | null
 }
 
 export type RegisterOperatorResult = AccountCrmDetail & {

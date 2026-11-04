@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import {
+  Analytics01Icon,
   DashboardSquare01Icon,
   Location01Icon,
   BatteryFullIcon,
@@ -51,6 +52,7 @@ export const ADMIN_NAV_ICONS: Record<AdminModuleId, AdminNavIcon> = {
   offers: SaleTag01Icon,
   discounts: PercentCircleIcon,
   revenue: ChartHistogramIcon,
+  reports: Analytics01Icon,
   impact: Leaf01Icon,
   health: Activity01Icon,
   telemetry: Wifi01Icon,

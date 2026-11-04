@@ -29,6 +29,7 @@ type vehicleWriteReq struct {
 	HardwareID        *string    `json:"hardware_id" validate:"omitempty,max=64"`
 	Vin               *string    `json:"vin" validate:"omitempty,max=32"`
 	Status            *string    `json:"status" validate:"omitempty,oneof=ACTIVE PENDING SUSPENDED RETIRED"`
+	CooperativeID     *uuid.UUID `json:"cooperative_id"`
 }
 
 // missing is VehicleWriteSerializer.validate (full writes only).
@@ -108,6 +109,11 @@ func (h *VehicleHandler) create(w http.ResponseWriter, r *http.Request) {
 				return apperr.Conflict("DUPLICATE", "Another vehicle already uses this hardware ID.")
 			}
 		}
+		if b.CooperativeID != nil {
+			if err := cooperativeExists(ctx, q, *b.CooperativeID); err != nil {
+				return err
+			}
+		}
 		acct, err := q.AccountByID(ctx, *b.AccountID)
 		if database.IsNoRows(err) {
 			return apperr.New("VALIDATION_ERROR", "Unknown account.").
@@ -124,7 +130,8 @@ func (h *VehicleHandler) create(w http.ResponseWriter, r *http.Request) {
 			vin = strings.ToUpper(strings.TrimSpace(*b.Vin))
 		}
 		if err := q.InsertVehicle(ctx, db.InsertVehicleParams{ID: id, RegistrationPlate: plate, Status: status,
-			AccountID: acct.ID, VehicleModelID: *b.VehicleModelID, HardwareID: hw, Vin: vin}); err != nil {
+			AccountID: acct.ID, VehicleModelID: *b.VehicleModelID, HardwareID: hw, Vin: vin,
+			CooperativeID: b.CooperativeID}); err != nil {
 			return err
 		}
 		who, err := actor.FromRequest(ctx, q)

@@ -140,11 +140,6 @@ type messageReq struct {
 	Message string `json:"message" validate:"required,max=280"`
 }
 
-// AccountCooperativeSerializer: cooperative_id is required but may be null.
-type coopReq struct {
-	CooperativeID *uuid.UUID `json:"cooperative_id"`
-}
-
 // staffAction runs a staff mutation on {id} and answers with the CRM
 // detail. The serializer is validated before get_object, as in Django.
 func staffAction[T any](h *AccountHandler, run func(ctx context.Context, staff db.AccountsUser, acct db.CrmRowsRow, b T) error) http.HandlerFunc {
@@ -245,49 +240,6 @@ func (h *AccountHandler) notifyRider() http.HandlerFunc {
 				Body: truncate(text, 160), Source: "Users", LinkPath: "/account/identity",
 				TemplateCode: "account.ops_note",
 				DedupeKey:    fmt.Sprintf("account.ops_note:%s:%d", row.ID, time.Now().Unix())}}})
-	})
-}
-
-// setCooperative is CooperativeService.assign_account. The cooperative is
-// checked before the account is loaded, as in the view.
-func (h *AccountHandler) setCooperative(w http.ResponseWriter, r *http.Request) {
-	present := decode.Keys(r)["cooperative_id"]
-	var b coopReq
-	err := decode.JSON(r, &b)
-	if err == nil && !present {
-		err = apperr.Field("cooperative_id", "This field is required.")
-	}
-	if err != nil {
-		respond.Error(w, r, err)
-		return
-	}
-	if b.CooperativeID != nil {
-		ok, err := h.q.CooperativeExists(r.Context(), *b.CooperativeID)
-		if err == nil && !ok {
-			err = apperr.New("VALIDATION_ERROR", "Unknown cooperative.").
-				WithDetails(apperr.Details{"cooperative_id": []string{"invalid"}})
-		}
-		if err != nil {
-			respond.Error(w, r, err)
-			return
-		}
-	}
-	h.runStaffAction(w, r, func(ctx context.Context, staff db.AccountsUser, row db.CrmRowsRow) error {
-		return database.InTx(ctx, h.pool, func(tx pgx.Tx) error {
-			q := db.New(tx)
-			locked, err := q.AccountForUpdate(ctx, row.ID)
-			if err != nil {
-				return err
-			}
-			if err := q.SetAccountCooperative(ctx, db.SetAccountCooperativeParams{ID: row.ID,
-				CooperativeID: b.CooperativeID}); err != nil {
-				return err
-			}
-			return events.Emit(ctx, q, events.Event{Action: "account.cooperative_assigned", SubjectType: "account",
-				SubjectID: row.ID.String(), SubjectLabel: firstNonEmpty(locked.KuraID, locked.DisplayName),
-				Actor: actorOf(staff), Before: events.Map{"cooperative_id": uuidOrEmpty(locked.CooperativeID)},
-				After: events.Map{"cooperative_id": uuidOrEmpty(b.CooperativeID)}})
-		})
 	})
 }
 

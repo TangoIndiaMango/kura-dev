@@ -130,6 +130,14 @@ export function useAssignVehicleDriver(vehicleId: string) {
   )
 }
 
+export function useSetVehicleCooperative(vehicleId: string) {
+  return usePostData<{ cooperative_id: string | null }, VehicleDetailApi>(
+    VEHICLES_ENDPOINTS.setCooperative(vehicleId),
+    [...INVALIDATE, VEHICLES_ENDPOINTS.vehicle(vehicleId)],
+    { silentError: true },
+  )
+}
+
 export type VehicleCommandRow = {
   id: string
   kind: string

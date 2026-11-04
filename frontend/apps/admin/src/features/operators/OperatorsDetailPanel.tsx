@@ -130,7 +130,6 @@ export function OperatorsDetailPanel({ id }: { id: string }) {
       setDraftDiscount(id)
       setAssignDiscountOpen(true)
     },
-    onEdit: () => navigate(`/operators/${operator.id}/edit`),
   })
 
   return (

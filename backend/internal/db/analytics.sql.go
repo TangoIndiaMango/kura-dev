@@ -33,10 +33,11 @@ func (q *Queries) CooperativeByID(ctx context.Context, id uuid.UUID) (AccountsCo
 }
 
 const cooperativeFleet = `-- name: CooperativeFleet :one
-SELECT (SELECT count(*) FROM mobility_vehicle v WHERE v.account_id = ANY($1::uuid[]) AND v.status = 'ACTIVE')::int AS vehicles,
+SELECT (SELECT count(*) FROM mobility_vehicle v WHERE v.cooperative_id = $1 AND v.status = 'ACTIVE')::int AS vehicles,
   (SELECT count(*) FROM mobility_battery b JOIN mobility_vehicle v ON v.current_battery_id = b.id
-     WHERE b.status = 'ISSUED' AND v.account_id = ANY($1::uuid[]))::int AS unreturned,
-  (SELECT count(*) FROM mobility_swap s WHERE s.account_id = ANY($1::uuid[]) AND s.status = 'COMPLETED')::bigint AS swaps
+     WHERE b.status = 'ISSUED' AND v.cooperative_id = $1)::int AS unreturned,
+  (SELECT count(*) FROM mobility_swap s JOIN mobility_vehicle v ON v.id = s.vehicle_id
+     WHERE v.cooperative_id = $1 AND s.status = 'COMPLETED')::bigint AS swaps
 `
 
 type CooperativeFleetRow struct {
@@ -45,8 +46,9 @@ type CooperativeFleetRow struct {
 	Swaps      int64
 }
 
-func (q *Queries) CooperativeFleet(ctx context.Context, ids []uuid.UUID) (CooperativeFleetRow, error) {
-	row := q.db.QueryRow(ctx, cooperativeFleet, ids)
+// The chairman's fleet is the vehicles linked to the cooperative.
+func (q *Queries) CooperativeFleet(ctx context.Context, cooperativeID *uuid.UUID) (CooperativeFleetRow, error) {
+	row := q.db.QueryRow(ctx, cooperativeFleet, cooperativeID)
 	var i CooperativeFleetRow
 	err := row.Scan(&i.Vehicles, &i.Unreturned, &i.Swaps)
 	return i, err
@@ -74,7 +76,7 @@ func (q *Queries) CooperativeForChairman(ctx context.Context, chairmanUserID *uu
 const cooperativeMembers = `-- name: CooperativeMembers :many
 SELECT a.id, a.kura_id, a.display_name, a.status, u.phone FROM accounts_account a
 LEFT JOIN accounts_user u ON u.id = a.owner_user_id
-WHERE a.cooperative_id = $1 ORDER BY a.display_name
+WHERE a.id IN (SELECT v.account_id FROM mobility_vehicle v WHERE v.cooperative_id = $1) ORDER BY a.display_name
 `
 
 type CooperativeMembersRow struct {
@@ -395,8 +397,10 @@ func (q *Queries) InsertStory(ctx context.Context, arg InsertStoryParams) error 
 }
 
 const revenueByChannel = `-- name: RevenueByChannel :many
-SELECT channel AS k, sum(amount_kobo)::bigint AS amount, count(*)::int AS n FROM finance_payment
-WHERE created_at >= $1 AND created_at < $2 AND status = 'SUCCESS'
+SELECT channel AS k, sum(amount_kobo)::bigint AS amount, sum(payments)::int AS n FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 GROUP BY channel ORDER BY 2 DESC, 1
 `
 
@@ -432,8 +436,10 @@ func (q *Queries) RevenueByChannel(ctx context.Context, arg RevenueByChannelPara
 }
 
 const revenueByPurpose = `-- name: RevenueByPurpose :many
-SELECT purpose AS k, sum(amount_kobo)::bigint AS amount, count(*)::int AS n FROM finance_payment
-WHERE created_at >= $1 AND created_at < $2 AND status = 'SUCCESS'
+SELECT purpose AS k, sum(amount_kobo)::bigint AS amount, sum(payments)::int AS n FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 GROUP BY purpose ORDER BY 2 DESC, 1
 `
 
@@ -469,9 +475,10 @@ func (q *Queries) RevenueByPurpose(ctx context.Context, arg RevenueByPurposePara
 }
 
 const revenueDaily = `-- name: RevenueDaily :many
-SELECT (created_at AT TIME ZONE 'Africa/Lagos')::date AS day, sum(amount_kobo)::bigint AS amount, count(*)::int AS n
-FROM finance_payment
-WHERE created_at >= $1 AND created_at < $2 AND status = 'SUCCESS'
+SELECT day, sum(amount_kobo)::bigint AS amount, sum(payments)::int AS n FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 GROUP BY 1 ORDER BY 1
 `
 
@@ -507,12 +514,16 @@ func (q *Queries) RevenueDaily(ctx context.Context, arg RevenueDailyParams) ([]R
 }
 
 const revenueTotals = `-- name: RevenueTotals :one
+
 SELECT COALESCE(sum(amount_kobo) FILTER (WHERE status = 'SUCCESS'), 0)::bigint AS gross,
   COALESCE(sum(vat_kobo) FILTER (WHERE status = 'SUCCESS'), 0)::bigint AS vat,
-  (count(*) FILTER (WHERE status = 'SUCCESS'))::int AS transactions,
+  COALESCE(sum(payments) FILTER (WHERE status = 'SUCCESS'), 0)::int AS transactions,
   COALESCE(sum(amount_kobo) FILTER (WHERE status = 'PENDING'), 0)::bigint AS outstanding,
-  (count(*) FILTER (WHERE status = 'PENDING'))::int AS outstanding_n
-FROM finance_payment WHERE created_at >= $1 AND created_at < $2
+  COALESCE(sum(payments) FILTER (WHERE status = 'PENDING'), 0)::int AS outstanding_n
+FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 `
 
 type RevenueTotalsParams struct {
@@ -528,6 +539,10 @@ type RevenueTotalsRow struct {
 	OutstandingN int32
 }
 
+// Revenue reads the daily money rollup (see rollup.sql), not payments.
+// It excludes wallet top-ups (FUND / WALLET_TOPUP): that money is counted
+// when it is spent, as a wallet-debit swap or plan. from_at / to_at are
+// Lagos midnights, so they map to whole rollup days.
 func (q *Queries) RevenueTotals(ctx context.Context, arg RevenueTotalsParams) (RevenueTotalsRow, error) {
 	row := q.db.QueryRow(ctx, revenueTotals, arg.FromAt, arg.ToAt)
 	var i RevenueTotalsRow

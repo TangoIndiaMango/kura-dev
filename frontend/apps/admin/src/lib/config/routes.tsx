@@ -54,6 +54,7 @@ const CreditPage = lazy(() => import('../../pages/CreditPage'))
 const OffersPage = lazy(() => import('../../pages/OffersPage'))
 const DiscountsPage = lazy(() => import('../../pages/DiscountsPage'))
 const RevenuePage = lazy(() => import('../../pages/RevenuePage'))
+const ReportsPage = lazy(() => import('../../pages/ReportsPage'))
 const ImpactPage = lazy(() => import('../../pages/ImpactPage'))
 const HealthPage = lazy(() => import('../../pages/HealthPage'))
 const TelemetryPage = lazy(() => import('../../pages/TelemetryPage'))
@@ -167,7 +168,8 @@ export const router = createBrowserRouter([
       },
       { path: 'discounts/:id', element: <DiscountsPage /> },
       { path: 'revenue', element: <RevenuePage /> },
-      { path: 'revenue/:id', element: <RevenuePage /> },
+      { path: 'reports', element: <ReportsPage /> },
+      { path: 'reports/:dataset/build', element: <ReportsPage /> },
       { path: 'impact', element: <ImpactPage /> },
       { path: 'impact/new', element: <ImpactPage /> },
       { path: 'impact/:id/edit', element: <ImpactPage /> },

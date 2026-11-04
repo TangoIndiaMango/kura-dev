@@ -555,7 +555,7 @@ func (q *Queries) ListSubscriptionIDs(ctx context.Context, arg ListSubscriptionI
 }
 
 const newestOwnedAccount = `-- name: NewestOwnedAccount :one
-SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at DESC LIMIT 1
+SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at DESC LIMIT 1
 `
 
 // user.accounts.first(): Account's default ordering is -created_at.
@@ -574,7 +574,6 @@ func (q *Queries) NewestOwnedAccount(ctx context.Context, ownerUserID uuid.UUID)
 		&i.OwnerUserID,
 		&i.RegistrationChannel,
 		&i.Psp,
-		&i.CooperativeID,
 		&i.RiskStatus,
 	)
 	return i, err

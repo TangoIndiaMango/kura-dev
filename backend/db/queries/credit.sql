@@ -157,7 +157,8 @@ FROM accounts_account a LEFT JOIN accounts_user u ON u.id = a.owner_user_id
 WHERE (sqlc.narg(status)::text IS NULL OR a.status = sqlc.narg(status))
   AND (sqlc.narg(kyc_status)::text IS NULL OR a.kyc_status = sqlc.narg(kyc_status))
   AND (sqlc.narg(kind)::text IS NULL OR a.kind = sqlc.narg(kind))
-  AND (sqlc.narg(cooperative)::uuid IS NULL OR a.cooperative_id = sqlc.narg(cooperative))
+  AND (sqlc.narg(cooperative)::uuid IS NULL OR EXISTS (SELECT 1 FROM mobility_vehicle v
+       WHERE v.account_id = a.id AND v.cooperative_id = sqlc.narg(cooperative)))
   AND (sqlc.narg(created_on_or_before)::date IS NULL
        OR (a.created_at AT TIME ZONE 'Africa/Lagos')::date <= sqlc.narg(created_on_or_before))
   AND (sqlc.narg(created_on_or_after)::date IS NULL
@@ -172,7 +173,8 @@ SELECT count(*) FROM accounts_account a
 WHERE (sqlc.narg(status)::text IS NULL OR a.status = sqlc.narg(status))
   AND (sqlc.narg(kyc_status)::text IS NULL OR a.kyc_status = sqlc.narg(kyc_status))
   AND (sqlc.narg(kind)::text IS NULL OR a.kind = sqlc.narg(kind))
-  AND (sqlc.narg(cooperative)::uuid IS NULL OR a.cooperative_id = sqlc.narg(cooperative))
+  AND (sqlc.narg(cooperative)::uuid IS NULL OR EXISTS (SELECT 1 FROM mobility_vehicle v
+       WHERE v.account_id = a.id AND v.cooperative_id = sqlc.narg(cooperative)))
   AND (sqlc.narg(created_on_or_before)::date IS NULL
        OR (a.created_at AT TIME ZONE 'Africa/Lagos')::date <= sqlc.narg(created_on_or_before))
   AND (sqlc.narg(created_on_or_after)::date IS NULL
