@@ -24,6 +24,9 @@ export type VehicleListApi = {
   current_battery_charge: number | null
   assigned_driver_id?: string | null
   assigned_driver_name?: string | null
+  /** The chairman's cooperative that owns this vehicle (optional). */
+  cooperative_id?: string | null
+  cooperative_name?: string | null
   hardware_id: string | null
   vin: string
   status: VehicleStatus
@@ -88,6 +91,7 @@ export type VehicleWritePayload = {
   hardware_id?: string | null
   vin?: string
   status?: VehicleStatus
+  cooperative_id?: string | null
 }
 
 export type VehicleStatusPayload = { status: VehicleStatus }

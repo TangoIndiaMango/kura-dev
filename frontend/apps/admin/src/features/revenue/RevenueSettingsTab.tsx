@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, NumberInput, Select, Text } from '@mantine/core'
+import { Button, NumberInput, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
   DEFAULT_REVENUE_ANALYTICS_SETTINGS,
   type RevenueAnalyticsSettings,
-  type RevenueArpuBasis,
 } from '@shared/mock/adminMockData'
 import { sharePartnersOk } from './revenueMath'
 
@@ -191,17 +190,6 @@ export function RevenueSettingsTab({
           rollup only; receipts stay itemised.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Select
-            label="ARPU basis"
-            data={[
-              { value: 'mrr', label: 'MRR only (default)' },
-              { value: 'energy', label: 'Energy (plans + PPS)' },
-            ]}
-            value={draft.arpuBasis}
-            onChange={(v) =>
-              patch({ arpuBasis: (v as RevenueArpuBasis) || 'mrr' })
-            }
-          />
           <NumberInput
             label="VAT rate"
             suffix="%"

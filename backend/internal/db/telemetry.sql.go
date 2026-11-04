@@ -369,7 +369,7 @@ func (q *Queries) TelemetryLatestByVehicle(ctx context.Context, ids []uuid.UUID)
 }
 
 const telemetryVehicleByKey = `-- name: TelemetryVehicleByKey :one
-SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id FROM mobility_vehicle WHERE iot_api_key_hash = $1
+SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id, cooperative_id FROM mobility_vehicle WHERE iot_api_key_hash = $1
   AND ($2::text IS NULL OR hardware_id = $2)
 ORDER BY id LIMIT 1
 `
@@ -398,6 +398,7 @@ func (q *Queries) TelemetryVehicleByKey(ctx context.Context, arg TelemetryVehicl
 		&i.PetrolEngineID,
 		&i.IotApiKeyHash,
 		&i.AssignedDriverID,
+		&i.CooperativeID,
 	)
 	return i, err
 }

@@ -16,7 +16,6 @@ export function buildOperatorDetailActions(opts: {
   actionsApi: ActionsApi
   onCreateSwap: (hubName: string | null) => void
   onAssignDiscount: (id: string | null) => void
-  onEdit: () => void
 }): AdminDetailAction[] {
   const {
     operator,
@@ -29,7 +28,6 @@ export function buildOperatorDetailActions(opts: {
     actionsApi,
     onCreateSwap,
     onAssignDiscount,
-    onEdit,
   } = opts
 
   const canVerify =
@@ -85,11 +83,6 @@ export function buildOperatorDetailActions(opts: {
         activityExport()
         actionsApi.setSuccess('export-history')
       },
-    },
-    {
-      id: 'edit',
-      label: 'Edit',
-      onClick: onEdit,
     },
     {
       id: 'suspend',

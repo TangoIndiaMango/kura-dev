@@ -13,6 +13,7 @@ import {
 } from '@shared/components'
 import { apiErrorMessage } from '@lib/api/auth'
 import { useOperators } from '@features/operators'
+import { useCooperatives } from '../operators/hooks/use-cooperatives'
 import { useCapabilities } from '../auth/useCapabilities'
 import {
   useCreateVehicle,
@@ -28,6 +29,7 @@ const schema = z.object({
   hardware_id: z.string().trim().max(64).optional(),
   vin: z.string().trim().max(32).optional(),
   status: z.enum(['ACTIVE', 'PENDING', 'SUSPENDED', 'RETIRED']).optional(),
+  cooperative_id: z.string().uuid().nullable().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -37,6 +39,7 @@ const TIPS = [
   'This form registers a real bike: catalogue model + unique plate + owner account.',
   'Search the owner by name, phone, or Kura ID.',
   'Duplicate plates are rejected.',
+  'Chairman is optional: the group that bought the vehicle. Change it later from Take Action.',
 ]
 
 export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
@@ -52,6 +55,12 @@ export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
   const [savedId, setSavedId] = useState<string | null>(null)
   const [ownerSearch, setOwnerSearch] = useState('')
   const [debouncedOwnerSearch] = useDebouncedValue(ownerSearch, 300)
+  const [coopSearch, setCoopSearch] = useState('')
+  const [debouncedCoopSearch] = useDebouncedValue(coopSearch, 300)
+  const coops = useCooperatives({
+    enabled: !editing,
+    search: debouncedCoopSearch.trim(),
+  })
 
   const { vehicle } = useVehicle(vehicleId, {
     enabled: editing && can('vehicles:read'),
@@ -74,6 +83,7 @@ export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
       hardware_id: '',
       vin: '',
       status: 'ACTIVE',
+      cooperative_id: null,
     },
   })
 
@@ -136,8 +146,11 @@ export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
     const result = form.validate()
     if (result.hasErrors) return
     const values = form.values
+    const { cooperative_id: cooperativeId, ...rest } = values
     const payload = {
-      ...values,
+      ...rest,
+      // The chairman is only chosen at registration; after that it is a Take Action.
+      ...(editing ? {} : { cooperative_id: cooperativeId ?? null }),
       registration_plate: values.registration_plate.trim().toUpperCase(),
       hardware_id: values.hardware_id?.trim() || null,
       vin: values.vin?.trim() || '',
@@ -257,6 +270,22 @@ export function VehicleFormPanel({ vehicleId }: { vehicleId?: string }) {
             placeholder="Optional"
             {...form.getInputProps('vin')}
           />
+          {!editing ? (
+            <Select
+              label="Chairman (optional)"
+              placeholder="Search chairman groups"
+              description="The chairman's group that owns this vehicle."
+              searchable
+              clearable
+              data={coops.options}
+              searchValue={coopSearch}
+              onSearchChange={setCoopSearch}
+              filter={({ options }) => options}
+              nothingFoundMessage={coops.isFetching ? 'Searching…' : 'No groups found'}
+              value={form.values.cooperative_id ?? null}
+              onChange={(v) => form.setFieldValue('cooperative_id', v)}
+            />
+          ) : null}
           {editing ? (
             <Select
               label="Status"

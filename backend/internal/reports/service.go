@@ -1,5 +1,5 @@
 // Package reports ports analytics ReportJob: queue a report (impact PDF,
-// ops / fleet / revenue CSV), render it into default storage (a local
+// ops / fleet / revenue CSV, or a builder export of any dataset), render it into default storage (a local
 // directory, like Django's FileSystemStorage), then serve status + download.
 package reports
 
@@ -52,6 +52,8 @@ func (s *service) render(r *http.Request, kind string, params map[string]any) ([
 	case "REVENUE_CSV":
 		data, name, err := revenueCSV(ctx, s.q, params)
 		return data, name, "text/csv; charset=utf-8", err
+	case "DATASET":
+		return s.renderDataset(ctx, params)
 	}
 	return nil, "", "", apperr.New("UNSUPPORTED", "Report kind "+kind+" is not implemented yet.").WithStatus(http.StatusNotImplemented)
 }
@@ -102,8 +104,11 @@ func (s *service) process(r *http.Request, id uuid.UUID) error {
 	key := ""
 	if err == nil {
 		folder, ext := "csv", "csv"
-		if job.Kind == "IMPACT_PDF" {
+		switch job.Kind {
+		case "IMPACT_PDF":
 			folder = "impact"
+		case "DATASET":
+			folder = "exports"
 		}
 		if ctype == "application/pdf" {
 			ext = "pdf"

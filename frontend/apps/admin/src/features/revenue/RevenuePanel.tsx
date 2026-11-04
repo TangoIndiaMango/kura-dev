@@ -1,13 +1,8 @@
 import {
   AdminModuleLayout,
-  DemoDataBanner,
   useAdminModuleControls,
 } from '@shared/components'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
-import {
-  MOCK_REVENUE_COLLECTIONS,
-  MOCK_REVENUE_STREAMS,
-} from '@shared/mock/adminMockData'
 import { RevenueCohortsTab } from './RevenueCohortsTab'
 import { RevenueLiveOverview } from './RevenueLiveOverview'
 import {
@@ -15,13 +10,8 @@ import {
   useRevenueAnalyticsSettings,
 } from './RevenueSettingsTab'
 import { RevenueStreamsTab } from './RevenueStreamsTab'
-import {
-  formatCompactNaira,
-  formatPct,
-  scaleCollections,
-  scaleStreams,
-  sumStreams,
-} from './revenueMath'
+import { formatPct } from './revenueMath'
+import { useRevenueRetention } from './useRevenueCohorts'
 import { useRevenueOverview } from './useRevenueOverview'
 
 function compactKobo(value: number) {
@@ -51,9 +41,9 @@ export function RevenuePanel() {
 
   const liveKpis = [
     {
-      title: 'Gross collected',
+      title: 'Revenue',
       value: data ? compactKobo(data.gross_kobo) : '—',
-      sub: 'Successful payments',
+      sub: 'Paid for services · wallet top-ups excluded',
       tone: 'success' as const,
     },
     {
@@ -74,33 +64,34 @@ export function RevenuePanel() {
     },
   ]
 
-  const collections = scaleCollections(MOCK_REVENUE_COLLECTIONS, controls.dateRange)
-  const modelledTotal = sumStreams(
-    scaleStreams(MOCK_REVENUE_STREAMS, controls.dateRange),
-  )
-  const modelKpis = [
+  // Streams and cohorts tabs: riders and plans over the last 30 days.
+  const retention = useRevenueRetention(tab !== 'overview' && tab !== 'settings')
+  const r = retention.data
+  const retentionKpis = [
     {
-      title: 'Modelled revenue',
-      value: formatCompactNaira(modelledTotal),
-      sub: 'Planning model · not ledger',
-      tone: 'default' as const,
+      title: 'Active riders · 30d',
+      value: r ? r.active_riders.toLocaleString('en-NG') : '—',
+      sub: r ? `${r.active_riders_before.toLocaleString('en-NG')} the 30 days before` : 'Paid or swapped',
     },
     {
-      title: 'MRR',
-      value: formatCompactNaira(collections.mrrNaira),
-      sub: `${collections.activeOperators} active operators`,
+      title: 'Rider churn · 30d',
+      value: formatPct(r?.churn_pct),
+      sub: r ? `${r.churned_riders} stopped` : 'Active before, not since',
+      tone:
+        r?.churn_pct != null && r.churn_pct > analyticsSettings.settings.churnWarnPct
+          ? ('warning' as const)
+          : ('default' as const),
     },
     {
-      title: 'Renewal rate',
-      value: formatPct(collections.renewalRatePct),
-      sub: 'Plan renewals',
-      tone: 'success' as const,
+      title: 'Plan renewal · 30d',
+      value: formatPct(r?.renewal_pct),
+      sub: r ? `${r.plans_renewed} of ${r.plans_ended} plans that ended` : 'Renewed within 3 days',
+      tone: r?.renewal_pct != null ? ('success' as const) : ('default' as const),
     },
     {
-      title: 'Churn · 30d',
-      value: formatPct(collections.churn30dPct),
-      sub: 'Modelled attrition',
-      tone: 'warning' as const,
+      title: 'Active plans',
+      value: r ? r.active_plans.toLocaleString('en-NG') : '—',
+      sub: 'Right now',
     },
   ]
 
@@ -108,26 +99,18 @@ export function RevenuePanel() {
     <>
       <AdminModuleLayout
         title="Revenue Analytics"
-        subtitle="Live collections from the ledger, plus revenue-model planning views"
-        dateRangeSlot={tab === 'settings' ? null : controls.dateRangeSlot}
+        subtitle="Collections, streams and rider cohorts from KURA's own payments and swaps"
+        dateRangeSlot={tab === 'overview' || tab === 'streams' ? controls.dateRangeSlot : null}
         tabs={[
-          { id: 'overview', label: 'Live collections' },
+          { id: 'overview', label: 'Revenue' },
           { id: 'streams', label: 'Revenue streams' },
           { id: 'cohorts', label: 'Cohorts & ARPU' },
           { id: 'settings', label: 'Assumptions' },
         ]}
         activeTab={tab}
         onTabChange={setTab}
-        kpis={tab === 'overview' ? liveKpis : modelKpis}
+        kpis={tab === 'overview' ? liveKpis : tab === 'settings' ? [] : retentionKpis}
       >
-        {tab !== 'overview' ? (
-          <div className="mb-3">
-            <DemoDataBanner
-              module="Revenue model"
-              detail="Streams / cohorts use planning assumptions — not ledger truth. Use Live collections for ops."
-            />
-          </div>
-        ) : null}
         {tab === 'overview' ? (
           <RevenueLiveOverview
             data={data}

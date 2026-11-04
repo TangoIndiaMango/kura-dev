@@ -13,7 +13,6 @@ export const ACCOUNTS_ENDPOINTS = {
   suspend: (id: string) => `/accounts/${id}/suspend/`,
   reinstate: (id: string) => `/accounts/${id}/reinstate/`,
   notify: (id: string) => `/accounts/${id}/notify/`,
-  setCooperative: (id: string) => `/accounts/${id}/set-cooperative/`,
 } as const
 
 export const ACCOUNTS_QUERY_KEY = 'accounts'

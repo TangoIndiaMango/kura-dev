@@ -13,7 +13,7 @@ import (
 )
 
 const accountByID = `-- name: AccountByID :one
-SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status FROM accounts_account WHERE id = $1
+SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status FROM accounts_account WHERE id = $1
 `
 
 func (q *Queries) AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccount, error) {
@@ -31,7 +31,6 @@ func (q *Queries) AccountByID(ctx context.Context, id uuid.UUID) (AccountsAccoun
 		&i.OwnerUserID,
 		&i.RegistrationChannel,
 		&i.Psp,
-		&i.CooperativeID,
 		&i.RiskStatus,
 	)
 	return i, err
@@ -113,7 +112,7 @@ func (q *Queries) FirstDriverForAccount(ctx context.Context, accountID uuid.UUID
 }
 
 const firstOwnedAccount = `-- name: FirstOwnedAccount :one
-SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at LIMIT 1
+SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at LIMIT 1
 `
 
 func (q *Queries) FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error) {
@@ -131,7 +130,6 @@ func (q *Queries) FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) 
 		&i.OwnerUserID,
 		&i.RegistrationChannel,
 		&i.Psp,
-		&i.CooperativeID,
 		&i.RiskStatus,
 	)
 	return i, err

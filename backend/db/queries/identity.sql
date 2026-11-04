@@ -62,8 +62,8 @@ SELECT * FROM accounts_account WHERE owner_user_id = $1 ORDER BY created_at LIMI
 
 -- name: InsertAccount :one
 INSERT INTO accounts_account (id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status,
-  registration_channel, psp, cooperative_id, owner_user_id, risk_status)
-VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, '', $8, $9, 'NORMAL')
+  registration_channel, psp, owner_user_id, risk_status)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, '', $8, 'NORMAL')
 RETURNING *;
 
 -- name: SetAccountDisplayName :exec
@@ -91,9 +91,6 @@ SELECT EXISTS (SELECT 1 FROM accounts_user WHERE phone = $1);
 
 -- name: SetAccountStatus :exec
 UPDATE accounts_account SET status = $2, updated_at = now() WHERE id = $1;
-
--- name: SetAccountCooperative :exec
-UPDATE accounts_account SET cooperative_id = $2, updated_at = now() WHERE id = $1;
 
 -- name: CooperativeExists :one
 SELECT EXISTS (SELECT 1 FROM accounts_cooperative WHERE id = $1);

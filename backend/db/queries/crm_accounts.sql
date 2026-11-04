@@ -41,7 +41,7 @@ WHERE (sqlc.arg(all_rows)::bool OR a.id = ANY(sqlc.arg(scope_ids)::uuid[]) OR a.
 -- name: CrmRows :many
 -- Every CRM column for a set of accounts in one round trip.
 SELECT a.id, a.kura_id, a.kind, a.display_name, a.status, a.kyc_status, a.psp,
-  a.registration_channel, a.created_at, a.owner_user_id, a.cooperative_id,
+  a.registration_channel, a.created_at, a.owner_user_id, c.id AS cooperative_id,
   o.phone, o.email, c.name AS cooperative_name,
   (doc.doc_type IS NOT NULL)::bool AS has_doc,
   COALESCE(doc.doc_type, '')::text AS doc_type, COALESCE(doc.number_last4, '')::text AS number_last4,
@@ -57,7 +57,8 @@ SELECT a.id, a.kura_id, a.kind, a.display_name, a.status, a.kyc_status, a.psp,
   COALESCE((SELECT w.id::text FROM finance_wallet w WHERE w.account_id = a.id), '')::text AS wallet_id
 FROM accounts_account a
 JOIN accounts_user o ON o.id = a.owner_user_id
-LEFT JOIN accounts_cooperative c ON c.id = a.cooperative_id
+LEFT JOIN accounts_cooperative c ON c.id = (SELECT v.cooperative_id FROM mobility_vehicle v
+  WHERE v.account_id = a.id AND v.cooperative_id IS NOT NULL ORDER BY v.created_at, v.id LIMIT 1)
 LEFT JOIN LATERAL (SELECT d.doc_type, d.number_last4, d.status, d.verified_via
   FROM accounts_identitydocument d WHERE d.account_id = a.id ORDER BY d.created_at DESC, d.id DESC LIMIT 1) doc ON true
 LEFT JOIN LATERAL (SELECT dr.photo_id FROM accounts_driver dr

@@ -75,21 +75,19 @@ func (h *handler) cooperativePayload(r *http.Request, c db.AccountsCooperative) 
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]uuid.UUID, len(members))
 	list := make([]map[string]any, 0, min(len(members), 200))
 	for i, m := range members {
-		ids[i] = m.ID
 		if i < 200 {
 			list = append(list, map[string]any{"account_id": m.ID.String(), "kura_id": m.KuraID,
 				"display_name": m.DisplayName, "status": m.Status, "phone": m.Phone})
 		}
 	}
-	fleet, err := h.q.CooperativeFleet(ctx, ids)
+	fleet, err := h.q.CooperativeFleet(ctx, &c.ID)
 	if err != nil {
 		return nil, err
 	}
 	savings, note := int64(0), "No member swaps yet."
-	if len(ids) > 0 {
+	if fleet.Swaps > 0 {
 		p := h.petrol.WithDefaults()
 		savings = p.FuelSavedKobo(fleet.Swaps)
 		note = fmt.Sprintf("Estimate vs petrol · %d swaps · %s L × ₦%d/L · not a guarantee", fleet.Swaps,

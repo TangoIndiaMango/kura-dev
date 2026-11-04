@@ -30,6 +30,8 @@ type Client struct {
 type Response struct {
 	Status int
 	Body   map[string]any
+	// Raw is the response body as sent (lists, files).
+	Raw    []byte
 	Header http.Header
 }
 
@@ -46,6 +48,8 @@ func NewWith(t *testing.T, tweak func(*config.Config)) *Client {
 	cfg := config.Config{
 		Env: "local", Debug: true, SecretKey: "test-secret-key-0123456789abcdef-test",
 		AccessTTL: 15 * time.Minute, RefreshTTL: 720 * time.Hour, OTPDevCode: "123456",
+		// Stored files (report exports) land in a per-test directory.
+		MediaRoot: t.TempDir(),
 	}
 	tweak(&cfg)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -67,7 +71,7 @@ func (c *Client) Do(method, path string, body any, token string) Response {
 	}
 	rec := httptest.NewRecorder()
 	c.h.ServeHTTP(rec, req)
-	out := Response{Status: rec.Code, Header: rec.Header(), Body: map[string]any{}}
+	out := Response{Status: rec.Code, Header: rec.Header(), Body: map[string]any{}, Raw: rec.Body.Bytes()}
 	_ = json.Unmarshal(rec.Body.Bytes(), &out.Body)
 	return out
 }

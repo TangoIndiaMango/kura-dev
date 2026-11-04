@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countReportsForRequester = `-- name: CountReportsForRequester :one
+SELECT count(*) FROM analytics_reportjob WHERE requested_by_id = $1
+`
+
+func (q *Queries) CountReportsForRequester(ctx context.Context, requestedByID *uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countReportsForRequester, requestedByID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const fleetCsvRows = `-- name: FleetCsvRows :many
 SELECT b.id, b.serial, t.name AS type_name, b.status, b.charge_pct, b.health_pct, b.cycle_count,
   h.code AS hub_code, h.name AS hub_name, b.created_at
@@ -231,6 +242,49 @@ func (q *Queries) ReportForUpdate(ctx context.Context, id uuid.UUID) (AnalyticsR
 		&i.IdempotencyKey,
 	)
 	return i, err
+}
+
+const reportsForRequester = `-- name: ReportsForRequester :many
+SELECT id, created_at, updated_at, kind, params, status, file_public_id, expires_at, raw, requested_by_id, idempotency_key FROM analytics_reportjob WHERE requested_by_id = $1
+ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $2
+`
+
+type ReportsForRequesterParams struct {
+	RequestedByID *uuid.UUID
+	Off           int32
+	Lim           int32
+}
+
+func (q *Queries) ReportsForRequester(ctx context.Context, arg ReportsForRequesterParams) ([]AnalyticsReportjob, error) {
+	rows, err := q.db.Query(ctx, reportsForRequester, arg.RequestedByID, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AnalyticsReportjob{}
+	for rows.Next() {
+		var i AnalyticsReportjob
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Kind,
+			&i.Params,
+			&i.Status,
+			&i.FilePublicID,
+			&i.ExpiresAt,
+			&i.Raw,
+			&i.RequestedByID,
+			&i.IdempotencyKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revenueCsvRows = `-- name: RevenueCsvRows :many

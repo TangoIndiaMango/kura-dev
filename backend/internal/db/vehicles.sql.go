@@ -70,10 +70,11 @@ WHERE ($1::bool
      OR v.account_id = ANY($4::uuid[]))))
   AND ($5::uuid IS NULL OR v.account_id = $5)
   AND ($6::text IS NULL OR v.status = $6)
-  AND ($7::text IS NULL OR v.registration_plate ILIKE '%' || $7 || '%'
-       OR v.hardware_id ILIKE '%' || $7 || '%' OR v.vin ILIKE '%' || $7 || '%'
-       OR a.display_name ILIKE '%' || $7 || '%' OR a.kura_id ILIKE '%' || $7 || '%'
-       OR m.make ILIKE '%' || $7 || '%' OR m.model ILIKE '%' || $7 || '%')
+  AND ($7::uuid IS NULL OR v.cooperative_id = $7)
+  AND ($8::text IS NULL OR v.registration_plate ILIKE '%' || $8 || '%'
+       OR v.hardware_id ILIKE '%' || $8 || '%' OR v.vin ILIKE '%' || $8 || '%'
+       OR a.display_name ILIKE '%' || $8 || '%' OR a.kura_id ILIKE '%' || $8 || '%'
+       OR m.make ILIKE '%' || $8 || '%' OR m.model ILIKE '%' || $8 || '%')
 `
 
 type CountVehiclesParams struct {
@@ -83,6 +84,7 @@ type CountVehiclesParams struct {
 	Touching    []uuid.UUID
 	Account     *uuid.UUID
 	Status      *string
+	Cooperative *uuid.UUID
 	Q           *string
 }
 
@@ -94,6 +96,7 @@ func (q *Queries) CountVehicles(ctx context.Context, arg CountVehiclesParams) (i
 		arg.Touching,
 		arg.Account,
 		arg.Status,
+		arg.Cooperative,
 		arg.Q,
 	)
 	var count int64
@@ -166,8 +169,8 @@ func (q *Queries) InsertAssignment(ctx context.Context, arg InsertAssignmentPara
 const insertVehicle = `-- name: InsertVehicle :exec
 INSERT INTO mobility_vehicle (id, created_at, updated_at, registration_plate, status, account_id, current_battery_id,
   vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash,
-  assigned_driver_id)
-VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL)
+  assigned_driver_id, cooperative_id)
+VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, NULL, $5, '', $6, $7, 'EV_FIRST', NULL, '', NULL, $8)
 `
 
 type InsertVehicleParams struct {
@@ -178,6 +181,7 @@ type InsertVehicleParams struct {
 	VehicleModelID    uuid.UUID
 	HardwareID        *string
 	Vin               string
+	CooperativeID     *uuid.UUID
 }
 
 func (q *Queries) InsertVehicle(ctx context.Context, arg InsertVehicleParams) error {
@@ -189,6 +193,7 @@ func (q *Queries) InsertVehicle(ctx context.Context, arg InsertVehicleParams) er
 		arg.VehicleModelID,
 		arg.HardwareID,
 		arg.Vin,
+		arg.CooperativeID,
 	)
 	return err
 }
@@ -263,17 +268,18 @@ WHERE ($1::bool
      OR v.account_id = ANY($4::uuid[]))))
   AND ($5::uuid IS NULL OR v.account_id = $5)
   AND ($6::text IS NULL OR v.status = $6)
-  AND ($7::text IS NULL OR v.registration_plate ILIKE '%' || $7 || '%'
-       OR v.hardware_id ILIKE '%' || $7 || '%' OR v.vin ILIKE '%' || $7 || '%'
-       OR a.display_name ILIKE '%' || $7 || '%' OR a.kura_id ILIKE '%' || $7 || '%'
-       OR m.make ILIKE '%' || $7 || '%' OR m.model ILIKE '%' || $7 || '%')
-ORDER BY CASE WHEN $8::text = 'registration_plate' THEN v.registration_plate END,
-  CASE WHEN $8::text = '-registration_plate' THEN v.registration_plate END DESC,
-  CASE WHEN $8::text = 'status' THEN v.status END,
-  CASE WHEN $8::text = '-status' THEN v.status END DESC,
-  CASE WHEN $8::text = 'created_at' THEN v.created_at END,
+  AND ($7::uuid IS NULL OR v.cooperative_id = $7)
+  AND ($8::text IS NULL OR v.registration_plate ILIKE '%' || $8 || '%'
+       OR v.hardware_id ILIKE '%' || $8 || '%' OR v.vin ILIKE '%' || $8 || '%'
+       OR a.display_name ILIKE '%' || $8 || '%' OR a.kura_id ILIKE '%' || $8 || '%'
+       OR m.make ILIKE '%' || $8 || '%' OR m.model ILIKE '%' || $8 || '%')
+ORDER BY CASE WHEN $9::text = 'registration_plate' THEN v.registration_plate END,
+  CASE WHEN $9::text = '-registration_plate' THEN v.registration_plate END DESC,
+  CASE WHEN $9::text = 'status' THEN v.status END,
+  CASE WHEN $9::text = '-status' THEN v.status END DESC,
+  CASE WHEN $9::text = 'created_at' THEN v.created_at END,
   v.created_at DESC
-LIMIT $10 OFFSET $9
+LIMIT $11 OFFSET $10
 `
 
 type ListVehicleIDsParams struct {
@@ -283,6 +289,7 @@ type ListVehicleIDsParams struct {
 	Touching    []uuid.UUID
 	Account     *uuid.UUID
 	Status      *string
+	Cooperative *uuid.UUID
 	Q           *string
 	Ord         string
 	Off         int32
@@ -299,6 +306,7 @@ func (q *Queries) ListVehicleIDs(ctx context.Context, arg ListVehicleIDsParams) 
 		arg.Touching,
 		arg.Account,
 		arg.Status,
+		arg.Cooperative,
 		arg.Q,
 		arg.Ord,
 		arg.Off,
@@ -478,6 +486,20 @@ func (q *Queries) SaveVehicleModel(ctx context.Context, arg SaveVehicleModelPara
 	return err
 }
 
+const setVehicleCooperative = `-- name: SetVehicleCooperative :exec
+UPDATE mobility_vehicle SET cooperative_id = $2, updated_at = now() WHERE id = $1
+`
+
+type SetVehicleCooperativeParams struct {
+	ID            uuid.UUID
+	CooperativeID *uuid.UUID
+}
+
+func (q *Queries) SetVehicleCooperative(ctx context.Context, arg SetVehicleCooperativeParams) error {
+	_, err := q.db.Exec(ctx, setVehicleCooperative, arg.ID, arg.CooperativeID)
+	return err
+}
+
 const vehicleAssignments = `-- name: VehicleAssignments :many
 SELECT a.id, a.driver_id, a.starts_at, a.ends_at, a.note, u.first_name, u.last_name, u.phone
 FROM mobility_vehicleassignment a JOIN accounts_driver d ON d.id = a.driver_id JOIN accounts_user u ON u.id = d.user_id
@@ -525,7 +547,7 @@ func (q *Queries) VehicleAssignments(ctx context.Context, vehicleID uuid.UUID) (
 }
 
 const vehicleByIDPlain = `-- name: VehicleByIDPlain :one
-SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id FROM mobility_vehicle WHERE id = $1
+SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id, cooperative_id FROM mobility_vehicle WHERE id = $1
 `
 
 func (q *Queries) VehicleByIDPlain(ctx context.Context, id uuid.UUID) (MobilityVehicle, error) {
@@ -547,6 +569,7 @@ func (q *Queries) VehicleByIDPlain(ctx context.Context, id uuid.UUID) (MobilityV
 		&i.PetrolEngineID,
 		&i.IotApiKeyHash,
 		&i.AssignedDriverID,
+		&i.CooperativeID,
 	)
 	return i, err
 }
@@ -595,7 +618,7 @@ func (q *Queries) VehicleCommands(ctx context.Context, vehicleID uuid.UUID) ([]V
 }
 
 const vehicleForUpdate = `-- name: VehicleForUpdate :one
-SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id FROM mobility_vehicle WHERE id = $1 FOR UPDATE
+SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id, cooperative_id FROM mobility_vehicle WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) VehicleForUpdate(ctx context.Context, id uuid.UUID) (MobilityVehicle, error) {
@@ -617,6 +640,7 @@ func (q *Queries) VehicleForUpdate(ctx context.Context, id uuid.UUID) (MobilityV
 		&i.PetrolEngineID,
 		&i.IotApiKeyHash,
 		&i.AssignedDriverID,
+		&i.CooperativeID,
 	)
 	return i, err
 }
@@ -716,7 +740,8 @@ SELECT v.id, v.created_at, v.updated_at, v.registration_plate, v.status, v.accou
   b.serial AS battery_serial, b.charge_pct AS battery_charge, b.charge_source AS battery_charge_source,
   b.charge_observed_at AS battery_charge_at, b.health_pct AS battery_health,
   bt.usable_energy_wh AS battery_usable_wh, bt.wh_per_km AS battery_wh_per_km,
-  du.first_name AS driver_first, du.last_name AS driver_last, du.phone AS driver_phone
+  du.first_name AS driver_first, du.last_name AS driver_last, du.phone AS driver_phone,
+  v.cooperative_id, coop.name AS cooperative_name
 FROM mobility_vehicle v
 JOIN mobility_vehiclemodel m ON m.id = v.vehicle_model_id
 JOIN mobility_batterytype t ON t.id = m.battery_type_id
@@ -725,6 +750,7 @@ LEFT JOIN mobility_battery b ON b.id = v.current_battery_id
 LEFT JOIN mobility_batterytype bt ON bt.id = b.battery_type_id
 LEFT JOIN accounts_driver d ON d.id = v.assigned_driver_id
 LEFT JOIN accounts_user du ON du.id = d.user_id
+LEFT JOIN accounts_cooperative coop ON coop.id = v.cooperative_id
 WHERE v.id = ANY($1::uuid[])
 `
 
@@ -761,6 +787,8 @@ type VehicleRowsRow struct {
 	DriverFirst         *string
 	DriverLast          *string
 	DriverPhone         *string
+	CooperativeID       *uuid.UUID
+	CooperativeName     *string
 }
 
 func (q *Queries) VehicleRows(ctx context.Context, ids []uuid.UUID) ([]VehicleRowsRow, error) {
@@ -805,6 +833,8 @@ func (q *Queries) VehicleRows(ctx context.Context, ids []uuid.UUID) ([]VehicleRo
 			&i.DriverFirst,
 			&i.DriverLast,
 			&i.DriverPhone,
+			&i.CooperativeID,
+			&i.CooperativeName,
 		); err != nil {
 			return nil, err
 		}

@@ -2,18 +2,14 @@ import { Link } from 'react-router-dom'
 import { Code, Text } from '@mantine/core'
 import type { VehicleDetailApi } from './types'
 import { vehicleStatusLabel } from './types'
-import { VehicleAssignDriverPanel } from './VehicleAssignDriverPanel'
+import { VehicleAssignmentHistory } from './VehicleAssignModals'
 
 export function VehicleOverview({
   vehicle,
   qrPreview,
-  canAssign,
-  onAssigned,
 }: {
   vehicle: VehicleDetailApi
   qrPreview?: string | null
-  canAssign?: boolean
-  onAssigned?: () => void
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -48,6 +44,10 @@ export function VehicleOverview({
             {vehicle.owner_name || vehicle.owner_kura_id || vehicle.account_id}
           </Link>
         </Text>
+        <Text size="sm" c="dimmed">
+          Chairman
+        </Text>
+        <Text size="sm">{vehicle.cooperative_name || 'None'}</Text>
         <Text size="sm" c="dimmed">
           Mounted pack
         </Text>
@@ -89,12 +89,7 @@ export function VehicleOverview({
             : '—'}
         </Text>
       </div>
-      {canAssign && vehicle.status !== 'RETIRED' ? (
-        <VehicleAssignDriverPanel
-          vehicle={vehicle}
-          onDone={() => onAssigned?.()}
-        />
-      ) : null}
+      <VehicleAssignmentHistory vehicleId={vehicle.id} />
       {qrPreview ? (
         <div>
           <Text size="sm" fw={600} mb={6}>

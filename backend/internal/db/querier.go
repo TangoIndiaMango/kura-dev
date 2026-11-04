@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -116,12 +117,21 @@ type Querier interface {
 	CheckoutByReference(ctx context.Context, reference string) (FinanceWalletcheckout, error)
 	CheckoutForUpdate(ctx context.Context, reference string) (FinanceWalletcheckout, error)
 	CheckoutsToReverify(ctx context.Context, limit int32) ([]FinanceWalletcheckout, error)
+	ClearDailyAccounts(ctx context.Context, arg ClearDailyAccountsParams) error
+	ClearDailyHubMetrics(ctx context.Context, arg ClearDailyHubMetricsParams) error
+	ClearDailyMoney(ctx context.Context, arg ClearDailyMoneyParams) error
+	ClearDailySwaps(ctx context.Context, arg ClearDailySwapsParams) error
 	ClearMemberships(ctx context.Context, userID uuid.UUID) error
 	ClearPinFailures(ctx context.Context, id uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	ClearSlotOfBattery(ctx context.Context, batteryID *uuid.UUID) error
 	CloseOpenAssignments(ctx context.Context, arg CloseOpenAssignmentsParams) error
 	ClosedShiftsBefore(ctx context.Context, closedAt *time.Time) ([]ClosedShiftsBeforeRow, error)
+	// For each joining month, how many of those riders paid or swapped in each later month, and what they paid.
+	CohortActivity(ctx context.Context, fromMonth pgtype.Date) ([]CohortActivityRow, error)
+	// Revenue analytics from the per-account daily rollup (analytics_dailyaccount).
+	// Riders who joined in each Lagos month since from_month.
+	CohortSizes(ctx context.Context, fromMonth pgtype.Date) ([]CohortSizesRow, error)
 	CommandCentreHubs(ctx context.Context) ([]CommandCentreHubsRow, error)
 	CommandCentreKPIs(ctx context.Context, arg CommandCentreKPIsParams) (CommandCentreKPIsRow, error)
 	CompletedSwapsOnDay(ctx context.Context, arg CompletedSwapsOnDayParams) (int32, error)
@@ -137,7 +147,8 @@ type Querier interface {
 	CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid.UUID) ([]uuid.UUID, error)
 	CooperativeByID(ctx context.Context, id uuid.UUID) (AccountsCooperative, error)
 	CooperativeExists(ctx context.Context, id uuid.UUID) (bool, error)
-	CooperativeFleet(ctx context.Context, ids []uuid.UUID) (CooperativeFleetRow, error)
+	// The chairman's fleet is the vehicles linked to the cooperative.
+	CooperativeFleet(ctx context.Context, cooperativeID *uuid.UUID) (CooperativeFleetRow, error)
 	CooperativeForChairman(ctx context.Context, chairmanUserID *uuid.UUID) (AccountsCooperative, error)
 	CooperativeForUpdate(ctx context.Context, id uuid.UUID) (CooperativeForUpdateRow, error)
 	CooperativeMembers(ctx context.Context, cooperativeID *uuid.UUID) ([]CooperativeMembersRow, error)
@@ -156,6 +167,7 @@ type Querier interface {
 	CountOverrides(ctx context.Context, agent *uuid.UUID) (int64, error)
 	CountPermissions(ctx context.Context, arg CountPermissionsParams) (int64, error)
 	CountPlans(ctx context.Context, arg CountPlansParams) (int64, error)
+	CountReportsForRequester(ctx context.Context, requestedByID *uuid.UUID) (int64, error)
 	CountRiskRules(ctx context.Context) (int64, error)
 	CountRoles(ctx context.Context, arg CountRolesParams) (int64, error)
 	CountSegmentAccounts(ctx context.Context, arg CountSegmentAccountsParams) (int64, error)
@@ -235,8 +247,20 @@ type Querier interface {
 	ExistingPermissionIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 	ExpirePPSSubscriptions(ctx context.Context, planID uuid.UUID) error
 	ExpireStaleCheckouts(ctx context.Context) (int64, error)
+	// What each account spent (successful payments, wallet top-ups left out:
+	// they are spent later) and its completed swaps, per day.
+	FillDailyAccounts(ctx context.Context, arg FillDailyAccountsParams) (int64, error)
+	// DailyHubMetric (OPS_CSV): swaps, money by channel, expired reservations
+	// and overrides per hub per day, from the rollups above plus two small counts.
+	FillDailyHubMetrics(ctx context.Context, arg FillDailyHubMetricsParams) (int64, error)
+	// A payment counts under the chairman of the vehicle it paid for (its swap
+	// or plan), else of the paying account's chairman-linked vehicle.
+	FillDailyMoney(ctx context.Context, arg FillDailyMoneyParams) (int64, error)
+	FillDailySwaps(ctx context.Context, arg FillDailySwapsParams) (int64, error)
 	FirstAccountDisplayName(ctx context.Context, ownerUserID uuid.UUID) (string, error)
 	FirstAccountForOwner(ctx context.Context, ownerUserID uuid.UUID) (FirstAccountForOwnerRow, error)
+	// The oldest Lagos day with a payment or swap (both columns are indexed).
+	FirstActivityDay(ctx context.Context) (time.Time, error)
 	FirstCooperative(ctx context.Context) (AccountsCooperative, error)
 	FirstDriverForAccount(ctx context.Context, accountID uuid.UUID) (FirstDriverForAccountRow, error)
 	FirstDriverRow(ctx context.Context, accountID uuid.UUID) (AccountsDriver, error)
@@ -438,6 +462,7 @@ type Querier interface {
 	MediaAssetOwner(ctx context.Context, id uuid.UUID) (MediaAssetOwnerRow, error)
 	MembershipHubIDs(ctx context.Context, userID uuid.UUID) ([]string, error)
 	MockIoTVehicles(ctx context.Context, limit int32) ([]MockIoTVehiclesRow, error)
+	MonthlyArpu(ctx context.Context, fromMonth pgtype.Date) ([]MonthlyArpuRow, error)
 	MountedVehicle(ctx context.Context, currentBatteryID *uuid.UUID) (MobilityVehicle, error)
 	// user.accounts.first(): Account's default ordering is -created_at.
 	NewestOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
@@ -489,6 +514,9 @@ type Querier interface {
 	// values("subscriptions__vehicle_id"): a LEFT JOIN, so unlinked payments group under NULL.
 	PlanFeesByVehicle(ctx context.Context, arg PlanFeesByVehicleParams) ([]PlanFeesByVehicleRow, error)
 	PlanFeesDaily(ctx context.Context, arg PlanFeesDailyParams) ([]PlanFeesDailyRow, error)
+	// Plans that ended in the last 30 days and how many were followed by a new
+	// plan on the same vehicle within three days.
+	PlanRenewals(ctx context.Context) (PlanRenewalsRow, error)
 	PlanRow(ctx context.Context, id uuid.UUID) (MobilityPlan, error)
 	PlanWithCount(ctx context.Context, id uuid.UUID) (PlanWithCountRow, error)
 	PlateTaken(ctx context.Context, arg PlateTakenParams) (bool, error)
@@ -525,6 +553,7 @@ type Querier interface {
 	ReportByID(ctx context.Context, id uuid.UUID) (AnalyticsReportjob, error)
 	ReportByKey(ctx context.Context, arg ReportByKeyParams) (AnalyticsReportjob, error)
 	ReportForUpdate(ctx context.Context, id uuid.UUID) (AnalyticsReportjob, error)
+	ReportsForRequester(ctx context.Context, arg ReportsForRequesterParams) ([]AnalyticsReportjob, error)
 	ReservationByCode(ctx context.Context, upper interface{}) (MobilityReservation, error)
 	ReservationByID(ctx context.Context, id uuid.UUID) (MobilityReservation, error)
 	ReservationCodeTaken(ctx context.Context, code string) (bool, error)
@@ -545,8 +574,12 @@ type Querier interface {
 	RevenueByPurpose(ctx context.Context, arg RevenueByPurposeParams) ([]RevenueByPurposeRow, error)
 	RevenueCsvRows(ctx context.Context, arg RevenueCsvRowsParams) ([]RevenueCsvRowsRow, error)
 	RevenueDaily(ctx context.Context, arg RevenueDailyParams) ([]RevenueDailyRow, error)
+	// Revenue excludes wallet top-ups (FUND / WALLET_TOPUP): that money is
+	// counted when it is spent, as a wallet-debit swap or plan.
 	RevenueTotals(ctx context.Context, arg RevenueTotalsParams) (RevenueTotalsRow, error)
 	RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error
+	// Riders active in the 30 days before `today` (now) versus the 30 days before that.
+	RiderRetention(ctx context.Context, today pgtype.Date) (RiderRetentionRow, error)
 	RiskEventForUpdate(ctx context.Context, id uuid.UUID) (RiskEventForUpdateRow, error)
 	RiskEventRows(ctx context.Context, ids []uuid.UUID) ([]RiskEventRowsRow, error)
 	// RiskEventViewSet list: filters, ?q= over rule code/name, account name/kura id, subject id; keyset newest first.
@@ -567,6 +600,13 @@ type Querier interface {
 	RolePermissionIDs(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	RolePermissions(ctx context.Context, roleID uuid.UUID) ([]RolePermissionsRow, error)
 	RoleStatsTotals(ctx context.Context) (RoleStatsTotalsRow, error)
+	RollupAsOf(ctx context.Context) (time.Time, error)
+	RollupState(ctx context.Context, name string) (AnalyticsRollupstate, error)
+	// Per-day report rollups. Each refresh replaces whole Lagos days
+	// [from_day, to_day] so a payment that changed status since the last run
+	// moves to its new row. Only the rollup tables are written; payments and
+	// swaps are read under MVCC, so nothing on the hot path waits on this.
+	RollupTryLock(ctx context.Context) (bool, error)
 	SaveAlert(ctx context.Context, arg SaveAlertParams) error
 	SaveAlertRule(ctx context.Context, arg SaveAlertRuleParams) error
 	SaveApplicationDecision(ctx context.Context, arg SaveApplicationDecisionParams) error
@@ -593,6 +633,7 @@ type Querier interface {
 	SaveRiskEventContext(ctx context.Context, arg SaveRiskEventContextParams) error
 	SaveRiskEventReview(ctx context.Context, arg SaveRiskEventReviewParams) error
 	SaveRiskRule(ctx context.Context, arg SaveRiskRuleParams) error
+	SaveRollupState(ctx context.Context, arg SaveRollupStateParams) error
 	SaveSegment(ctx context.Context, arg SaveSegmentParams) error
 	SaveShiftClose(ctx context.Context, arg SaveShiftCloseParams) error
 	SaveShiftLodge(ctx context.Context, arg SaveShiftLodgeParams) error
@@ -608,7 +649,6 @@ type Querier interface {
 	SegmentByID(ctx context.Context, id uuid.UUID) (CreditSegment, error)
 	SegmentsPage(ctx context.Context, arg SegmentsPageParams) ([]CreditSegment, error)
 	SerialTaken(ctx context.Context, arg SerialTakenParams) (bool, error)
-	SetAccountCooperative(ctx context.Context, arg SetAccountCooperativeParams) error
 	SetAccountDisplayName(ctx context.Context, arg SetAccountDisplayNameParams) error
 	SetAccountKind(ctx context.Context, arg SetAccountKindParams) error
 	SetAccountKycStatus(ctx context.Context, arg SetAccountKycStatusParams) error
@@ -643,6 +683,7 @@ type Querier interface {
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetVAReference(ctx context.Context, arg SetVAReferenceParams) error
 	SetVehicleBattery(ctx context.Context, arg SetVehicleBatteryParams) error
+	SetVehicleCooperative(ctx context.Context, arg SetVehicleCooperativeParams) error
 	SetVehicleEngineSwap(ctx context.Context, arg SetVehicleEngineSwapParams) error
 	SettleCheckout(ctx context.Context, arg SettleCheckoutParams) error
 	SetupTokenByHash(ctx context.Context, tokenHash string) (SetupTokenByHashRow, error)
@@ -673,6 +714,25 @@ type Querier interface {
 	SubscriptionForUpdate(ctx context.Context, id uuid.UUID) (MobilitySubscription, error)
 	SubscriptionRows(ctx context.Context, ids []uuid.UUID) ([]SubscriptionRowsRow, error)
 	SubscriptionStatusCounts(ctx context.Context) (SubscriptionStatusCountsRow, error)
+	// Per chairman group, plus one "no chairman" row (id NULL).
+	SummaryCooperatives(ctx context.Context, arg SummaryCooperativesParams) ([]SummaryCooperativesRow, error)
+	// Point in time: open loans now, split by how long past due they are.
+	SummaryCredit(ctx context.Context, cooperative *uuid.UUID) (SummaryCreditRow, error)
+	// One row per day in range (zeros included) so charts have no gaps.
+	SummaryDaily(ctx context.Context, arg SummaryDailyParams) ([]SummaryDailyRow, error)
+	// Distinct riders and vehicles that completed a swap in range.
+	SummaryDistinct(ctx context.Context, arg SummaryDistinctParams) (SummaryDistinctRow, error)
+	SummaryHubs(ctx context.Context, arg SummaryHubsParams) ([]SummaryHubsRow, error)
+	// Reports summary: everything period-shaped reads the per-day rollups
+	// (see rollup.sql); only distinct rider/vehicle counts and point-in-time
+	// snapshots touch live tables, each bounded by an index.
+	//
+	// Revenue is successful payments for services: wallet top-ups (FUND,
+	// WALLET_TOPUP) are left out because they are spent later as wallet-debit
+	// payments, which would count the same naira twice.
+	SummaryMoney(ctx context.Context, arg SummaryMoneyParams) ([]SummaryMoneyRow, error)
+	SummaryNewRiders(ctx context.Context, arg SummaryNewRidersParams) (int64, error)
+	SummaryOps(ctx context.Context, arg SummaryOpsParams) (SummaryOpsRow, error)
 	SupersedeConfig(ctx context.Context, arg SupersedeConfigParams) error
 	SupersedeMatrices(ctx context.Context, arg SupersedeMatricesParams) error
 	SwapByClientEvent(ctx context.Context, clientEventID string) (MobilitySwap, error)

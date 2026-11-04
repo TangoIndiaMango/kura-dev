@@ -2,6 +2,7 @@ package reports
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,8 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/events"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/apperr"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/decode"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/paginate"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/reqctx"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/respond"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/httpx/router"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/database"
@@ -29,7 +32,21 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/throttle"
 )
 
-var kinds = map[string]bool{"IMPACT_PDF": true, "OPS_CSV": true, "FLEET_CSV": true, "REVENUE_CSV": true, "OTHER": true}
+var kinds = map[string]bool{"IMPACT_PDF": true, "OPS_CSV": true, "FLEET_CSV": true, "REVENUE_CSV": true,
+	"DATASET": true, "OTHER": true}
+
+// canQueue: builder exports are checked against the dataset (compile);
+// the fixed reports stay with analytics:impact.
+func (s *service) canQueue(ctx context.Context, kind string, params map[string]any) error {
+	if kind == "DATASET" {
+		_, err := s.compileParams(ctx, params)
+		return err
+	}
+	if !reqctx.User(ctx).Can("analytics:impact") {
+		return apperr.Forbidden("You do not have permission to perform this action.")
+	}
+	return nil
+}
 
 // create is ReportCreateView: validate, queue (idempotent per requester +
 // key), then render synchronously while still QUEUED.
@@ -80,6 +97,10 @@ func (s *service) create(w http.ResponseWriter, r *http.Request) {
 	if kind == "OTHER" {
 		respond.Error(w, r, apperr.New("UNSUPPORTED", "Report kind OTHER is not available in this release.").
 			WithStatus(http.StatusNotImplemented))
+		return
+	}
+	if err := s.canQueue(ctx, kind, params); err != nil {
+		respond.Error(w, r, err)
 		return
 	}
 	key := ""
@@ -155,10 +176,41 @@ func (s *service) job(r *http.Request) (db.AnalyticsReportjob, error) {
 		return db.AnalyticsReportjob{}, apperr.NotFound("Not found.")
 	}
 	j, err := s.q.ReportByID(r.Context(), id)
+	if err == nil && !mine(r, j) {
+		err = pgx.ErrNoRows
+	}
 	if database.IsNoRows(err) {
 		err = apperr.NotFound("Report not found.")
 	}
 	return j, err
+}
+
+// mine: people see the files they asked for; analytics:impact sees all.
+func mine(r *http.Request, j db.AnalyticsReportjob) bool {
+	p := reqctx.User(r.Context())
+	return p.Can("analytics:impact") || (j.RequestedByID != nil && j.RequestedByID.String() == p.UserID)
+}
+
+// history is GET /reports/: the caller's own reports and exports, newest first.
+func (s *service) history(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid, err := uuid.Parse(reqctx.User(ctx).UserID)
+	if err != nil {
+		respond.Error(w, r, apperr.Forbidden("Sign in again."))
+		return
+	}
+	page, size := paginate.Page(r), paginate.Size(r)
+	total, err := s.q.CountReportsForRequester(ctx, &uid)
+	var out []map[string]any
+	if err == nil {
+		var jobs []db.AnalyticsReportjob
+		jobs, err = s.q.ReportsForRequester(ctx, db.ReportsForRequesterParams{RequestedByID: &uid, Lim: int32(size),
+			Off: int32(paginate.Offset(page, size))})
+		for _, j := range jobs {
+			out = append(out, serialize(j))
+		}
+	}
+	respondPage(w, r, out, int(total), page, size, err)
 }
 
 func (s *service) detail(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +270,9 @@ func disposition(name string) string {
 	return `attachment; filename="` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(name) + `"`
 }
 
+// summaryCaps: revenue staff see everything, a chairman their cooperative.
+var summaryCaps = []string{"analytics:revenue", "analytics:cooperative"}
+
 // Module mounts /api/v1/reports/*.
 type Module struct {
 	s       *service
@@ -230,7 +285,13 @@ func NewModule(pool *pgxpool.Pool, root string, limiter *throttle.Limiter) *Modu
 
 func (m *Module) Register(mux *http.ServeMux) {
 	g := router.New(mux, "/api/v1/reports", m.limiter)
-	g.Cap("POST", "/", "analytics:impact", m.s.create)
-	g.Cap("GET", "/{id}/", "analytics:impact", m.s.detail)
-	g.Cap("GET", "/{id}/download/", "analytics:impact", m.s.download)
+	g.User("GET", "/", m.s.history)
+	g.User("POST", "/", m.s.create)
+	g.User("GET", "/datasets/", m.s.datasetsList)
+	g.User("POST", "/preview/", m.s.preview)
+	g.AnyCap("GET", "/summary/", summaryCaps, m.s.summary)
+	g.AnyCap("GET", "/summary/hubs/", summaryCaps, m.s.summaryHubs)
+	g.AnyCap("GET", "/summary/cooperatives/", summaryCaps, m.s.summaryCooperatives)
+	g.User("GET", "/{id}/", m.s.detail)
+	g.User("GET", "/{id}/download/", m.s.download)
 }

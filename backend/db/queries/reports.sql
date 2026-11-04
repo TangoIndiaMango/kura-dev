@@ -45,3 +45,10 @@ LEFT JOIN finance_ledgerentry e ON e.transaction_id = t.id
 LEFT JOIN finance_ledgeraccount a ON a.id = e.ledger_account_id
 WHERE t.kind IN ('SWAP_FEE', 'PLAN_FEE', 'LOAN_REPAY') AND t.posted_at >= sqlc.arg(from_at) AND t.posted_at <= sqlc.arg(to_at)
 GROUP BY t.id ORDER BY t.posted_at;
+
+-- name: ReportsForRequester :many
+SELECT * FROM analytics_reportjob WHERE requested_by_id = $1
+ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
+
+-- name: CountReportsForRequester :one
+SELECT count(*) FROM analytics_reportjob WHERE requested_by_id = $1;

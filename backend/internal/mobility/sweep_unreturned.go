@@ -75,12 +75,13 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 		return false, false, nil, err
 	}
 	var acct *db.AccountsAccount
+	var coopID *uuid.UUID
 	if v, err := q.MountedVehicle(ctx, &b.ID); err == nil {
 		a, err := q.AccountByID(ctx, v.AccountID)
 		if err != nil {
 			return false, false, nil, err
 		}
-		acct = &a
+		acct, coopID = &a, v.CooperativeID
 	} else if !database.IsNoRows(err) {
 		return false, false, nil, err
 	}
@@ -103,7 +104,7 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 		FromSet: true, ToType: "NONE", Meta: map[string]any{"reason": "UNRETURNED_7D"}, Source: "SYSTEM"}); err != nil {
 		return false, false, nil, err
 	}
-	target, owner, err := unreturnedTargets(ctx, q, acct)
+	target, owner, err := unreturnedTargets(ctx, q, acct, coopID)
 	if err != nil {
 		return false, false, nil, err
 	}
@@ -142,8 +143,9 @@ func flagOne(ctx context.Context, q *db.Queries, id uuid.UUID) (bool, bool, *mai
 	return true, susp, email, nil
 }
 
-// unreturnedTargets is _notify_target: an active chairman, else the owner.
-func unreturnedTargets(ctx context.Context, q *db.Queries, acct *db.AccountsAccount) (*db.AccountsUser, *db.AccountsUser, error) {
+// unreturnedTargets is _notify_target: the active chairman of the vehicle's
+// cooperative, else the owner.
+func unreturnedTargets(ctx context.Context, q *db.Queries, acct *db.AccountsAccount, coopID *uuid.UUID) (*db.AccountsUser, *db.AccountsUser, error) {
 	if acct == nil {
 		return nil, nil, nil
 	}
@@ -151,8 +153,8 @@ func unreturnedTargets(ctx context.Context, q *db.Queries, acct *db.AccountsAcco
 	if err != nil {
 		return nil, nil, err
 	}
-	if acct.CooperativeID != nil {
-		c, err := q.CooperativeByID(ctx, *acct.CooperativeID)
+	if coopID != nil {
+		c, err := q.CooperativeByID(ctx, *coopID)
 		if err == nil && c.ChairmanUserID != nil {
 			chair, err := q.GetUserRow(ctx, *c.ChairmanUserID)
 			if err == nil && chair.IsActive {

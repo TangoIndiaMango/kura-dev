@@ -84,7 +84,6 @@ func (m *Module) Register(mux *http.ServeMux) {
 	ac.Cap("POST", "/{id}/suspend/", "accounts:manage", m.accts.suspend())
 	ac.Cap("POST", "/{id}/reinstate/", "accounts:manage", m.accts.reinstate)
 	ac.Cap("POST", "/{id}/notify/", "accounts:manage", m.accts.notifyRider())
-	ac.Cap("POST", "/{id}/set-cooperative/", "accounts:manage", m.accts.setCooperative)
 	ac.User("GET", "/stats/", m.accts.stats)
 	ac.User("GET", "/export/", m.accts.export)
 	ac.User("GET", "/{id}/", m.accts.get)

@@ -19,6 +19,7 @@ import {
 } from './hooks/use-vehicles'
 import { vehicleStatusLabel } from './types'
 import { VehicleOverview } from './VehicleOverviewLive'
+import { VehicleAssignDriverModal, VehicleChairmanModal } from './VehicleAssignModals'
 import {
   VehicleHoldsTable,
   VehicleSwapsTable,
@@ -47,6 +48,8 @@ export function VehiclesDetailPanel({ id }: { id: string }) {
   >(null)
   const [retireOpen, setRetireOpen] = useState(false)
   const [qrPreview, setQrPreview] = useState<string | null>(null)
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [chairmanOpen, setChairmanOpen] = useState(false)
 
   if (isPending) {
     return (
@@ -83,6 +86,16 @@ export function VehiclesDetailPanel({ id }: { id: string }) {
       id: 'edit',
       label: 'Edit',
       onClick: () => navigate(`/vehicles/${vehicle.id}/edit`),
+    })
+    actions.push({
+      id: 'assign-driver',
+      label: vehicle.assigned_driver_id ? 'Change driver' : 'Assign driver',
+      onClick: () => setAssignOpen(true),
+    })
+    actions.push({
+      id: 'set-chairman',
+      label: vehicle.cooperative_id ? 'Change chairman' : 'Set chairman',
+      onClick: () => setChairmanOpen(true),
     })
     actions.push({
       id: 'suspend',
@@ -135,6 +148,7 @@ export function VehiclesDetailPanel({ id }: { id: string }) {
         layout="timeline"
         summaryRows={[
           { label: 'Owner', value: vehicle.owner_name || vehicle.owner_kura_id },
+          { label: 'Chairman', value: vehicle.cooperative_name || '—' },
           { label: 'Type', value: vehicle.vehicle_type },
           {
             label: 'Join path',
@@ -206,15 +220,21 @@ export function VehiclesDetailPanel({ id }: { id: string }) {
           },
         ]}
       >
-        <VehicleOverview
-          vehicle={vehicle}
-          qrPreview={qrPreview}
-          canAssign={can('vehicles:manage')}
-          onAssigned={() => {
-            refetch()
-          }}
-        />
+        <VehicleOverview vehicle={vehicle} qrPreview={qrPreview} />
       </AdminDetailPage>
+
+      <VehicleAssignDriverModal
+        vehicle={vehicle}
+        opened={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        onDone={() => refetch()}
+      />
+      <VehicleChairmanModal
+        vehicle={vehicle}
+        opened={chairmanOpen}
+        onClose={() => setChairmanOpen(false)}
+        onDone={() => refetch()}
+      />
 
       <AdminConfirmModal
         opened={Boolean(pendingStatus)}

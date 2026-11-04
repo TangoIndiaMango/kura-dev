@@ -147,3 +147,41 @@ func iotKeyHash(raw string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(raw)))
 	return hex.EncodeToString(sum[:])
 }
+
+type cooperativeReq struct {
+	CooperativeID *uuid.UUID `json:"cooperative_id"`
+}
+
+func cooperativeExists(ctx context.Context, q *db.Queries, id uuid.UUID) error {
+	ok, err := q.CooperativeExists(ctx, id)
+	if err == nil && !ok {
+		err = apperr.New("VALIDATION_ERROR", "Unknown cooperative.").
+			WithDetails(apperr.Details{"cooperative_id": []string{"invalid"}})
+	}
+	return err
+}
+
+// setCooperative links the vehicle to the chairman's cooperative that owns
+// it (null unlinks). Past report days keep the chairman they were rolled up with.
+func (h *VehicleHandler) setCooperative() http.HandlerFunc {
+	return vehicleAction(h, func(ctx context.Context, cur db.VehicleRowsRow, b cooperativeReq, keys map[string]bool) error {
+		if !keys["cooperative_id"] {
+			return apperr.Field("cooperative_id", "This field is required.")
+		}
+		return h.vehicleTx(ctx, cur.ID, func(q *db.Queries, v db.MobilityVehicle, who *events.Actor) error {
+			if b.CooperativeID != nil {
+				if err := cooperativeExists(ctx, q, *b.CooperativeID); err != nil {
+					return err
+				}
+			}
+			if err := q.SetVehicleCooperative(ctx, db.SetVehicleCooperativeParams{ID: v.ID,
+				CooperativeID: b.CooperativeID}); err != nil {
+				return err
+			}
+			return events.Emit(ctx, q, events.Event{Action: "vehicle.cooperative_set", SubjectType: "vehicle",
+				SubjectID: v.ID.String(), SubjectLabel: v.RegistrationPlate, Actor: who,
+				Before: events.Map{"cooperative_id": optID(v.CooperativeID)},
+				After:  events.Map{"cooperative_id": optID(b.CooperativeID)}})
+		})
+	})
+}

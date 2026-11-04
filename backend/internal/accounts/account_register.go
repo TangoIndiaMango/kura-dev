@@ -19,12 +19,11 @@ import (
 
 // OperatorRegisterSerializer.
 type registerReq struct {
-	FullName      string     `json:"full_name" validate:"required,max=200"`
-	Phone         string     `json:"phone" validate:"required,max=30"`
-	Email         string     `json:"email" validate:"required,max=254,email"`
-	IDType        string     `json:"id_type" validate:"max=40"`
-	IDNumber      string     `json:"id_number" validate:"max=80"`
-	CooperativeID *uuid.UUID `json:"cooperative_id"`
+	FullName string `json:"full_name" validate:"required,max=200"`
+	Phone    string `json:"phone" validate:"required,max=30"`
+	Email    string `json:"email" validate:"required,max=254,email"`
+	IDType   string `json:"id_type" validate:"max=40"`
+	IDNumber string `json:"id_number" validate:"max=80"`
 }
 
 // registered is the CRM detail plus the invite outcome.
@@ -71,14 +70,6 @@ func (h *AccountHandler) register(w http.ResponseWriter, r *http.Request) {
 			return apperr.New("VALIDATION_ERROR", "This phone already belongs to a registered user — open their operator page instead.").
 				WithDetails(apperr.Details{"phone": []string{"unique"}}).WithStatus(http.StatusConflict)
 		}
-		if b.CooperativeID != nil {
-			if ok, err := q.CooperativeExists(ctx, *b.CooperativeID); err != nil {
-				return err
-			} else if !ok {
-				return apperr.New("VALIDATION_ERROR", "Unknown cooperative.").
-					WithDetails(apperr.Details{"cooperative_id": []string{"invalid"}})
-			}
-		}
 		first, last := splitOnce(name)
 		publicID, err := uniquePublicID(ctx, q, "OP")
 		if err != nil {
@@ -92,7 +83,7 @@ func (h *AccountHandler) register(w http.ResponseWriter, r *http.Request) {
 		}
 		acct, err := q.InsertAccount(ctx, db.InsertAccountParams{ID: ids.New(), KuraID: kuraID("KR", 6),
 			Kind: "INDIVIDUAL", DisplayName: name, Status: "ACTIVE", KycStatus: "PENDING_PSP",
-			RegistrationChannel: "WEB", CooperativeID: b.CooperativeID, OwnerUserID: userID})
+			RegistrationChannel: "WEB", OwnerUserID: userID})
 		if err != nil {
 			return err
 		}
@@ -111,15 +102,10 @@ func (h *AccountHandler) register(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		hours := int(inviteTTL.Hours())
-		var coop any
-		if b.CooperativeID != nil {
-			coop = b.CooperativeID.String()
-		}
 		return events.Emit(ctx, q, events.Event{Action: "account.registered", SubjectType: "account",
 			SubjectID: acct.ID.String(), SubjectLabel: firstNonEmpty(acct.KuraID, name), Actor: actorOf(staff),
 			After: events.Map{"kura_id": acct.KuraID, "display_name": name, "email": email, "phone": phone,
-				"id_type": strings.ToUpper(strings.TrimSpace(b.IDType)), "invite_email_sent": true,
-				"cooperative_id": coop},
+				"id_type": strings.ToUpper(strings.TrimSpace(b.IDType)), "invite_email_sent": true},
 			Notify: []events.NotifySpec{{UserID: staff.ID, Title: "Operator registered",
 				Body: fmt.Sprintf("%s (%s) registered. Password-setup invite emailed — expires in %dh.",
 					name, acct.KuraID, hours),

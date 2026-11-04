@@ -13,7 +13,7 @@ import (
 )
 
 const accountForUpdate = `-- name: AccountForUpdate :one
-SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status FROM accounts_account WHERE id = $1 FOR UPDATE
+SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status FROM accounts_account WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsAccount, error) {
@@ -31,7 +31,6 @@ func (q *Queries) AccountForUpdate(ctx context.Context, id uuid.UUID) (AccountsA
 		&i.OwnerUserID,
 		&i.RegistrationChannel,
 		&i.Psp,
-		&i.CooperativeID,
 		&i.RiskStatus,
 	)
 	return i, err
@@ -49,7 +48,7 @@ func (q *Queries) AccountVehicleCount(ctx context.Context, accountID uuid.UUID) 
 }
 
 const cooperativeAccountIDs = `-- name: CooperativeAccountIDs :many
-SELECT id FROM accounts_account WHERE cooperative_id = $1 ORDER BY created_at, id
+SELECT DISTINCT v.account_id FROM mobility_vehicle v WHERE v.cooperative_id = $1 ORDER BY v.account_id
 `
 
 func (q *Queries) CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid.UUID) ([]uuid.UUID, error) {
@@ -60,11 +59,11 @@ func (q *Queries) CooperativeAccountIDs(ctx context.Context, cooperativeID *uuid
 	defer rows.Close()
 	items := []uuid.UUID{}
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var account_id uuid.UUID
+		if err := rows.Scan(&account_id); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, account_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -160,7 +159,8 @@ func (q *Queries) DriverByUser(ctx context.Context, userID uuid.UUID) (DriverByU
 const getCooperative = `-- name: GetCooperative :one
 SELECT c.id, c.name, c.region, c.status, c.chairman_user_id, c.created_at, c.updated_at,
   u.email AS chairman_email,
-  (SELECT count(*) FROM accounts_account a WHERE a.cooperative_id = c.id)::int AS member_count
+  (SELECT count(DISTINCT v.account_id) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS member_count,
+  (SELECT count(*) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS vehicle_count
 FROM accounts_cooperative c LEFT JOIN accounts_user u ON u.id = c.chairman_user_id
 WHERE c.id = $1
 `
@@ -175,6 +175,7 @@ type GetCooperativeRow struct {
 	UpdatedAt      time.Time
 	ChairmanEmail  *string
 	MemberCount    int32
+	VehicleCount   int32
 }
 
 func (q *Queries) GetCooperative(ctx context.Context, id uuid.UUID) (GetCooperativeRow, error) {
@@ -190,6 +191,7 @@ func (q *Queries) GetCooperative(ctx context.Context, id uuid.UUID) (GetCooperat
 		&i.UpdatedAt,
 		&i.ChairmanEmail,
 		&i.MemberCount,
+		&i.VehicleCount,
 	)
 	return i, err
 }
@@ -309,7 +311,8 @@ func (q *Queries) InsertFleetDriverUser(ctx context.Context, arg InsertFleetDriv
 const listCooperatives = `-- name: ListCooperatives :many
 SELECT c.id, c.name, c.region, c.status, c.chairman_user_id, c.created_at, c.updated_at,
   u.email AS chairman_email,
-  (SELECT count(*) FROM accounts_account a WHERE a.cooperative_id = c.id)::int AS member_count
+  (SELECT count(DISTINCT v.account_id) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS member_count,
+  (SELECT count(*) FROM mobility_vehicle v WHERE v.cooperative_id = c.id)::int AS vehicle_count
 FROM accounts_cooperative c LEFT JOIN accounts_user u ON u.id = c.chairman_user_id
 WHERE ($1::bool OR c.chairman_user_id = $2)
   AND ($3::text IS NULL OR c.name ILIKE '%' || $3 || '%'
@@ -336,6 +339,7 @@ type ListCooperativesRow struct {
 	UpdatedAt      time.Time
 	ChairmanEmail  *string
 	MemberCount    int32
+	VehicleCount   int32
 }
 
 func (q *Queries) ListCooperatives(ctx context.Context, arg ListCooperativesParams) ([]ListCooperativesRow, error) {
@@ -363,6 +367,7 @@ func (q *Queries) ListCooperatives(ctx context.Context, arg ListCooperativesPara
 			&i.UpdatedAt,
 			&i.ChairmanEmail,
 			&i.MemberCount,
+			&i.VehicleCount,
 		); err != nil {
 			return nil, err
 		}

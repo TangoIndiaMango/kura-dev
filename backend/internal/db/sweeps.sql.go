@@ -14,7 +14,7 @@ import (
 )
 
 const activeAccountsForScoring = `-- name: ActiveAccountsForScoring :many
-SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, cooperative_id, risk_status FROM accounts_account WHERE status = 'ACTIVE' ORDER BY created_at LIMIT $1
+SELECT id, created_at, updated_at, kura_id, kind, display_name, status, kyc_status, owner_user_id, registration_channel, psp, risk_status FROM accounts_account WHERE status = 'ACTIVE' ORDER BY created_at LIMIT $1
 `
 
 func (q *Queries) ActiveAccountsForScoring(ctx context.Context, limit int32) ([]AccountsAccount, error) {
@@ -38,7 +38,6 @@ func (q *Queries) ActiveAccountsForScoring(ctx context.Context, limit int32) ([]
 			&i.OwnerUserID,
 			&i.RegistrationChannel,
 			&i.Psp,
-			&i.CooperativeID,
 			&i.RiskStatus,
 		); err != nil {
 			return nil, err
@@ -393,7 +392,7 @@ func (q *Queries) LostBatteryIDs(ctx context.Context, limit int32) ([]uuid.UUID,
 }
 
 const mountedVehicle = `-- name: MountedVehicle :one
-SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id FROM mobility_vehicle WHERE current_battery_id = $1 ORDER BY id LIMIT 1
+SELECT id, created_at, updated_at, registration_plate, status, account_id, current_battery_id, vehicle_model_id, qr_secret, hardware_id, vin, acquisition_path, petrol_engine_id, iot_api_key_hash, assigned_driver_id, cooperative_id FROM mobility_vehicle WHERE current_battery_id = $1 ORDER BY id LIMIT 1
 `
 
 func (q *Queries) MountedVehicle(ctx context.Context, currentBatteryID *uuid.UUID) (MobilityVehicle, error) {
@@ -415,6 +414,7 @@ func (q *Queries) MountedVehicle(ctx context.Context, currentBatteryID *uuid.UUI
 		&i.PetrolEngineID,
 		&i.IotApiKeyHash,
 		&i.AssignedDriverID,
+		&i.CooperativeID,
 	)
 	return i, err
 }

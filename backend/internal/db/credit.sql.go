@@ -354,7 +354,8 @@ SELECT count(*) FROM accounts_account a
 WHERE ($1::text IS NULL OR a.status = $1)
   AND ($2::text IS NULL OR a.kyc_status = $2)
   AND ($3::text IS NULL OR a.kind = $3)
-  AND ($4::uuid IS NULL OR a.cooperative_id = $4)
+  AND ($4::uuid IS NULL OR EXISTS (SELECT 1 FROM mobility_vehicle v
+       WHERE v.account_id = a.id AND v.cooperative_id = $4))
   AND ($5::date IS NULL
        OR (a.created_at AT TIME ZONE 'Africa/Lagos')::date <= $5)
   AND ($6::date IS NULL
@@ -1208,7 +1209,8 @@ FROM accounts_account a LEFT JOIN accounts_user u ON u.id = a.owner_user_id
 WHERE ($1::text IS NULL OR a.status = $1)
   AND ($2::text IS NULL OR a.kyc_status = $2)
   AND ($3::text IS NULL OR a.kind = $3)
-  AND ($4::uuid IS NULL OR a.cooperative_id = $4)
+  AND ($4::uuid IS NULL OR EXISTS (SELECT 1 FROM mobility_vehicle v
+       WHERE v.account_id = a.id AND v.cooperative_id = $4))
   AND ($5::date IS NULL
        OR (a.created_at AT TIME ZONE 'Africa/Lagos')::date <= $5)
   AND ($6::date IS NULL
