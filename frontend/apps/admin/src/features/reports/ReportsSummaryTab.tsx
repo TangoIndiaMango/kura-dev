@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Alert, Select, Skeleton } from '@mantine/core'
 import dayjs from 'dayjs'
@@ -23,30 +23,31 @@ import {
   type SummaryHubRow,
   type SummarySplit,
 } from './api'
-import { count, delta, naira, nairaShort, rangeLabel, words } from './format'
+import { count, delta, naira, nairaShort, rangeLabel, shortNumber, words } from './format'
 
+// The key figure comes second in every table so a phone shows it unscrolled.
 const HUB_HEADERS: TableHeader[] = [
   { key: 'hub', label: 'HUB' },
-  { key: 'swaps', label: 'SWAPS' },
   { key: 'money', label: 'REVENUE' },
+  { key: 'swaps', label: 'SWAPS' },
   { key: 'expired', label: 'EXPIRED BOOKINGS' },
   { key: 'overrides', label: 'OVERRIDES' },
 ]
 
 const COOP_HEADERS: TableHeader[] = [
   { key: 'group', label: 'CHAIRMAN GROUP' },
-  { key: 'vehicles', label: 'VEHICLES' },
-  { key: 'swaps', label: 'SWAPS' },
   { key: 'money', label: 'REVENUE FROM THEIR BIKES' },
   { key: 'perVehicle', label: 'PER VEHICLE / DAY' },
+  { key: 'vehicles', label: 'VEHICLES' },
+  { key: 'swaps', label: 'SWAPS' },
   { key: 'packs', label: 'PACKS OUT' },
 ]
 
 const SPLIT_HEADERS: TableHeader[] = [
   { key: 'what', label: 'WHAT' },
-  { key: 'payments', label: 'PAYMENTS' },
   { key: 'amount', label: 'AMOUNT' },
   { key: 'change', label: 'VS BEFORE' },
+  { key: 'payments', label: 'PAYMENTS' },
 ]
 
 function defaultRange() {
@@ -67,19 +68,19 @@ function SplitTable({ title, rows }: { title: string; rows: SummarySplit[] }) {
       emptyMessage="No revenue in these dates."
       toolbar={{ title, showFilter: false }}
       renderItems={(r) => {
-        const d = delta(r.amount_kobo, r.previous_amount_kobo, 'before')
+        const d = delta(r.amount_kobo, r.previous_amount_kobo)
         return [
           <span key="what" className="font-semibold text-[var(--tx)]">
             {words(r.key)}
           </span>,
-          <span key="payments">{count(r.payments)}</span>,
           <span key="amount">{naira(r.amount_kobo)}</span>,
           <span
             key="change"
             className={d.tone === 'success' ? 'text-[#1E7A45]' : d.tone === 'warning' ? 'text-[#B3261E]' : 'text-[var(--mu)]'}
           >
-            {d.text.replace(' · before', '')}
+            {d.text}
           </span>,
+          <span key="payments">{count(r.payments)}</span>,
         ]
       }}
     />
@@ -112,53 +113,40 @@ export function ReportsSummaryTab() {
   const t = data?.totals
   const p = data?.previous
   const before = data ? rangeLabel(data.previous_range) : ''
-  const kpi = (
+  // Eight cards: money, volume, reach, health. Ops counts (expired
+  // bookings, overrides) live per hub in the hubs table below.
+  const card = (
     title: string,
-    value: string,
-    now?: number | null,
-    was?: number | null,
+    value: ReactNode,
+    now: number | null | undefined,
+    was: number | null | undefined,
+    note?: string,
     lowerIsBetter = false,
   ): AdminKpiCardProps => {
-    const d = delta(now, was, `vs ${before}`, lowerIsBetter)
-    return { title, value, sub: d.text, tone: d.tone }
+    const d = delta(now, was, '', lowerIsBetter)
+    return { title, value, sub: [d.text, note].filter(Boolean).join(' · '), tone: d.tone }
   }
-  // Money tiles show ₦135.7M; hovering shows the exact amount.
-  const money = (title: string, now: number, was: number, lowerIsBetter = false): AdminKpiCardProps => ({
-    ...kpi(title, nairaShort(now), now, was, lowerIsBetter),
-    value: <span title={naira(now)}>{nairaShort(now)}</span>,
-  })
+  const money = (kobo: number) => <span title={naira(kobo)}>{nairaShort(kobo)}</span>
   const u = data?.utilisation
   const rate = (n: number | null | undefined) => (n == null ? '—' : n.toFixed(n < 10 ? 1 : 0))
   const kpis: AdminKpiCardProps[] =
     t && p
       ? [
-          money('Revenue', t.revenue_kobo, p.revenue_kobo),
-          money('Net (after VAT)', t.net_kobo, p.net_kobo),
-          money('Money received', t.received_kobo, p.received_kobo),
-          money('Wallet top-ups', t.topup_kobo, p.topup_kobo),
-          kpi('Swaps completed', count(t.swaps), t.swaps, p.swaps),
-          kpi('Riders who swapped', count(t.riders), t.riders, p.riders),
-          kpi('Vehicles that swapped', count(t.vehicles), t.vehicles, p.vehicles),
-          kpi('New riders', count(t.new_riders), t.new_riders, p.new_riders),
-          money('Payments still pending', t.pending_kobo, p.pending_kobo, true),
-          {
-            title: 'Payment success rate',
-            value: t.success_rate_pct == null ? '—' : `${t.success_rate_pct.toFixed(1)}%`,
-            sub: `${count(t.failed_payments)} failed`,
-            tone: t.success_rate_pct != null && t.success_rate_pct < 95 ? 'warning' : 'default',
-          },
+          card('Revenue', money(t.revenue_kobo), t.revenue_kobo, p.revenue_kobo),
+          card('Net after VAT', money(t.net_kobo), t.net_kobo, p.net_kobo),
+          card('Money received', money(t.received_kobo), t.received_kobo, p.received_kobo,
+            `${nairaShort(t.topup_kobo)} wallet top-ups`),
+          card('Payments pending', money(t.pending_kobo), t.pending_kobo, p.pending_kobo,
+            t.success_rate_pct == null ? undefined : `${t.success_rate_pct.toFixed(1)}% succeed`, true),
+          card('Swaps', count(t.swaps), t.swaps, p.swaps),
+          card('Riders who swapped', count(t.riders), t.riders, p.riders,
+            `${count(t.new_riders)} new`),
+          card('Vehicles that swapped', count(t.vehicles), t.vehicles, p.vehicles),
           {
             title: 'Swaps per pack per day',
             value: rate(u?.swaps_per_pack_day),
-            sub: u ? `${count(u.packs_in_service)} packs in service now` : '',
+            sub: u ? `${rate(u.swaps_per_hub_day)} per hub · ${count(u.packs_in_service)} packs` : '',
           },
-          {
-            title: 'Swaps per hub per day',
-            value: rate(u?.swaps_per_hub_day),
-            sub: u ? `${count(u.hubs_open)} hubs open now` : '',
-          },
-          kpi('Expired bookings', count(t.expired_reservations), t.expired_reservations, p.expired_reservations, true),
-          kpi('Overrides', count(t.overrides), t.overrides, p.overrides, true),
         ]
       : []
 
@@ -197,7 +185,7 @@ export function ReportsSummaryTab() {
                 : ' '}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
             {seesAll ? (
               <>
                 <Select
@@ -205,7 +193,7 @@ export function ReportsSummaryTab() {
                   placeholder="All hubs"
                   clearable
                   searchable
-                  w={180}
+                  w={{ base: '100%', sm: 180 }}
                   data={hubOptions.hubs.map((h) => ({ value: h.id, label: h.name }))}
                   value={hub}
                   onChange={(v) => {
@@ -219,7 +207,7 @@ export function ReportsSummaryTab() {
                   placeholder="All chairmen"
                   clearable
                   searchable
-                  w={200}
+                  w={{ base: '100%', sm: 200 }}
                   data={coopOptions.options}
                   value={coop}
                   onChange={(v) => {
@@ -231,6 +219,8 @@ export function ReportsSummaryTab() {
               </>
             ) : null}
             <DateRangePicker
+              className="w-full sm:w-auto"
+              fullWidth
               date={range}
               maxDate={new Date()}
               onChange={(v) => {
@@ -247,13 +237,13 @@ export function ReportsSummaryTab() {
             The summary could not be loaded. Try a shorter range.
           </Alert>
         ) : summary.isPending ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 14 }, (_, i) => (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }, (_, i) => (
               <Skeleton key={i} height={92} radius="md" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
             {kpis.map((k) => (
               <AdminKpiCard key={k.title} {...k} />
             ))}
@@ -261,14 +251,14 @@ export function ReportsSummaryTab() {
         )}
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
         <section className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] p-4 shadow-[var(--sh)]">
           <h3 className="mb-2 text-sm font-bold text-[var(--tx)]">Revenue per day</h3>
           <AdminBarChart
             data={chart}
             series={[{ dataKey: 'money', name: 'Revenue (₦)', color: ADMIN_CHART_COLORS.teal }]}
-            valueFormatter={(v) => `₦${v.toLocaleString('en-NG')}`}
-            yAxisWidth={70}
+            valueFormatter={(v) => `₦${shortNumber(v)}`}
+            yAxisWidth={66}
             height={230}
           />
         </section>
@@ -277,21 +267,23 @@ export function ReportsSummaryTab() {
           <AdminBarChart
             data={chart}
             series={[{ dataKey: 'swaps', name: 'Swaps', color: ADMIN_CHART_COLORS.navy }]}
+            valueFormatter={shortNumber}
+            yAxisWidth={48}
             height={230}
           />
         </section>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+        <div className="min-w-0 overflow-hidden rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
           <SplitTable title="Revenue by what was paid for" rows={data?.purposes ?? []} />
         </div>
-        <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
+        <div className="min-w-0 overflow-hidden rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
           <SplitTable title="Revenue by how people paid" rows={data?.channels ?? []} />
         </div>
       </div>
 
-      <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
+      <div className="min-w-0 overflow-hidden rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
         <DynamicTableSection<SummaryCoopRow>
           variant="embedded"
           headers={COOP_HEADERS}
@@ -316,21 +308,21 @@ export function ReportsSummaryTab() {
               <div className="font-semibold text-[var(--tx)]">{r.name}</div>
               {r.chairman ? <div className="text-[12px] text-[var(--mu)]">{r.chairman}</div> : null}
             </div>,
-            <span key="vehicles">{count(r.vehicles)}</span>,
-            <span key="swaps">{count(r.swaps)}</span>,
             <span key="money" className="font-semibold">
               {naira(r.revenue_kobo)}
             </span>,
             <span key="perVehicle">
               {r.vehicles > 0 && u?.days ? naira(Math.round(r.revenue_kobo / r.vehicles / u.days)) : '—'}
             </span>,
+            <span key="vehicles">{count(r.vehicles)}</span>,
+            <span key="swaps">{count(r.swaps)}</span>,
             <span key="packs">{count(r.packs_out)}</span>,
           ]}
         />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="min-w-0 overflow-hidden rounded-[12px] border border-[var(--bd)] bg-[var(--sf)] shadow-[var(--sh)]">
           <DynamicTableSection<SummaryHubRow>
             variant="embedded"
             headers={HUB_HEADERS}
@@ -350,8 +342,8 @@ export function ReportsSummaryTab() {
                 <div className="font-semibold text-[var(--tx)]">{r.name}</div>
                 <div className="text-[12px] text-[var(--mu)]">{r.code}</div>
               </div>,
-              <span key="swaps">{count(r.swaps)}</span>,
               <span key="money">{naira(r.revenue_kobo)}</span>,
+              <span key="swaps">{count(r.swaps)}</span>,
               <span key="expired">{count(r.expired_reservations)}</span>,
               <span key="overrides">{count(r.overrides)}</span>,
             ]}

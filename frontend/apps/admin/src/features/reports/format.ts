@@ -19,25 +19,35 @@ export function nairaShort(kobo: number | null | undefined): string {
 export const count = (n: number | null | undefined) =>
   n == null ? '—' : n.toLocaleString('en-NG')
 
-/** "▲ 12.4% vs 1 Sep – 30 Sep"; growth is good unless `lowerIsBetter`. */
+/** "▲ 12.4%" (with " · label" when given); growth is good unless `lowerIsBetter`. */
 export function delta(
   now: number | null | undefined,
   before: number | null | undefined,
-  label: string,
+  label = '',
   lowerIsBetter = false,
 ): { text: string; tone: AdminKpiTone } {
+  const tail = label ? ` · ${label}` : ''
   if (now == null || before == null) return { text: label, tone: 'default' }
   if (before === 0) {
-    return { text: now === 0 ? `No change · ${label}` : `New · ${label}`, tone: 'default' }
+    return { text: (now === 0 ? 'No change' : 'New') + tail, tone: 'default' }
   }
   const pct = ((now - before) / Math.abs(before)) * 100
-  if (Math.abs(pct) < 0.05) return { text: `No change · ${label}`, tone: 'default' }
+  if (Math.abs(pct) < 0.05) return { text: 'No change' + tail, tone: 'default' }
   const up = pct > 0
   const good = lowerIsBetter ? !up : up
   return {
-    text: `${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}% · ${label}`,
+    text: `${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%${tail}`,
     tone: good ? 'success' : 'warning',
   }
+}
+
+/** 3.2k / 1.4M for chart axes. */
+export function shortNumber(n: number): string {
+  const abs = Math.abs(n)
+  if (abs >= 1e9) return `${(n / 1e9).toFixed(1)}B`
+  if (abs >= 1e6) return `${(n / 1e6).toFixed(1)}M`
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`
+  return String(Math.round(n))
 }
 
 export function rangeLabel(r: { start_date: string; end_date: string }) {
