@@ -397,9 +397,10 @@ func (q *Queries) InsertStory(ctx context.Context, arg InsertStoryParams) error 
 }
 
 const revenueByChannel = `-- name: RevenueByChannel :many
-SELECT channel AS k, sum(amount_kobo)::bigint AS amount, count(*)::int AS n FROM finance_payment
-WHERE created_at >= $1 AND created_at < $2 AND status = 'SUCCESS'
-  AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
+SELECT channel AS k, sum(amount_kobo)::bigint AS amount, sum(payments)::int AS n FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 GROUP BY channel ORDER BY 2 DESC, 1
 `
 
@@ -435,9 +436,10 @@ func (q *Queries) RevenueByChannel(ctx context.Context, arg RevenueByChannelPara
 }
 
 const revenueByPurpose = `-- name: RevenueByPurpose :many
-SELECT purpose AS k, sum(amount_kobo)::bigint AS amount, count(*)::int AS n FROM finance_payment
-WHERE created_at >= $1 AND created_at < $2 AND status = 'SUCCESS'
-  AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
+SELECT purpose AS k, sum(amount_kobo)::bigint AS amount, sum(payments)::int AS n FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 GROUP BY purpose ORDER BY 2 DESC, 1
 `
 
@@ -473,10 +475,10 @@ func (q *Queries) RevenueByPurpose(ctx context.Context, arg RevenueByPurposePara
 }
 
 const revenueDaily = `-- name: RevenueDaily :many
-SELECT (created_at AT TIME ZONE 'Africa/Lagos')::date AS day, sum(amount_kobo)::bigint AS amount, count(*)::int AS n
-FROM finance_payment
-WHERE created_at >= $1 AND created_at < $2 AND status = 'SUCCESS'
-  AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
+SELECT day, sum(amount_kobo)::bigint AS amount, sum(payments)::int AS n FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 GROUP BY 1 ORDER BY 1
 `
 
@@ -515,10 +517,12 @@ const revenueTotals = `-- name: RevenueTotals :one
 
 SELECT COALESCE(sum(amount_kobo) FILTER (WHERE status = 'SUCCESS'), 0)::bigint AS gross,
   COALESCE(sum(vat_kobo) FILTER (WHERE status = 'SUCCESS'), 0)::bigint AS vat,
-  (count(*) FILTER (WHERE status = 'SUCCESS'))::int AS transactions,
+  COALESCE(sum(payments) FILTER (WHERE status = 'SUCCESS'), 0)::int AS transactions,
   COALESCE(sum(amount_kobo) FILTER (WHERE status = 'PENDING'), 0)::bigint AS outstanding,
-  (count(*) FILTER (WHERE status = 'PENDING'))::int AS outstanding_n
-FROM finance_payment WHERE created_at >= $1 AND created_at < $2
+  COALESCE(sum(payments) FILTER (WHERE status = 'PENDING'), 0)::int AS outstanding_n
+FROM analytics_dailymoney
+WHERE day >= ($1::timestamptz AT TIME ZONE 'Africa/Lagos')::date
+  AND day < ($2::timestamptz AT TIME ZONE 'Africa/Lagos')::date
   AND purpose NOT IN ('FUND', 'WALLET_TOPUP')
 `
 
@@ -535,8 +539,10 @@ type RevenueTotalsRow struct {
 	OutstandingN int32
 }
 
-// Revenue excludes wallet top-ups (FUND / WALLET_TOPUP): that money is
-// counted when it is spent, as a wallet-debit swap or plan.
+// Revenue reads the daily money rollup (see rollup.sql), not payments.
+// It excludes wallet top-ups (FUND / WALLET_TOPUP): that money is counted
+// when it is spent, as a wallet-debit swap or plan. from_at / to_at are
+// Lagos midnights, so they map to whole rollup days.
 func (q *Queries) RevenueTotals(ctx context.Context, arg RevenueTotalsParams) (RevenueTotalsRow, error) {
 	row := q.db.QueryRow(ctx, revenueTotals, arg.FromAt, arg.ToAt)
 	var i RevenueTotalsRow

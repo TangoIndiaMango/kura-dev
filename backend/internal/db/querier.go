@@ -574,8 +574,10 @@ type Querier interface {
 	RevenueByPurpose(ctx context.Context, arg RevenueByPurposeParams) ([]RevenueByPurposeRow, error)
 	RevenueCsvRows(ctx context.Context, arg RevenueCsvRowsParams) ([]RevenueCsvRowsRow, error)
 	RevenueDaily(ctx context.Context, arg RevenueDailyParams) ([]RevenueDailyRow, error)
-	// Revenue excludes wallet top-ups (FUND / WALLET_TOPUP): that money is
-	// counted when it is spent, as a wallet-debit swap or plan.
+	// Revenue reads the daily money rollup (see rollup.sql), not payments.
+	// It excludes wallet top-ups (FUND / WALLET_TOPUP): that money is counted
+	// when it is spent, as a wallet-debit swap or plan. from_at / to_at are
+	// Lagos midnights, so they map to whole rollup days.
 	RevenueTotals(ctx context.Context, arg RevenueTotalsParams) (RevenueTotalsRow, error)
 	RevokeEventGrants(ctx context.Context, riskEventID uuid.UUID) error
 	// Riders active in the 30 days before `today` (now) versus the 30 days before that.
@@ -722,6 +724,9 @@ type Querier interface {
 	SummaryDaily(ctx context.Context, arg SummaryDailyParams) ([]SummaryDailyRow, error)
 	// Distinct riders and vehicles that completed a swap in range.
 	SummaryDistinct(ctx context.Context, arg SummaryDistinctParams) (SummaryDistinctRow, error)
+	// Point in time: packs that can be swapped and hubs that are not closed,
+	// the denominators for swaps per pack and per hub.
+	SummaryFleetNow(ctx context.Context, hub *uuid.UUID) (SummaryFleetNowRow, error)
 	SummaryHubs(ctx context.Context, arg SummaryHubsParams) ([]SummaryHubsRow, error)
 	// Reports summary: everything period-shaped reads the per-day rollups
 	// (see rollup.sql); only distinct rider/vehicle counts and point-in-time

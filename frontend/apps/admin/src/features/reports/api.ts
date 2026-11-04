@@ -44,6 +44,8 @@ export type SummaryTotals = {
   refunded_kobo: number
   swaps: number
   swap_kobo: number
+  /** Successful ÷ (successful + failed) attempts; null with no attempts. */
+  success_rate_pct: number | null
   /** Null when counting distinct riders took too long for the range. */
   riders: number | null
   vehicles: number | null
@@ -67,6 +69,14 @@ export type ReportsSummary = {
   totals: SummaryTotals
   previous: SummaryTotals
   daily: { day: string; revenue_kobo: number; swaps: number }[]
+  /** Swaps against packs and hubs in service now. */
+  utilisation: {
+    packs_in_service: number
+    hubs_open: number
+    swaps_per_pack_day: number | null
+    swaps_per_hub_day: number | null
+    days: number
+  }
   purposes: SummarySplit[]
   channels: SummarySplit[]
   credit: {
@@ -152,7 +162,15 @@ export type ReportJob = {
   status: 'QUEUED' | 'RUNNING' | 'READY' | 'FAILED' | 'EXPIRED'
   download_path: string
   expires_at: string | null
-  raw: { filename?: string; bytes?: number; error?: string; content_type?: string }
+  raw: {
+    filename?: string
+    bytes?: number
+    error?: string
+    content_type?: string
+    rows?: number
+    /** The file stopped at the row cap: narrow the dates or filters for the rest. */
+    truncated?: boolean
+  }
   created_at: string
 }
 

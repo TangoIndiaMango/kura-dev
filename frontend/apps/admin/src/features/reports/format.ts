@@ -5,6 +5,17 @@ import type { AdminKpiTone } from '@shared/components'
 export const naira = (kobo: number | null | undefined) =>
   formatNaira(kobo ?? 0, { fromKobo: true })
 
+/** ₦135.7M / ₦48k for tiles; the exact amount goes in a tooltip. */
+export function nairaShort(kobo: number | null | undefined): string {
+  const n = (kobo ?? 0) / 100
+  const abs = Math.abs(n)
+  const sign = n < 0 ? '-' : ''
+  if (abs >= 1e9) return `${sign}₦${(abs / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `${sign}₦${(abs / 1e6).toFixed(1)}M`
+  if (abs >= 1e5) return `${sign}₦${Math.round(abs / 1e3)}k`
+  return naira(kobo)
+}
+
 export const count = (n: number | null | undefined) =>
   n == null ? '—' : n.toLocaleString('en-NG')
 

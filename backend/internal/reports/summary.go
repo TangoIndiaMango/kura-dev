@@ -126,23 +126,25 @@ func pgDay(t time.Time) pgtype.Date {
 // services; received is money that came in from outside (wallet debits
 // left out); top-ups are wallet funding, spent later as revenue.
 type totals struct {
-	RevenueKobo         int64  `json:"revenue_kobo"`
-	VatKobo             int64  `json:"vat_kobo"`
-	NetKobo             int64  `json:"net_kobo"`
-	Payments            int64  `json:"payments"`
-	ReceivedKobo        int64  `json:"received_kobo"`
-	TopupKobo           int64  `json:"topup_kobo"`
-	PendingKobo         int64  `json:"pending_kobo"`
-	PendingPayments     int64  `json:"pending_payments"`
-	FailedPayments      int64  `json:"failed_payments"`
-	RefundedKobo        int64  `json:"refunded_kobo"`
-	Swaps               int64  `json:"swaps"`
-	SwapKobo            int64  `json:"swap_kobo"`
-	Riders              *int64 `json:"riders"`
-	Vehicles            *int64 `json:"vehicles"`
-	NewRiders           int64  `json:"new_riders"`
-	ExpiredReservations int64  `json:"expired_reservations"`
-	Overrides           int64  `json:"overrides"`
+	RevenueKobo     int64 `json:"revenue_kobo"`
+	VatKobo         int64 `json:"vat_kobo"`
+	NetKobo         int64 `json:"net_kobo"`
+	Payments        int64 `json:"payments"`
+	ReceivedKobo    int64 `json:"received_kobo"`
+	TopupKobo       int64 `json:"topup_kobo"`
+	PendingKobo     int64 `json:"pending_kobo"`
+	PendingPayments int64 `json:"pending_payments"`
+	FailedPayments  int64 `json:"failed_payments"`
+	// SuccessRatePct is successful ÷ (successful + failed) payment attempts.
+	SuccessRatePct      *float64 `json:"success_rate_pct"`
+	RefundedKobo        int64    `json:"refunded_kobo"`
+	Swaps               int64    `json:"swaps"`
+	SwapKobo            int64    `json:"swap_kobo"`
+	Riders              *int64   `json:"riders"`
+	Vehicles            *int64   `json:"vehicles"`
+	NewRiders           int64    `json:"new_riders"`
+	ExpiredReservations int64    `json:"expired_reservations"`
+	Overrides           int64    `json:"overrides"`
 }
 
 type split struct {
@@ -161,9 +163,11 @@ func readTotals(ctx context.Context, q *db.Queries, from, to time.Time, f filter
 	if err != nil {
 		return t, nil, err
 	}
+	var succeeded int64
 	for _, m := range money {
 		switch m.Status {
 		case "SUCCESS":
+			succeeded += m.Payments
 			if m.Channel != walletDebit {
 				t.ReceivedKobo += m.AmountKobo
 			}
@@ -184,6 +188,10 @@ func readTotals(ctx context.Context, q *db.Queries, from, to time.Time, f filter
 		}
 	}
 	t.NetKobo = t.RevenueKobo - t.VatKobo
+	if tried := succeeded + t.FailedPayments; tried > 0 {
+		pct := float64(succeeded) * 100 / float64(tried)
+		t.SuccessRatePct = &pct
+	}
 	ops, err := q.SummaryOps(ctx, db.SummaryOpsParams{FromDay: pgDay(from), ToDay: pgDay(to), Hub: f.hub, Cooperative: f.coop})
 	if err != nil {
 		return t, nil, err
@@ -291,6 +299,21 @@ func (s *service) summary(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		fleet, err := q.SummaryFleetNow(ctx, f.hub)
+		if err != nil {
+			return err
+		}
+		// Utilisation: swaps per pack and per hub per day, against what is
+		// in service now (pack and hub history is not kept per day).
+		perDay := func(n, of int64) any {
+			if of == 0 {
+				return nil
+			}
+			return float64(n) / float64(of) / float64(f.days())
+		}
+		out["utilisation"] = map[string]any{"packs_in_service": fleet.Packs, "hubs_open": fleet.Hubs,
+			"swaps_per_pack_day": perDay(cur.Swaps, fleet.Packs), "swaps_per_hub_day": perDay(cur.Swaps, fleet.Hubs),
+			"days": f.days()}
 		series := make([]map[string]any, len(daily))
 		for i, d := range daily {
 			series[i] = map[string]any{"day": d.Day.Time.Format(time.DateOnly), "revenue_kobo": d.RevenueKobo,

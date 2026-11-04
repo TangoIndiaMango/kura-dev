@@ -86,6 +86,10 @@ func TestSummaryReadsRollups(t *testing.T) {
 	if a := arpu[len(arpu)-1].(map[string]any); a["arpu_kobo"].(float64) != 107_500 {
 		t.Fatalf("arpu: %v", arpu)
 	}
+	overview := c.Do("GET", "/api/v1/analytics/revenue/overview/", nil, tok).Expect(t, http.StatusOK)
+	if overview["gross_kobo"].(float64) != 107_500 || overview["transactions"].(float64) != 1 {
+		t.Fatalf("revenue overview must read the rollup: %v", overview)
+	}
 	ret := c.Do("GET", "/api/v1/analytics/revenue/retention/", nil, tok).Expect(t, http.StatusOK)
 	if ret["active_riders"].(float64) != 1 || ret["churned_riders"].(float64) != 0 || ret["churn_pct"] != nil {
 		t.Fatalf("retention: %v", ret)
@@ -158,7 +162,7 @@ func TestBuilderPreviewAndExport(t *testing.T) {
 	}
 
 	job := c.Do("POST", "/api/v1/reports/", map[string]any{"kind": "DATASET", "params": req}, tok).Expect(t, http.StatusCreated)
-	if job["status"] != "READY" {
+	if raw := job["raw"].(map[string]any); job["status"] != "READY" || raw["rows"].(float64) != 1 || raw["truncated"] != false {
 		t.Fatalf("job: %v", job)
 	}
 	file := c.Do("GET", job["download_path"].(string), nil, tok)

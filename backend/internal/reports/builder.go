@@ -55,6 +55,7 @@ type plan struct {
 	args       []any
 	start, end string
 	pdf        bool
+	heavy      bool // a filter needs the full FROM to count
 }
 
 // access is who is building: staff only (riders hold finance:read and
@@ -169,6 +170,7 @@ func compile(a access, b buildReq) (plan, error) {
 			}
 		}
 		pl.where = append(pl.where, fmt.Sprintf(flt.cond, bind(arg)))
+		pl.heavy = pl.heavy || flt.heavy
 	}
 	if q := strings.TrimSpace(b.Search); q != "" && len(ds.search) > 0 {
 		if len(q) > 100 {
@@ -208,7 +210,11 @@ func (pl plan) selectSQL(limit, offset int) string {
 }
 
 func (pl plan) countSQL() string {
-	return "SELECT count(*) FROM " + pl.ds.from + " WHERE " + strings.Join(pl.where, " AND ")
+	from := pl.ds.from
+	if pl.ds.countFrom != "" && !pl.heavy {
+		from = pl.ds.countFrom
+	}
+	return "SELECT count(*) FROM " + from + " WHERE " + strings.Join(pl.where, " AND ")
 }
 
 type column struct {
@@ -351,10 +357,10 @@ func (s *service) compileParams(ctx context.Context, params map[string]any) (pla
 
 // renderDataset streams the whole result into a CSV (or a capped PDF).
 // Rows go straight from the cursor to the writer, so memory stays flat.
-func (s *service) renderDataset(ctx context.Context, params map[string]any) ([]byte, string, string, error) {
+func (s *service) renderDataset(ctx context.Context, params map[string]any) ([]byte, string, string, map[string]any, error) {
 	pl, err := s.compileParams(ctx, params)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", nil, err
 	}
 	pdf := pl.pdf
 	limit := fileRowCap
@@ -409,16 +415,17 @@ func (s *service) renderDataset(ctx context.Context, params map[string]any) ([]b
 			WithStatus(http.StatusUnprocessableEntity)
 	}
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", nil, err
 	}
 	truncated := n > limit
+	meta := map[string]any{"rows": min(n, limit), "truncated": truncated}
 	if pdf {
 		data, err := export.RenderPDF(title, headers, pdfRows, truncated)
-		return data, stem + ".pdf", "application/pdf", err
+		return data, stem + ".pdf", "application/pdf", meta, err
 	}
 	if truncated {
 		_ = cw.Write([]string{fmt.Sprintf("TRUNCATED at %d rows: narrow the dates or filters for the rest.", limit)})
 	}
 	cw.Flush()
-	return buf.Bytes(), stem + ".csv", "text/csv; charset=utf-8", cw.Error()
+	return buf.Bytes(), stem + ".csv", "text/csv; charset=utf-8", meta, cw.Error()
 }

@@ -66,6 +66,8 @@ export function ReportsHistoryTab() {
             <div className="text-[12px] text-[var(--mu)]">
               {Array.isArray(j.params.fields) ? `${j.params.fields.length} fields` : j.kind}
               {j.params.format ? ` · ${String(j.params.format).toUpperCase()}` : ''}
+              {j.raw.rows != null ? ` · ${j.raw.rows.toLocaleString('en-NG')} rows` : ''}
+              {j.raw.truncated ? ' · cut short at the row limit' : ''}
             </div>
           </div>,
           <span key="dates">{dates(j)}</span>,

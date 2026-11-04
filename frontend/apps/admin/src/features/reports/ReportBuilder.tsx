@@ -76,10 +76,11 @@ export function ReportBuilder({ datasetCode }: { datasetCode: string }) {
   const [code, setCode] = useState(datasetCode)
   const ds: Dataset | undefined = datasets.data?.find((d) => d.code === code)
 
-  const [step, setStep] = useState(0)
-  const [fields, setFields] = useState<string[]>([])
-  // Drill-downs from the summary arrive with dates and filters already set.
+  // Drill-downs from the summary arrive with dates and filters already set,
+  // so they open straight on the preview (every field picked).
   const linked = params.get('start_date') && params.get('end_date')
+  const [step, setStep] = useState(linked ? 3 : 0)
+  const [fields, setFields] = useState<string[]>([])
   const [range, setRange] = useState<DateRange | null>(
     linked ? { start_date: params.get('start_date')!, end_date: params.get('end_date')! } : null,
   )
@@ -152,7 +153,14 @@ export function ReportBuilder({ datasetCode }: { datasetCode: string }) {
         throw new Error(job.raw.error || 'The export did not finish.')
       }
       await downloadExportFromApi(downloadEndpoint(job), job.raw.filename ?? `kura-${request.dataset}.${format}`)
-      notifications.show({ color: 'teal', message: 'Report downloaded. It stays in History for 24 hours.' })
+      notifications.show(
+        job.raw.truncated
+          ? {
+              color: 'yellow',
+              message: `Downloaded the first ${(job.raw.rows ?? 0).toLocaleString('en-NG')} rows only. Narrow the dates or add a filter for the rest.`,
+            }
+          : { color: 'teal', message: 'Report downloaded. It stays in History for 24 hours.' },
+      )
     } catch (err) {
       notifications.show({ color: 'red', message: apiErrorMessage(err, 'Could not build the report') })
     }

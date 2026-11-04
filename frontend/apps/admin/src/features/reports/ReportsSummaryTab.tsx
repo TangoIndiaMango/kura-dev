@@ -23,7 +23,7 @@ import {
   type SummaryHubRow,
   type SummarySplit,
 } from './api'
-import { count, delta, naira, rangeLabel, words } from './format'
+import { count, delta, naira, nairaShort, rangeLabel, words } from './format'
 
 const HUB_HEADERS: TableHeader[] = [
   { key: 'hub', label: 'HUB' },
@@ -38,6 +38,7 @@ const COOP_HEADERS: TableHeader[] = [
   { key: 'vehicles', label: 'VEHICLES' },
   { key: 'swaps', label: 'SWAPS' },
   { key: 'money', label: 'REVENUE FROM THEIR BIKES' },
+  { key: 'perVehicle', label: 'PER VEHICLE / DAY' },
   { key: 'packs', label: 'PACKS OUT' },
 ]
 
@@ -121,18 +122,41 @@ export function ReportsSummaryTab() {
     const d = delta(now, was, `vs ${before}`, lowerIsBetter)
     return { title, value, sub: d.text, tone: d.tone }
   }
+  // Money tiles show ₦135.7M; hovering shows the exact amount.
+  const money = (title: string, now: number, was: number, lowerIsBetter = false): AdminKpiCardProps => ({
+    ...kpi(title, nairaShort(now), now, was, lowerIsBetter),
+    value: <span title={naira(now)}>{nairaShort(now)}</span>,
+  })
+  const u = data?.utilisation
+  const rate = (n: number | null | undefined) => (n == null ? '—' : n.toFixed(n < 10 ? 1 : 0))
   const kpis: AdminKpiCardProps[] =
     t && p
       ? [
-          kpi('Revenue', naira(t.revenue_kobo), t.revenue_kobo, p.revenue_kobo),
-          kpi('Net (after VAT)', naira(t.net_kobo), t.net_kobo, p.net_kobo),
-          kpi('Money received', naira(t.received_kobo), t.received_kobo, p.received_kobo),
-          kpi('Wallet top-ups', naira(t.topup_kobo), t.topup_kobo, p.topup_kobo),
+          money('Revenue', t.revenue_kobo, p.revenue_kobo),
+          money('Net (after VAT)', t.net_kobo, p.net_kobo),
+          money('Money received', t.received_kobo, p.received_kobo),
+          money('Wallet top-ups', t.topup_kobo, p.topup_kobo),
           kpi('Swaps completed', count(t.swaps), t.swaps, p.swaps),
           kpi('Riders who swapped', count(t.riders), t.riders, p.riders),
           kpi('Vehicles that swapped', count(t.vehicles), t.vehicles, p.vehicles),
           kpi('New riders', count(t.new_riders), t.new_riders, p.new_riders),
-          kpi('Payments still pending', naira(t.pending_kobo), t.pending_kobo, p.pending_kobo, true),
+          money('Payments still pending', t.pending_kobo, p.pending_kobo, true),
+          {
+            title: 'Payment success rate',
+            value: t.success_rate_pct == null ? '—' : `${t.success_rate_pct.toFixed(1)}%`,
+            sub: `${count(t.failed_payments)} failed`,
+            tone: t.success_rate_pct != null && t.success_rate_pct < 95 ? 'warning' : 'default',
+          },
+          {
+            title: 'Swaps per pack per day',
+            value: rate(u?.swaps_per_pack_day),
+            sub: u ? `${count(u.packs_in_service)} packs in service now` : '',
+          },
+          {
+            title: 'Swaps per hub per day',
+            value: rate(u?.swaps_per_hub_day),
+            sub: u ? `${count(u.hubs_open)} hubs open now` : '',
+          },
           kpi('Expired bookings', count(t.expired_reservations), t.expired_reservations, p.expired_reservations, true),
           kpi('Overrides', count(t.overrides), t.overrides, p.overrides, true),
         ]
@@ -224,7 +248,7 @@ export function ReportsSummaryTab() {
           </Alert>
         ) : summary.isPending ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 11 }, (_, i) => (
+            {Array.from({ length: 14 }, (_, i) => (
               <Skeleton key={i} height={92} radius="md" />
             ))}
           </div>
@@ -296,6 +320,9 @@ export function ReportsSummaryTab() {
             <span key="swaps">{count(r.swaps)}</span>,
             <span key="money" className="font-semibold">
               {naira(r.revenue_kobo)}
+            </span>,
+            <span key="perVehicle">
+              {r.vehicles > 0 && u?.days ? naira(Math.round(r.revenue_kobo / r.vehicles / u.days)) : '—'}
             </span>,
             <span key="packs">{count(r.packs_out)}</span>,
           ]}

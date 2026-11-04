@@ -247,6 +247,27 @@ func (q *Queries) SummaryDistinct(ctx context.Context, arg SummaryDistinctParams
 	return i, err
 }
 
+const summaryFleetNow = `-- name: SummaryFleetNow :one
+SELECT (SELECT count(*) FROM mobility_battery WHERE status NOT IN ('LOST', 'RETIRED')
+          AND ($1::uuid IS NULL OR current_hub_id = $1))::bigint AS packs,
+  (SELECT count(*) FROM mobility_hub WHERE status <> 'CLOSED'
+          AND ($1::uuid IS NULL OR id = $1))::bigint AS hubs
+`
+
+type SummaryFleetNowRow struct {
+	Packs int64
+	Hubs  int64
+}
+
+// Point in time: packs that can be swapped and hubs that are not closed,
+// the denominators for swaps per pack and per hub.
+func (q *Queries) SummaryFleetNow(ctx context.Context, hub *uuid.UUID) (SummaryFleetNowRow, error) {
+	row := q.db.QueryRow(ctx, summaryFleetNow, hub)
+	var i SummaryFleetNowRow
+	err := row.Scan(&i.Packs, &i.Hubs)
+	return i, err
+}
+
 const summaryHubs = `-- name: SummaryHubs :many
 WITH m AS (
   SELECT hub_id, sum(amount_kobo) FILTER (WHERE status = 'SUCCESS' AND purpose NOT IN ('FUND', 'WALLET_TOPUP'))::bigint AS revenue

@@ -28,13 +28,15 @@ const (
 	filterChoice      = "choice"
 )
 
-// Filter narrows rows; cond holds one %s for the bound value.
+// Filter narrows rows; cond refers to the bound value as %s (or %[1]s
+// when it needs it more than once).
 type Filter struct {
 	Key     string   `json:"key"`
 	Label   string   `json:"label"`
 	Kind    string   `json:"kind"`
 	Choices []string `json:"choices,omitempty"`
 	cond    string
+	heavy   bool // needs the dataset's full FROM even to count
 }
 
 // Dataset is one exportable module.
@@ -47,10 +49,13 @@ type Dataset struct {
 	Filters     []Filter `json:"filters"`
 	capability  string
 	from        string
-	date        string // timestamptz the date range applies to
-	hub         string // the row's hub id, for hub-scoped staff ("" = hidden from them)
-	search      []string
-	order       string
+	// countFrom is a lighter FROM for counting when no filter needs the
+	// joins it leaves out (filters flagged `heavy`); "" means from.
+	countFrom string
+	date      string // timestamptz the date range applies to
+	hub       string // the row's hub id, for hub-scoped staff ("" = hidden from them)
+	search    []string
+	order     string
 }
 
 func f(key, label, group, typ, expr string) Field {
@@ -84,9 +89,13 @@ LEFT JOIN LATERAL (SELECT v.registration_plate, v.cooperative_id FROM mobility_s
   JOIN mobility_vehicle v ON v.id = s.vehicle_id WHERE s.payment_id = p.id LIMIT 1) sv ON true
 LEFT JOIN LATERAL (SELECT v.registration_plate, v.cooperative_id FROM mobility_subscription s
   JOIN mobility_vehicle v ON v.id = s.vehicle_id WHERE s.payment_id = p.id LIMIT 1) pv ON true
-LEFT JOIN accounts_cooperative c ON c.id = COALESCE(sv.cooperative_id, pv.cooperative_id, ` + accountCoop + `)`,
-		date: "p.created_at", order: "p.created_at DESC, p.id",
-		search: []string{"p.receipt_code", "a.kura_id", "a.display_name", "sv.registration_plate", "pv.registration_plate"},
+LEFT JOIN (SELECT DISTINCT ON (account_id) account_id, cooperative_id FROM mobility_vehicle
+  WHERE cooperative_id IS NOT NULL ORDER BY account_id, created_at, id) av ON av.account_id = p.account_id
+LEFT JOIN accounts_cooperative c ON c.id = COALESCE(sv.cooperative_id, pv.cooperative_id, av.cooperative_id)`,
+		countFrom: `finance_payment p JOIN accounts_account a ON a.id = p.account_id`,
+		date:      "p.created_at", order: "p.created_at DESC",
+		// Receipt and rider only: searching the vehicle would resolve every row's swap first.
+		search: []string{"p.receipt_code", "a.kura_id", "a.display_name"},
 		Fields: []Field{
 			f("receipt", "Receipt", "Payment", typeText, "p.receipt_code"),
 			f("paid_at", "Time", "Payment", typeDatetime, "p.created_at"),
@@ -105,7 +114,11 @@ LEFT JOIN accounts_cooperative c ON c.id = COALESCE(sv.cooperative_id, pv.cooper
 		},
 		Filters: []Filter{
 			hubFilter("p.hub_id = %s"),
-			coopFilter("c.id = %s"),
+			// Narrow to the group's riders by account index first, then keep
+			// the payments actually attributed to the group.
+			Filter{Key: "cooperative", Label: "Chairman group", Kind: filterCooperative, heavy: true,
+				cond: `p.account_id IN (SELECT v.account_id FROM mobility_vehicle v WHERE v.cooperative_id = %[1]s)
+  AND c.id = %[1]s`},
 			choice("status", "Status", "p.status = %s", "SUCCESS", "PENDING", "FAILED", "REFUNDED", "REVERSED"),
 			choice("purpose", "Purpose", "p.purpose = %s", "SWAP", "PLAN", "FUND", "RESERVATION", "SERVICE", "INVITE", "WALLET_TOPUP", "LOAN_REPAY"),
 			choice("channel", "Paid by", "p.channel = %s", "CARD", "NUBAN_TRANSFER", "BANK_TRANSFER", "AGENT_CASH", "WALLET_DEBIT", "USSD"),
@@ -124,7 +137,7 @@ LEFT JOIN accounts_user ag ON ag.id = s.agent_id
 LEFT JOIN accounts_cooperative c ON c.id = v.cooperative_id
 LEFT JOIN mobility_battery bo ON bo.id = s.issued_battery_id
 LEFT JOIN mobility_battery bi ON bi.id = s.returned_battery_id`,
-		date: "s.created_at", order: "s.created_at DESC, s.id",
+		date: "s.created_at", order: "s.created_at DESC",
 		search: []string{"a.kura_id", "a.display_name", "v.registration_plate", "bo.serial", "bi.serial"},
 		Fields: []Field{
 			f("started_at", "Started", "Swap", typeDatetime, "s.started_at"),
@@ -153,7 +166,7 @@ LEFT JOIN mobility_battery bi ON bi.id = s.returned_battery_id`,
 		Code: "riders", Label: "Riders", capability: "accounts:read", DateLabel: "Joined",
 		Description: "Rider accounts: contact, status, KYC, how they joined and their vehicles.",
 		from:        `accounts_account a JOIN accounts_user o ON o.id = a.owner_user_id`,
-		date:        "a.created_at", order: "a.created_at DESC, a.id",
+		date:        "a.created_at", order: "a.created_at DESC",
 		search: []string{"a.kura_id", "a.display_name", "o.phone", "o.email"},
 		Fields: []Field{
 			f("kura_id", "KURA ID", "Identity", typeText, "a.kura_id"),
@@ -187,7 +200,7 @@ LEFT JOIN accounts_cooperative c ON c.id = v.cooperative_id
 LEFT JOIN accounts_driver d ON d.id = v.assigned_driver_id
 LEFT JOIN accounts_user du ON du.id = d.user_id
 LEFT JOIN mobility_battery b ON b.id = v.current_battery_id`,
-		date: "v.created_at", order: "v.created_at DESC, v.id",
+		date: "v.created_at", order: "v.created_at DESC",
 		search: []string{"v.registration_plate", "v.vin", "v.hardware_id", "a.kura_id", "a.display_name"},
 		Fields: []Field{
 			f("plate", "Plate", "Vehicle", typeText, "v.registration_plate"),
@@ -218,7 +231,7 @@ JOIN mobility_plan pl ON pl.id = s.plan_id
 JOIN accounts_account a ON a.id = s.account_id
 JOIN mobility_vehicle v ON v.id = s.vehicle_id
 LEFT JOIN accounts_cooperative c ON c.id = v.cooperative_id`,
-		date: "s.created_at", order: "s.created_at DESC, s.id",
+		date: "s.created_at", order: "s.created_at DESC",
 		search: []string{"a.kura_id", "a.display_name", "v.registration_plate", "pl.name"},
 		Fields: []Field{
 			f("plan", "Plan", "Plan", typeText, "pl.name"),
@@ -244,7 +257,7 @@ LEFT JOIN accounts_cooperative c ON c.id = v.cooperative_id`,
 		Code: "loans", Label: "Loans", capability: "finance:read", DateLabel: "Started",
 		Description: "Swap-credit loans: amounts, repaid, outstanding, due date and days late.",
 		from:        `credit_loan l JOIN accounts_account a ON a.id = l.account_id LEFT JOIN accounts_cooperative c ON c.id = ` + accountCoop,
-		date:        "l.starts_at", order: "l.starts_at DESC, l.id",
+		date:        "l.starts_at", order: "l.starts_at DESC",
 		search: []string{"a.kura_id", "a.display_name"},
 		Fields: []Field{
 			f("status", "Status", "Loan", typeText, "l.status"),
@@ -274,7 +287,7 @@ LEFT JOIN accounts_cooperative c ON c.id = v.cooperative_id`,
 JOIN mobility_hub h ON h.id = cd.hub_id
 JOIN accounts_account a ON a.id = cd.account_id
 JOIN accounts_user ag ON ag.id = cd.agent_id`,
-		date: "cd.created_at", order: "cd.created_at DESC, cd.id",
+		date: "cd.created_at", order: "cd.created_at DESC",
 		search: []string{"cd.receipt_code", "a.kura_id", "a.display_name"},
 		Fields: []Field{
 			f("receipt", "Receipt", "Cash", typeText, "cd.receipt_code"),
@@ -334,7 +347,7 @@ LEFT JOIN mobility_hub h ON h.id = b.current_hub_id`,
 		Code: "alerts", hub: "al.hub_id", Label: "Alerts", capability: "alerts:read", DateLabel: "Raised",
 		Description: "Hub and system alerts with how and when they were handled.",
 		from:        `operations_alert al LEFT JOIN mobility_hub h ON h.id = al.hub_id`,
-		date:        "al.created_at", order: "al.created_at DESC, al.id",
+		date:        "al.created_at", order: "al.created_at DESC",
 		search: []string{"al.kind", "al.message"},
 		Fields: []Field{
 			f("kind", "Kind", "Alert", typeText, "al.kind"),
@@ -358,7 +371,7 @@ LEFT JOIN mobility_hub h ON h.id = b.current_hub_id`,
 JOIN risk_riskrule ru ON ru.id = e.rule_id
 LEFT JOIN accounts_account a ON a.id = e.account_id
 LEFT JOIN accounts_user rv ON rv.id = e.reviewed_by_id`,
-		date: "e.created_at", order: "e.created_at DESC, e.id",
+		date: "e.created_at", order: "e.created_at DESC",
 		search: []string{"ru.code", "ru.name", "a.kura_id"},
 		Fields: []Field{
 			f("rule", "Rule", "Event", typeText, "ru.name"),
@@ -380,7 +393,7 @@ LEFT JOIN accounts_user rv ON rv.id = e.reviewed_by_id`,
 		from: `support_supportcase sc
 JOIN accounts_account a ON a.id = sc.account_id
 LEFT JOIN accounts_user u ON u.id = sc.assigned_to_id`,
-		date: "sc.created_at", order: "sc.created_at DESC, sc.id",
+		date: "sc.created_at", order: "sc.created_at DESC",
 		search: []string{"sc.code", "sc.subject", "a.kura_id", "a.display_name"},
 		Fields: []Field{
 			f("code", "Code", "Case", typeText, "sc.code"),

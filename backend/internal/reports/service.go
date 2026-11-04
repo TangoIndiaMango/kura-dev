@@ -31,8 +31,9 @@ type service struct {
 	root string
 }
 
-// render is _render_payload: (bytes, filename, content type).
-func (s *service) render(r *http.Request, kind string, params map[string]any) ([]byte, string, string, error) {
+// render is _render_payload: (bytes, filename, content type, extra raw
+// fields such as the row count and whether the file was cut short).
+func (s *service) render(r *http.Request, kind string, params map[string]any) ([]byte, string, string, map[string]any, error) {
 	ctx := r.Context()
 	switch kind {
 	case "IMPACT_PDF":
@@ -42,20 +43,20 @@ func (s *service) render(r *http.Request, kind string, params map[string]any) ([
 		if name == "" {
 			name = "latest"
 		}
-		return data, "kura-impact-" + name + ".pdf", "application/pdf", err
+		return data, "kura-impact-" + name + ".pdf", "application/pdf", nil, err
 	case "OPS_CSV":
 		data, name, err := opsCSV(ctx, s.q, params)
-		return data, name, "text/csv; charset=utf-8", err
+		return data, name, "text/csv; charset=utf-8", nil, err
 	case "FLEET_CSV":
 		data, name, err := fleetCSV(ctx, s.q, params)
-		return data, name, "text/csv; charset=utf-8", err
+		return data, name, "text/csv; charset=utf-8", nil, err
 	case "REVENUE_CSV":
 		data, name, err := revenueCSV(ctx, s.q, params)
-		return data, name, "text/csv; charset=utf-8", err
+		return data, name, "text/csv; charset=utf-8", nil, err
 	case "DATASET":
 		return s.renderDataset(ctx, params)
 	}
-	return nil, "", "", apperr.New("UNSUPPORTED", "Report kind "+kind+" is not implemented yet.").WithStatus(http.StatusNotImplemented)
+	return nil, "", "", nil, apperr.New("UNSUPPORTED", "Report kind "+kind+" is not implemented yet.").WithStatus(http.StatusNotImplemented)
 }
 
 func mergeRaw(raw []byte, kv map[string]any) []byte {
@@ -100,7 +101,7 @@ func (s *service) process(r *http.Request, id uuid.UUID) error {
 	}
 	params := map[string]any{}
 	_ = json.Unmarshal(job.Params, &params)
-	payload, filename, ctype, err := s.render(r, job.Kind, params)
+	payload, filename, ctype, meta, err := s.render(r, job.Kind, params)
 	key := ""
 	if err == nil {
 		folder, ext := "csv", "csv"
@@ -148,8 +149,11 @@ func (s *service) process(r *http.Request, id uuid.UUID) error {
 		}
 		exp := time.Now().Add(ttl)
 		locked.FilePublicID, locked.Status, locked.ExpiresAt = key, "READY", &exp
-		locked.Raw = mergeRaw(locked.Raw, map[string]any{"content_type": ctype, "bytes": len(payload),
-			"filename": filename})
+		info := map[string]any{"content_type": ctype, "bytes": len(payload), "filename": filename}
+		for k, v := range meta {
+			info[k] = v
+		}
+		locked.Raw = mergeRaw(locked.Raw, info)
 		if err := s.save(ctx, q, locked); err != nil {
 			return err
 		}
@@ -183,7 +187,7 @@ func serialize(j db.AnalyticsReportjob) map[string]any {
 	raw := map[string]any{}
 	_ = json.Unmarshal(j.Raw, &raw)
 	kept := map[string]any{}
-	for _, k := range []string{"content_type", "filename", "bytes", "error"} {
+	for _, k := range []string{"content_type", "filename", "bytes", "error", "rows", "truncated"} {
 		if v, ok := raw[k]; ok {
 			kept[k] = v
 		}

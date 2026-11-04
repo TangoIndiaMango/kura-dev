@@ -102,6 +102,8 @@ export function RevenueCohortsTab() {
           <AdminLineChart
             data={trend}
             series={[{ dataKey: 'arpu', name: 'ARPU (₦)', color: ADMIN_CHART_COLORS.teal }]}
+            valueFormatter={formatCompactNaira}
+            yDomainPadding
             height={220}
           />
         ) : (

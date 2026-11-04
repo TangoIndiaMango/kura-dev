@@ -45,6 +45,14 @@ SELECT
     WHERE date BETWEEN sqlc.arg(from_day)::date AND sqlc.arg(to_day)::date
       AND (sqlc.narg(hub)::uuid IS NULL OR hub_id = sqlc.narg(hub))), 0)::bigint AS overrides;
 
+-- name: SummaryFleetNow :one
+-- Point in time: packs that can be swapped and hubs that are not closed,
+-- the denominators for swaps per pack and per hub.
+SELECT (SELECT count(*) FROM mobility_battery WHERE status NOT IN ('LOST', 'RETIRED')
+          AND (sqlc.narg(hub)::uuid IS NULL OR current_hub_id = sqlc.narg(hub)))::bigint AS packs,
+  (SELECT count(*) FROM mobility_hub WHERE status <> 'CLOSED'
+          AND (sqlc.narg(hub)::uuid IS NULL OR id = sqlc.narg(hub)))::bigint AS hubs;
+
 -- name: SummaryDistinct :one
 -- Distinct riders and vehicles that completed a swap in range.
 SELECT count(DISTINCT s.account_id)::bigint AS riders, count(DISTINCT s.vehicle_id)::bigint AS vehicles
