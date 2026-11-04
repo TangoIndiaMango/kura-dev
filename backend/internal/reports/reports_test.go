@@ -14,10 +14,12 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/testkit"
 )
 
+// login creates a staff user with a throwaway password made per test run.
 func login(t *testing.T, c *apitest.Client, email, role string) string {
 	t.Helper()
-	testkit.CreateUser(t, c.Pool, testkit.User{Email: email, Password: "pw-test-1", IsStaff: true, Role: role})
-	tok := c.Do("POST", "/api/v1/auth/login/", map[string]any{"identifier": email, "password": "pw-test-1"}, "").Str("access")
+	pass := uuid.NewString()
+	testkit.CreateUser(t, c.Pool, testkit.User{Email: email, Password: pass, IsStaff: true, Role: role})
+	tok := c.Do("POST", "/api/v1/auth/login/", map[string]any{"identifier": email, "password": pass}, "").Str("access")
 	if tok == "" {
 		t.Fatal("login failed")
 	}
@@ -183,7 +185,7 @@ func TestBuilderPreviewAndExport(t *testing.T) {
 
 func TestRiderSeesNoDatasets(t *testing.T) {
 	c := apitest.New(t)
-	testkit.CreateUser(t, c.Pool, testkit.User{Email: "rider@test.eco", Password: "pw-test-1"})
+	testkit.CreateUser(t, c.Pool, testkit.User{Email: "rider@test.eco"})
 	c.Do("POST", "/api/v1/auth/otp/request/", map[string]any{"phone": "+2348011111111"}, "")
 	tok := c.Do("POST", "/api/v1/auth/otp/verify/", map[string]any{"phone": "+2348011111111", "code": "123456"}, "").Str("access")
 	sets := c.Do("GET", "/api/v1/reports/datasets/", nil, tok)
