@@ -55,6 +55,7 @@ func (m *Module) Register(mux *http.ServeMux) {
 	h.Cap("GET", "/{id}/slots/", "hubs:read", m.hubs.slots)
 	h.Cap("GET", "/{id}/stats/", "hubs:read", m.hubs.detailStats)
 	h.Cap("POST", "/{id}/status/", "hubs:manage", m.hubs.hubStatus(m.bay))
+	h.Cap("POST", "/{id}/charge-readings/", "swaps:complete", m.hubs.chargeReadings)
 
 	bt := router.New(mux, "/api/v1/mobility/battery-types", m.limiter)
 	bt.Cap("GET", "/", "batteries:read", m.btypes.list)
@@ -79,6 +80,9 @@ func (m *Module) Register(mux *http.ServeMux) {
 	b.Cap("POST", "/{id}/rotate-qr/", "batteries:manage", bh.rotateQR)
 	b.Cap("POST", "/{id}/status/", "batteries:manage", bh.status())
 	b.Cap("POST", "/{id}/transfer/", "batteries:manage", bh.transfer())
+	// Bay work hub staff do: put an arrived pack in a bay, record its charge.
+	b.Cap("POST", "/{id}/receive/", "swaps:complete", bh.receive())
+	b.Cap("POST", "/{id}/charge/", "swaps:complete", bh.charge())
 
 	// VehicleViewSet: HasCapabilityOrReadOwn — GETs need sign-in only (scoped;
 	// stats / export / models check capabilities in the view).

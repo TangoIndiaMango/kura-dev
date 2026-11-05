@@ -305,20 +305,33 @@ func (q *Queries) HubSlotNumbers(ctx context.Context, hubID uuid.UUID) ([]int32,
 }
 
 const hubSlotRows = `-- name: HubSlotRows :many
-SELECT s.id, s.slot_no, s.state, s.battery_id, b.serial AS battery_serial, b.charge_pct AS battery_charge_pct
-FROM mobility_hubslot s LEFT JOIN mobility_battery b ON b.id = s.battery_id
+SELECT s.id, s.slot_no, s.state, s.battery_id, b.serial AS battery_serial, b.charge_pct AS battery_charge_pct,
+  b.status AS battery_status, b.charge_source AS battery_charge_source,
+  b.charge_observed_at AS battery_charge_observed_at, t.name AS battery_type_name,
+  COALESCE((SELECT r.code FROM mobility_reservation r WHERE r.battery_id = b.id
+   AND r.status IN ('PENDING', 'CONFIRMED') ORDER BY r.created_at DESC LIMIT 1), '')::text AS reservation_code
+FROM mobility_hubslot s
+LEFT JOIN mobility_battery b ON b.id = s.battery_id
+LEFT JOIN mobility_batterytype t ON t.id = b.battery_type_id
 WHERE s.hub_id = $1 ORDER BY s.slot_no
 `
 
 type HubSlotRowsRow struct {
-	ID               uuid.UUID
-	SlotNo           int32
-	State            string
-	BatteryID        *uuid.UUID
-	BatterySerial    *string
-	BatteryChargePct *int32
+	ID                      uuid.UUID
+	SlotNo                  int32
+	State                   string
+	BatteryID               *uuid.UUID
+	BatterySerial           *string
+	BatteryChargePct        *int32
+	BatteryStatus           *string
+	BatteryChargeSource     *string
+	BatteryChargeObservedAt *time.Time
+	BatteryTypeName         *string
+	ReservationCode         string
 }
 
+// The bay board: each bay, its pack, the pack's own status and last charge
+// reading, and the booking holding it (if reserved).
 func (q *Queries) HubSlotRows(ctx context.Context, hubID uuid.UUID) ([]HubSlotRowsRow, error) {
 	rows, err := q.db.Query(ctx, hubSlotRows, hubID)
 	if err != nil {
@@ -335,6 +348,11 @@ func (q *Queries) HubSlotRows(ctx context.Context, hubID uuid.UUID) ([]HubSlotRo
 			&i.BatteryID,
 			&i.BatterySerial,
 			&i.BatteryChargePct,
+			&i.BatteryStatus,
+			&i.BatteryChargeSource,
+			&i.BatteryChargeObservedAt,
+			&i.BatteryTypeName,
+			&i.ReservationCode,
 		); err != nil {
 			return nil, err
 		}

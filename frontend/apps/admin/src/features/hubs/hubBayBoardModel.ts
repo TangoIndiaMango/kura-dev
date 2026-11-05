@@ -1,4 +1,5 @@
-import type { BatteryRecord } from '@shared/mock/adminMockData'
+import type { HubSlotApi } from './types'
+import { isStale, readingAge, sourceLabel } from './bay/bayFormat'
 
 export type BayBoardKind = 'ready' | 'charging' | 'empty' | 'reserved' | 'fault'
 
@@ -8,89 +9,88 @@ export type BayBoardCard = {
   typeTag: string
   chargePct: number | null
   statusLabel: string
+  /** Second line: when the charge was last read, or who it's held for. */
   sohLabel: string
   /** Bay sensor reading; empty until hubs report bay telemetry. */
   tempLabel: string
   serial: string
+  /** Pack model, for the drawer (the card tag stays short). */
+  typeName: string | null
   reserved?: { name: string; code: string; holdLeft: string }
   batteryId?: string | null
-  battery: BatteryRecord | null
+  /** The pack's own status (AVAILABLE, RESERVED, CHARGING, …). */
+  batteryStatus: string | null
+  observedAt: string | null
+  chargeSource: string | null
+  /** A charging pack whose last reading is old — worth a fresh look. */
+  stale: boolean
 }
 
-/** Live bay board from `/hubs/{id}/slots/` (no mock battery fleet). */
-export function buildBayBoardCardsFromSlots(
-  slots: Array<{
-    slot_no: number
-    state: string
-    battery_id: string | null
-    battery_serial: string | null
-    battery_charge_pct: number | null
-  }>,
-): BayBoardCard[] {
+/**
+ * The live bay board from `/hubs/{id}/slots/`. The bay's state and the pack's
+ * own status come from the same row, so a reserved pack shows as reserved
+ * and a charging pack shows when it was last read.
+ */
+export function buildBayBoardCardsFromSlots(slots: HubSlotApi[]): BayBoardCard[] {
   return [...slots]
     .sort((a, b) => a.slot_no - b.slot_no)
     .map((slot) => {
-      const bay = slot.slot_no
-      const charge = slot.battery_charge_pct
-      const serial = slot.battery_serial ?? '—'
+      const base = {
+        bay: slot.slot_no,
+        chargePct: slot.battery_charge_pct,
+        serial: slot.battery_serial ?? '—',
+        typeTag: 'PACK',
+        typeName: slot.battery_type,
+        tempLabel: '',
+        batteryId: slot.battery_id,
+        batteryStatus: slot.battery_status,
+        observedAt: slot.charge_observed_at,
+        chargeSource: slot.charge_source,
+        stale: false,
+      }
+      const read = `${readingAge(slot.charge_observed_at)}${
+        slot.charge_source ? ` · ${sourceLabel(slot.charge_source)}` : ''
+      }`
 
       if (slot.state === 'EMPTY' || !slot.battery_id) {
         return {
-          bay,
+          ...base,
           kind: 'empty' as const,
           typeTag: 'EMPTY',
           chargePct: null,
           statusLabel: 'DOCK OPEN',
-          sohLabel: '',
-          tempLabel: '',
+          sohLabel: 'Ready to receive a pack',
           serial: 'No pack',
           batteryId: null,
-          battery: null,
         }
       }
-
       if (slot.state === 'FAULT') {
+        return { ...base, kind: 'fault' as const, statusLabel: 'SERVICE BAY', sohLabel: 'Needs inspection' }
+      }
+      if (slot.battery_status === 'RESERVED') {
+        const code = slot.reservation_code ?? ''
         return {
-          bay,
-          kind: 'fault' as const,
-          typeTag: 'FAULT',
-          chargePct: charge,
-          statusLabel: 'SERVICE BAY',
-          sohLabel: 'Needs inspection',
-          tempLabel: '',
-          serial,
-          batteryId: slot.battery_id,
-          battery: null,
+          ...base,
+          kind: 'reserved' as const,
+          statusLabel: 'RESERVED',
+          sohLabel: code ? `Booking ${code}` : 'No active booking',
+          reserved: { name: '', code, holdLeft: '' },
         }
       }
-
-      if (slot.state === 'CHARGING') {
+      if (slot.state === 'CHARGING' || slot.battery_status === 'CHARGING') {
         return {
-          bay,
+          ...base,
           kind: 'charging' as const,
-          typeTag: 'PACK',
-          chargePct: charge,
           statusLabel: 'CHARGING',
-          sohLabel: 'In bay',
-          tempLabel: '',
-          serial,
-          batteryId: slot.battery_id,
-          battery: null,
+          sohLabel: read,
+          stale: isStale(slot.charge_observed_at),
         }
       }
-
       return {
-        bay,
+        ...base,
         kind: 'ready' as const,
-        typeTag: 'PACK',
-        chargePct: charge,
-        statusLabel:
-          charge != null && charge >= 100 ? 'FULL · READY' : 'READY FOR SWAP',
-        sohLabel: 'In bay',
-        tempLabel: '',
-        serial,
-        batteryId: slot.battery_id,
-        battery: null,
+        statusLabel: (slot.battery_charge_pct ?? 0) >= 100 ? 'FULL · READY' : 'READY FOR SWAP',
+        sohLabel: read,
       }
     })
 }

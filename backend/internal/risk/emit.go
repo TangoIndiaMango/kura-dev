@@ -42,6 +42,9 @@ var DefaultRules = []rule{
 	{"UNRETURNED_48H", "Battery unreturned 48h", "HIGH", "FLAG", nil},
 	{"UNRETURNED_7D", "Battery unreturned 7 days", "CRITICAL", "SUSPEND", nil},
 	{"MANUAL_FLAG", "Manual ops flag", "MEDIUM", "FLAG", nil},
+	// A typed charge reading that rose faster than a pack can charge (accepted, flagged).
+	{"CHARGE_IMPLAUSIBLE", "Implausible charge reading", "MEDIUM", "FLAG", map[string]any{
+		"MAX_GAIN_PCT_PER_HOUR": 60, "GRACE_PCT": 10}},
 }
 
 // staffNotify are the rules that page risk reviewers (_STAFF_NOTIFY_RULES).

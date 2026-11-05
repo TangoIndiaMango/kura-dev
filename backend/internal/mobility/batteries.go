@@ -36,21 +36,23 @@ func canReadAllMobility(p *reqctx.Principal) bool {
 
 // BatteryDTO is BatteryListSerializer.
 type BatteryDTO struct {
-	ID              string         `json:"id"`
-	Serial          string         `json:"serial"`
-	BatteryTypeID   string         `json:"battery_type_id"`
-	BatteryTypeName string         `json:"battery_type_name"`
-	Status          string         `json:"status"`
-	ChargePct       int32          `json:"charge_pct"`
-	ChargeSource    string         `json:"charge_source"`
-	HealthPct       int32          `json:"health_pct"`
-	CycleCount      int32          `json:"cycle_count"`
-	ManufacturedAt  *string        `json:"manufactured_at"`
-	CurrentHubID    *string        `json:"current_hub_id"`
-	HubCode         *string        `json:"hub_code"`
-	HubName         *string        `json:"hub_name"`
-	CustodianType   string         `json:"custodian_type"`
-	CreatedAt       jsontime.Field `json:"created_at"`
+	ID              string `json:"id"`
+	Serial          string `json:"serial"`
+	BatteryTypeID   string `json:"battery_type_id"`
+	BatteryTypeName string `json:"battery_type_name"`
+	Status          string `json:"status"`
+	ChargePct       int32  `json:"charge_pct"`
+	ChargeSource    string `json:"charge_source"`
+	// When the charge was last read (staff or charger); nil = never.
+	ChargeObservedAt *jsontime.Field `json:"charge_observed_at"`
+	HealthPct        int32           `json:"health_pct"`
+	CycleCount       int32           `json:"cycle_count"`
+	ManufacturedAt   *string         `json:"manufactured_at"`
+	CurrentHubID     *string         `json:"current_hub_id"`
+	HubCode          *string         `json:"hub_code"`
+	HubName          *string         `json:"hub_name"`
+	CustodianType    string          `json:"custodian_type"`
+	CreatedAt        jsontime.Field  `json:"created_at"`
 }
 
 // BatteryDetailDTO is BatteryDetailSerializer.
@@ -76,7 +78,8 @@ func batteryDTO(b db.BatteryRowsRow) BatteryDTO {
 		BatteryTypeName: b.TypeName, Status: b.Status, ChargePct: b.ChargePct, ChargeSource: b.ChargeSource,
 		HealthPct: b.HealthPct, CycleCount: b.CycleCount, ManufacturedAt: dateStr(b.ManufacturedAt),
 		CurrentHubID: idPtr(b.CurrentHubID), HubCode: b.HubCode, HubName: b.HubName,
-		CustodianType: b.CustodianType, CreatedAt: jsontime.Field(b.CreatedAt)}
+		CustodianType: b.CustodianType, CreatedAt: jsontime.Field(b.CreatedAt),
+		ChargeObservedAt: jsontime.FieldPtr(b.ChargeObservedAt)}
 }
 
 func batteryDetailDTO(b db.BatteryRowsRow) BatteryDetailDTO {
@@ -150,6 +153,10 @@ func (h *BatteryHandler) filters(r *http.Request) (db.ListBatteryIDsParams, erro
 	}); err != nil {
 		return f, err
 	}
+	// Where the pack is: in a bay, in transit at a hub, on a vehicle, in the workshop.
+	if f.Custodian, err = listq.Choice(r, "custodian", "HUB_SLOT", "TRANSIT", "VEHICLE", "WORKSHOP", "NONE"); err != nil {
+		return f, err
+	}
 	f.AllRows, f.ScopeIds, err = h.scope(ctx)
 	return f, err
 }
@@ -180,7 +187,7 @@ func (h *BatteryHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	total, err := h.q.CountBatteries(ctx, db.CountBatteriesParams{AllRows: f.AllRows, ScopeIds: f.ScopeIds,
-		Status: f.Status, BatteryType: f.BatteryType, Hub: f.Hub, Q: f.Q})
+		Status: f.Status, BatteryType: f.BatteryType, Hub: f.Hub, Custodian: f.Custodian, Q: f.Q})
 	if err != nil {
 		respond.Error(w, r, err)
 		return

@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Button, TextInput } from '@mantine/core'
-import { FilterIcon, Search01Icon } from 'hugeicons-react'
+import { Link } from 'react-router-dom'
+import { Button, Stack, TextInput } from '@mantine/core'
+import { ArrowRight01Icon, FilterIcon, Search01Icon } from 'hugeicons-react'
 import {
   DetailsDrawer,
   sliceTablePage,
   useAdminModuleControls,
 } from '@shared/components'
 import type { BayBoardCard, BayBoardKind } from './hubBayBoardModel'
+import type { HubSlotApi } from './types'
+import { readingAge, sourceLabel } from './bay/bayFormat'
+import { useBayActions } from './bay/useBayActions'
 import { HubBayStatusCard } from './HubBayStatusCard'
 
 const PAGE_SIZE = 20
@@ -28,6 +32,8 @@ export function HubBayStatusGrid({
   pageSize = PAGE_SIZE,
   filterKinds,
   dateRangeSlot,
+  slots = [],
+  hubName = 'this hub',
 }: {
   hubId: string
   /** Cards built from the live `/hubs/{id}/slots/` API. */
@@ -38,7 +44,11 @@ export function HubBayStatusGrid({
   pageSize?: number
   filterKinds?: BayBoardKind[]
   dateRangeSlot?: ReactNode
+  /** Raw bays: enables bay work (receive packs, record charge) for hub staff. */
+  slots?: HubSlotApi[]
+  hubName?: string
 }) {
+  const bayWork = useBayActions({ hubId, hubName, slots })
   const [page, setPage] = useState(1)
   const [peek, setPeek] = useState<BayBoardCard | null>(null)
 
@@ -99,6 +109,7 @@ export function HubBayStatusGrid({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        {bayWork.toolbar}
         {dateRangeSlot}
         <TextInput
           placeholder="Search bay, serial…"
@@ -187,33 +198,47 @@ export function HubBayStatusGrid({
             ? peek.kind === 'empty'
               ? [
                   { label: 'Status', value: 'Dock open' },
+                  { label: 'Packs waiting at hub', value: String(bayWork.waiting.length) },
                 ]
-              : peek.kind === 'reserved' && peek.reserved
+              : peek.kind === 'reserved'
                 ? [
-                    { label: 'Hold', value: peek.reserved.holdLeft },
-                    { label: 'Operator', value: peek.reserved.name },
-                    { label: 'Code', value: peek.reserved.code },
+                    { label: 'Booking', value: peek.reserved?.code || 'No active booking' },
                     { label: 'Charge', value: peek.chargePct != null ? `${peek.chargePct}%` : '—' },
-                    { label: 'Pack', value: peek.battery?.serial ?? '—' },
+                    { label: 'Last reading', value: readingAge(peek.observedAt) },
+                    { label: 'Pack', value: peek.serial },
                   ]
                 : [
-                    { label: 'Type', value: peek.battery?.type ?? peek.typeTag },
+                    { label: 'Model', value: peek.typeName ?? '—' },
                     { label: 'Status', value: peek.statusLabel },
                     { label: 'Charge', value: peek.chargePct != null ? `${peek.chargePct}%` : '—' },
-                    { label: 'Location', value: peek.sohLabel },
+                    { label: 'Last reading', value: readingAge(peek.observedAt) },
+                    ...(peek.chargeSource ? [{ label: 'Read', value: sourceLabel(peek.chargeSource) }] : []),
                     ...(peek.tempLabel ? [{ label: 'Temp', value: peek.tempLabel }] : []),
                     { label: 'Serial', value: peek.serial },
                   ]
             : []
         }
-        viewMore={
-          peek?.batteryId
-            ? { to: `/batteries/${peek.batteryId}`, label: 'View pack' }
-            : peek?.battery?.id
-              ? { to: `/batteries/${peek.battery.id}`, label: 'View more' }
-              : undefined
+        footer={
+          peek ? (
+            <Stack gap="xs">
+              {bayWork.cardActions(peek, () => setPeek(null))}
+              {peek.batteryId ? (
+                <Button
+                  component={Link}
+                  to={`/batteries/${peek.batteryId}`}
+                  onClick={() => setPeek(null)}
+                  fullWidth
+                  variant="light"
+                  rightSection={<ArrowRight01Icon size={16} />}
+                >
+                  View pack
+                </Button>
+              ) : null}
+            </Stack>
+          ) : null
         }
       />
+      {bayWork.modals}
     </>
   )
 

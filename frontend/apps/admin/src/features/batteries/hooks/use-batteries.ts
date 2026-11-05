@@ -26,6 +26,8 @@ export function useBatteries(
     page?: number
     page_size?: number
     current_hub?: string
+    /** Where the pack is: HUB_SLOT (in a bay), TRANSIT, VEHICLE, WORKSHOP, NONE. */
+    custodian?: string
   },
   options?: { enabled?: boolean },
 ) {
@@ -41,6 +43,7 @@ export function useBatteries(
         ? { status: params.status }
         : {}),
       ...(params?.current_hub ? { current_hub: params.current_hub } : {}),
+      ...(params?.custodian ? { custodian: params.custodian } : {}),
     },
     { enabled, keepPreviousData: true, staleTime: 30_000 },
   )

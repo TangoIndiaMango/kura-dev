@@ -205,12 +205,17 @@ func (h *HubHandler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 type slotDTO struct {
-	ID               string  `json:"id"`
-	SlotNo           int32   `json:"slot_no"`
-	State            string  `json:"state"`
-	BatteryID        *string `json:"battery_id"`
-	BatterySerial    *string `json:"battery_serial"`
-	BatteryChargePct *int32  `json:"battery_charge_pct"`
+	ID               string          `json:"id"`
+	SlotNo           int32           `json:"slot_no"`
+	State            string          `json:"state"`
+	BatteryID        *string         `json:"battery_id"`
+	BatterySerial    *string         `json:"battery_serial"`
+	BatteryChargePct *int32          `json:"battery_charge_pct"`
+	BatteryStatus    *string         `json:"battery_status"`
+	BatteryType      *string         `json:"battery_type"`
+	ChargeSource     *string         `json:"charge_source"` // MANUAL | BMS
+	ChargeObservedAt *jsontime.Field `json:"charge_observed_at"`
+	ReservationCode  *string         `json:"reservation_code"`
 }
 
 func (h *HubHandler) slots(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +232,16 @@ func (h *HubHandler) slots(w http.ResponseWriter, r *http.Request) {
 	out := make([]slotDTO, len(slots))
 	for i, s := range slots {
 		out[i] = slotDTO{ID: s.ID.String(), SlotNo: s.SlotNo, State: s.State, BatterySerial: s.BatterySerial,
-			BatteryChargePct: s.BatteryChargePct}
+			BatteryChargePct: s.BatteryChargePct, BatteryStatus: s.BatteryStatus, BatteryType: s.BatteryTypeName,
+			ChargeSource: s.BatteryChargeSource}
+		if s.BatteryChargeObservedAt != nil {
+			at := jsontime.Field(*s.BatteryChargeObservedAt)
+			out[i].ChargeObservedAt = &at
+		}
+		if s.ReservationCode != "" {
+			code := s.ReservationCode
+			out[i].ReservationCode = &code
+		}
 		if s.BatteryID != nil {
 			id := s.BatteryID.String()
 			out[i].BatteryID = &id
