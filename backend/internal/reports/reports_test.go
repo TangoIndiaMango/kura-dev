@@ -241,3 +241,40 @@ func TestWalletTopUpIsNotCountedTwice(t *testing.T) {
 		t.Fatalf("totals: %v", totals)
 	}
 }
+
+func TestRollupBackfillsBackToBackThenSpacesOut(t *testing.T) {
+	c := apitest.New(t)
+	acct := seedPayment(t, c, 1_000)
+	if _, err := c.Pool.Exec(context.Background(), `INSERT INTO finance_payment (id, created_at, updated_at, channel,
+		amount_kobo, vat_kobo, receipt_code, status, purpose, account_id) VALUES (gen_random_uuid(),
+		now() - interval '60 days', now(), 'CARD', 2000, 0, 'RC-OLD', 'SUCCESS', 'SWAP', $1)`, acct); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	runs := 0
+	for {
+		out, err := rollup.Run(ctx, c.Pool, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runs++
+		if out["complete"] == true {
+			break
+		}
+		if runs > 10 {
+			t.Fatalf("backfill never completed: %v", out)
+		}
+	}
+	// 60 days of history in 14-day chunks: done in a handful of immediate
+	// runs, not one chunk per 10 minutes.
+	if runs < 3 {
+		t.Fatalf("expected several backfill runs, got %d", runs)
+	}
+	if n := testkit.Count(t, c.Pool, `SELECT sum(amount_kobo) FROM analytics_dailymoney`); n != 3_000 {
+		t.Fatalf("rollup total %d, want 3000", n)
+	}
+	out, err := rollup.Run(ctx, c.Pool, false)
+	if err != nil || out["skipped"] != "recent" {
+		t.Fatalf("after backfill the next run should wait: %v %v", out, err)
+	}
+}
