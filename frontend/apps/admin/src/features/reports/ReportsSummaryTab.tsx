@@ -128,7 +128,8 @@ export function ReportsSummaryTab() {
   }
   const money = (kobo: number) => <span title={naira(kobo)}>{nairaShort(kobo)}</span>
   const u = data?.utilisation
-  const rate = (n: number | null | undefined) => (n == null ? '—' : n.toFixed(n < 10 ? 1 : 0))
+  // Small test fleets give rates under 1; two decimals keep them from reading as 0.
+  const rate = (n: number | null | undefined) => (n == null ? '—' : n.toFixed(n < 1 ? 2 : n < 10 ? 1 : 0))
   const kpis: AdminKpiCardProps[] =
     t && p
       ? [
