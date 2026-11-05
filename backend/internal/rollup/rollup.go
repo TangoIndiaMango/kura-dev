@@ -6,11 +6,13 @@
 // Each run replaces the most recent days (late payment statuses still land)
 // and then walks backwards through older days in small chunks until it
 // reaches the first payment or swap. Runs are serialised by an advisory lock
-// and spaced out, and they only ever write the rollup tables.
+// and only ever write the rollup tables. The API keeps them current itself
+// (Keep); the worker's "rollups" job does the same where one is deployed.
 package rollup
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -42,8 +44,11 @@ func Day(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, lagos)
 }
 
-// Run refreshes the rollups unless another run holds the lock or the last
-// one was under minGap ago (force skips the gap, for `worker --once`).
+// Run refreshes the rollups. The recent days are rebuilt at most every
+// minGap (force skips the gap, for `worker --once`); while history is still
+// being backfilled, each run also fills the next older chunk, so callers can
+// run back to back until out["complete"] is true. Another run holding the
+// lock makes this one a no-op.
 func Run(ctx context.Context, pool *pgxpool.Pool, force bool) (map[string]any, error) {
 	out := map[string]any{}
 	err := database.InTx(ctx, pool, func(tx pgx.Tx) error {
@@ -61,29 +66,32 @@ func Run(ctx context.Context, pool *pgxpool.Pool, force bool) (map[string]any, e
 			return err
 		}
 		fresh := err == nil
-		if fresh && !force && time.Since(st.LastRunAt) < minGap {
-			out["skipped"] = "recent"
-			return nil
-		}
-
-		today := Day(time.Now())
-		settleFrom := today.AddDate(0, 0, -(SettleDays - 1))
-		if err := fill(ctx, q, settleFrom, today, out); err != nil {
-			return err
-		}
-
-		// Backfill: continue below the oldest day done so far.
-		done := settleFrom
-		if fresh && st.BackfilledFrom.Valid {
-			d := st.BackfilledFrom.Time
-			done = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, lagos)
-		}
 		first, err := q.FirstActivityDay(ctx)
 		if err != nil {
 			return err
 		}
 		floor := Day(first)
-		if to := done.AddDate(0, 0, -1); !to.Before(floor) {
+		today := Day(time.Now())
+		settleFrom := today.AddDate(0, 0, -(SettleDays - 1))
+		// done is the oldest day already rolled up.
+		done := settleFrom
+		if fresh && st.BackfilledFrom.Valid {
+			d := st.BackfilledFrom.Time
+			done = time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, lagos)
+		}
+		backfilling := done.After(floor)
+		settle := !fresh || force || time.Since(st.LastRunAt) >= minGap
+		if !settle && !backfilling {
+			out["skipped"], out["complete"] = "recent", true
+			return nil
+		}
+		if settle {
+			if err := fill(ctx, q, settleFrom, today, out); err != nil {
+				return err
+			}
+		}
+		if backfilling {
+			to := done.AddDate(0, 0, -1)
 			from := to.AddDate(0, 0, -(backfillChunk - 1))
 			if from.Before(floor) {
 				from = floor
@@ -93,10 +101,39 @@ func Run(ctx context.Context, pool *pgxpool.Pool, force bool) (map[string]any, e
 			}
 			done = from
 		}
-		out["backfilled_from"] = done.Format(time.DateOnly)
+		out["backfilled_from"], out["complete"] = done.Format(time.DateOnly), !done.After(floor)
 		return q.SaveRollupState(ctx, db.SaveRollupStateParams{Name: stateName, BackfilledFrom: date(done)})
 	})
 	return out, err
+}
+
+// Keep runs rollups for as long as ctx lives, so reports stay current even
+// where no separate worker is deployed: back to back while history is
+// backfilling, then a check every minute (Run itself spaces real refreshes
+// by minGap, and the advisory lock lets the API and a worker both call it).
+func Keep(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+	wait := time.Duration(0)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+		out, err := Run(ctx, pool, false)
+		switch {
+		case err != nil:
+			log.Error("rollup_failed", "err", err)
+			wait = time.Minute
+		case out["complete"] == false:
+			log.Info("rollup_backfill", "result", out)
+			wait = time.Second
+		default:
+			if out["skipped"] == nil {
+				log.Info("rollup_done", "result", out)
+			}
+			wait = time.Minute
+		}
+	}
 }
 
 // fill replaces [from, to] in every rollup table.

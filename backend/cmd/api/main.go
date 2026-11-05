@@ -16,6 +16,7 @@ import (
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/config"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/database"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/platform/logging"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/rollup"
 )
 
 func main() {
@@ -51,6 +52,10 @@ func run() error {
 		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
+
+	// Report totals stay current even where no worker runs (a worker's
+	// rollup job is safe alongside: only one run holds the lock at a time).
+	go rollup.Keep(ctx, pool, log)
 
 	errs := make(chan error, 1)
 	go func() {
