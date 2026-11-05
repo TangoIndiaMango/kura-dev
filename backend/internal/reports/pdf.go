@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-pdf/fpdf"
-
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/analytics"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/db"
+	"github.com/TangoIndiaMango/kura-dev/backend/internal/export"
 	"github.com/TangoIndiaMango/kura-dev/backend/internal/finance"
 )
 
@@ -37,10 +36,8 @@ func impactPDF(r *http.Request, q *db.Queries, period string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	pdf := fpdf.New("P", "mm", "A4", "")
-	pdf.SetAutoPageBreak(true, 18)
+	pdf := export.NewDoc("P", "Government impact", fmt.Sprintf("Period %v", snap["period"]))
 	pdf.AddPage()
-	pdf.SetMargins(18, 18, 18)
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
 	left, _, right, _ := pdf.GetMargins()
 	pageW, _ := pdf.GetPageSize()
@@ -58,9 +55,6 @@ func impactPDF(r *http.Request, q *db.Queries, period string) ([]byte, error) {
 		pdf.MultiCell(pageW-left-right, 6, tr(ascii(text)), "", "L", false)
 	}
 	grey := []int{91, 107, 117}
-	line("KURA Government Impact", true, 18, 0, 49, 83)
-	line(fmt.Sprintf("Period %v", snap["period"]), false, 11, 90, 107, 117)
-	pdf.Ln(4)
 	fuel, _ := snap["fuel_savings_kobo"].(int64)
 	for _, kv := range [][2]any{{"Operators served", snap["operators_served"]}, {"Swaps", snap["swaps"]},
 		{"Fuel savings", finance.FormatNaira(fuel)}, {"Engines replaced", snap["engines_replaced"]},

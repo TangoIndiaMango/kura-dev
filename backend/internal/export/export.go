@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -83,21 +84,15 @@ func RenderPDF(title string, head []string, rows [][]string, truncated bool) ([]
 }
 
 func renderPDF(title string, head []string, rows [][]string, truncated bool) ([]byte, error) {
-	tr := fpdf.New("L", "mm", "A4", "").UnicodeTranslatorFromDescriptor("")
-	pdf := fpdf.New("L", "mm", "A4", "")
-	pdf.SetAutoPageBreak(true, 12)
-	pdf.AddPage()
-	pdf.SetFont("Helvetica", "B", 14)
-	pdf.CellFormat(0, 8, tr(title), "", 1, "L", false, 0, "")
-	pdf.SetFont("Helvetica", "", 8)
 	count := len(rows)
-	note := ""
+	sub := ""
 	if truncated {
 		count--
-		note = " (truncated - open CSV for full set)"
+		sub = " · first rows only, open the CSV for the full set"
 	}
-	pdf.CellFormat(0, 5, fmt.Sprintf("%d rows%s", count, note), "", 1, "L", false, 0, "")
-	pdf.Ln(2)
+	pdf := NewDoc("L", DocTitle(title), fmt.Sprintf("%s rows%s", thousands(count), sub))
+	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	pdf.AddPage()
 	drawTable(pdf, tr, head, rows)
 
 	var buf bytes.Buffer
@@ -107,47 +102,104 @@ func renderPDF(title string, head []string, rows [][]string, truncated bool) ([]
 	return buf.Bytes(), nil
 }
 
-// drawTable: dark header row repeated on each page, zebra body rows.
+// drawTable: navy header row repeated on each page, zebra body rows with
+// hairline borders, in the brand colours. Columns are sized to their
+// content and number columns are right-aligned.
 func drawTable(pdf *fpdf.Fpdf, tr func(string) string, head []string, rows [][]string) {
-	pageW, _ := pdf.GetPageSize()
-	left, _, right, _ := pdf.GetMargins()
-	colW := (pageW - left - right) / float64(max(len(head), 1))
+	pdf.SetDrawColor(brandLine.r, brandLine.g, brandLine.b)
+	pdf.SetLineWidth(0.15)
+	widths, numeric := columns(pdf, head, rows)
+	_, pageH := pdf.GetPageSize()
 	header := func() {
-		pdf.SetFont("Helvetica", "B", 8)
-		pdf.SetFillColor(30, 41, 59)
+		pdf.SetFont("Helvetica", "B", 7.5)
+		setFill(pdf, brandNavy)
 		pdf.SetTextColor(255, 255, 255)
-		for _, h := range head {
-			pdf.CellFormat(colW, 6, tr(fit(pdf, h, colW)), "", 0, "L", true, 0, "")
+		for j, h := range head {
+			pdf.CellFormat(widths[j], 7, tr(fit(pdf, strings.ToUpper(h), widths[j])), "", 0, align(numeric[j]), true, 0, "")
 		}
 		pdf.Ln(-1)
 		pdf.SetFont("Helvetica", "", 8)
-		pdf.SetTextColor(0, 0, 0)
+		setText(pdf, brandInk)
 	}
 	header()
-	_, pageH := pdf.GetPageSize()
 	for i, row := range rows {
-		if pdf.GetY()+5 > pageH-12 {
+		if pdf.GetY()+6 > pageH-footerMargin {
 			pdf.AddPage()
 			header()
 		}
-		pdf.SetFillColor(245, 247, 250)
+		setFill(pdf, brandZebra)
 		for j := range head {
 			cell := ""
 			if j < len(row) {
 				cell = row[j]
 			}
-			pdf.CellFormat(colW, 5, tr(fit(pdf, cell, colW)), "B", 0, "L", i%2 == 1, 0, "")
+			pdf.CellFormat(widths[j], 6, tr(fit(pdf, cell, widths[j])), "B", 0, align(numeric[j]), i%2 == 1, 0, "")
 		}
 		pdf.Ln(-1)
 	}
 }
 
-// fit trims text that would overflow its column.
-func fit(pdf *fpdf.Fpdf, s string, width float64) string {
-	for len(s) > 1 && pdf.GetStringWidth(s) > width-2 {
-		s = s[:len(s)-1]
+// columns sizes each column to its header and typical (90th percentile)
+// cell over the first rows, then scales the set to the printable width.
+// A column is numeric when every non-empty sampled cell parses as a number.
+func columns(pdf *fpdf.Fpdf, head []string, rows [][]string) ([]float64, []bool) {
+	pageW, _ := pdf.GetPageSize()
+	left, _, right, _ := pdf.GetMargins()
+	avail := pageW - left - right
+	sample := rows[:min(len(rows), 300)]
+	widths, numeric := make([]float64, len(head)), make([]bool, len(head))
+	total := 0.0
+	for j, h := range head {
+		pdf.SetFont("Helvetica", "B", 7.5)
+		hw := pdf.GetStringWidth(strings.ToUpper(h))
+		pdf.SetFont("Helvetica", "", 8)
+		var cells []float64
+		numeric[j] = true
+		seen := false
+		for _, row := range sample {
+			if j >= len(row) || row[j] == "" {
+				continue
+			}
+			seen = true
+			cells = append(cells, pdf.GetStringWidth(row[j]))
+			if _, err := strconv.ParseFloat(strings.ReplaceAll(row[j], ",", ""), 64); err != nil {
+				numeric[j] = false
+			}
+		}
+		numeric[j] = numeric[j] && seen
+		sort.Float64s(cells)
+		cw := 0.0
+		if len(cells) > 0 {
+			cw = cells[min(len(cells)-1, len(cells)*9/10)]
+		}
+		// At least the header, never wider than half a page.
+		widths[j] = min(max(hw, cw, 10)+4, avail/2)
+		total += widths[j]
 	}
-	return s
+	for j := range widths {
+		widths[j] *= avail / total
+	}
+	return widths, numeric
+}
+
+func align(numeric bool) string {
+	if numeric {
+		return "R"
+	}
+	return "L"
+}
+
+// fit trims text that would overflow its column, ending it with "…".
+func fit(pdf *fpdf.Fpdf, s string, width float64) string {
+	if pdf.GetStringWidth(s) <= width-2 {
+		return s
+	}
+	// Trim by rune so names with accents never break mid-character.
+	r := []rune(s)
+	for len(r) > 1 && pdf.GetStringWidth(string(r)+"…") > width-2 {
+		r = r[:len(r)-1]
+	}
+	return strings.TrimRight(string(r), " ") + "…"
 }
 
 func headers(w http.ResponseWriter, filename, contentType string, rows [][]string, truncated bool) {
