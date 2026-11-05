@@ -9,6 +9,7 @@ WHERE (sqlc.arg(all_rows)::bool OR b.current_hub_id = ANY(sqlc.arg(scope_ids)::u
   AND (sqlc.narg(status)::text IS NULL OR b.status = sqlc.narg(status))
   AND (sqlc.narg(battery_type)::uuid IS NULL OR b.battery_type_id = sqlc.narg(battery_type))
   AND (sqlc.narg(hub)::uuid IS NULL OR b.current_hub_id = sqlc.narg(hub))
+  AND (sqlc.narg(custodian)::text IS NULL OR b.custodian_type = sqlc.narg(custodian))
   AND (sqlc.narg(q)::text IS NULL OR b.serial ILIKE '%' || sqlc.narg(q) || '%' OR t.name ILIKE '%' || sqlc.narg(q) || '%'
        OR h.code ILIKE '%' || sqlc.narg(q) || '%' OR h.name ILIKE '%' || sqlc.narg(q) || '%')
 ORDER BY CASE WHEN sqlc.arg(ord)::text = 'serial' THEN b.serial END,
@@ -32,6 +33,7 @@ WHERE (sqlc.arg(all_rows)::bool OR b.current_hub_id = ANY(sqlc.arg(scope_ids)::u
   AND (sqlc.narg(status)::text IS NULL OR b.status = sqlc.narg(status))
   AND (sqlc.narg(battery_type)::uuid IS NULL OR b.battery_type_id = sqlc.narg(battery_type))
   AND (sqlc.narg(hub)::uuid IS NULL OR b.current_hub_id = sqlc.narg(hub))
+  AND (sqlc.narg(custodian)::text IS NULL OR b.custodian_type = sqlc.narg(custodian))
   AND (sqlc.narg(q)::text IS NULL OR b.serial ILIKE '%' || sqlc.narg(q) || '%' OR t.name ILIKE '%' || sqlc.narg(q) || '%'
        OR h.code ILIKE '%' || sqlc.narg(q) || '%' OR h.name ILIKE '%' || sqlc.narg(q) || '%');
 
@@ -116,3 +118,17 @@ VALUES ($1, clock_timestamp(), clock_timestamp(), $2, $3, $4, $5, $6, $7, $8, $9
 
 -- name: HubExists :one
 SELECT EXISTS (SELECT 1 FROM mobility_hub WHERE id = $1);
+
+-- name: FreeSlotForUpdate :one
+-- First empty bay at a hub, locked so two packs received at once never share it.
+SELECT * FROM mobility_hubslot WHERE hub_id = $1 AND battery_id IS NULL
+ORDER BY slot_no LIMIT 1 FOR UPDATE SKIP LOCKED;
+
+-- name: HubSlotByNoForUpdate :one
+SELECT * FROM mobility_hubslot WHERE hub_id = $1 AND slot_no = $2 FOR UPDATE;
+
+-- name: SetSlotStateForBattery :exec
+UPDATE mobility_hubslot SET state = $2, updated_at = now() WHERE battery_id = $1;
+
+-- name: BatteryStatusOf :one
+SELECT status FROM mobility_battery WHERE id = $1;

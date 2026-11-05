@@ -331,6 +331,17 @@ func (q *Queries) BatteryStatusCounts(ctx context.Context, arg BatteryStatusCoun
 	return items, nil
 }
 
+const batteryStatusOf = `-- name: BatteryStatusOf :one
+SELECT status FROM mobility_battery WHERE id = $1
+`
+
+func (q *Queries) BatteryStatusOf(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, batteryStatusOf, id)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
 const batteryTypeCounts = `-- name: BatteryTypeCounts :many
 SELECT t.name, count(b.id)::int AS n, count(b.id) FILTER (WHERE b.status = 'AVAILABLE')::int AS available
 FROM mobility_battery b JOIN mobility_batterytype t ON t.id = b.battery_type_id
@@ -388,8 +399,9 @@ WHERE ($1::bool OR b.current_hub_id = ANY($2::uuid[])
   AND ($3::text IS NULL OR b.status = $3)
   AND ($4::uuid IS NULL OR b.battery_type_id = $4)
   AND ($5::uuid IS NULL OR b.current_hub_id = $5)
-  AND ($6::text IS NULL OR b.serial ILIKE '%' || $6 || '%' OR t.name ILIKE '%' || $6 || '%'
-       OR h.code ILIKE '%' || $6 || '%' OR h.name ILIKE '%' || $6 || '%')
+  AND ($6::text IS NULL OR b.custodian_type = $6)
+  AND ($7::text IS NULL OR b.serial ILIKE '%' || $7 || '%' OR t.name ILIKE '%' || $7 || '%'
+       OR h.code ILIKE '%' || $7 || '%' OR h.name ILIKE '%' || $7 || '%')
 `
 
 type CountBatteriesParams struct {
@@ -398,6 +410,7 @@ type CountBatteriesParams struct {
 	Status      *string
 	BatteryType *uuid.UUID
 	Hub         *uuid.UUID
+	Custodian   *string
 	Q           *string
 }
 
@@ -408,11 +421,33 @@ func (q *Queries) CountBatteries(ctx context.Context, arg CountBatteriesParams) 
 		arg.Status,
 		arg.BatteryType,
 		arg.Hub,
+		arg.Custodian,
 		arg.Q,
 	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const freeSlotForUpdate = `-- name: FreeSlotForUpdate :one
+SELECT id, created_at, updated_at, slot_no, state, battery_id, hub_id FROM mobility_hubslot WHERE hub_id = $1 AND battery_id IS NULL
+ORDER BY slot_no LIMIT 1 FOR UPDATE SKIP LOCKED
+`
+
+// First empty bay at a hub, locked so two packs received at once never share it.
+func (q *Queries) FreeSlotForUpdate(ctx context.Context, hubID uuid.UUID) (MobilityHubslot, error) {
+	row := q.db.QueryRow(ctx, freeSlotForUpdate, hubID)
+	var i MobilityHubslot
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SlotNo,
+		&i.State,
+		&i.BatteryID,
+		&i.HubID,
+	)
+	return i, err
 }
 
 const hubExists = `-- name: HubExists :one
@@ -424,6 +459,30 @@ func (q *Queries) HubExists(ctx context.Context, id uuid.UUID) (bool, error) {
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const hubSlotByNoForUpdate = `-- name: HubSlotByNoForUpdate :one
+SELECT id, created_at, updated_at, slot_no, state, battery_id, hub_id FROM mobility_hubslot WHERE hub_id = $1 AND slot_no = $2 FOR UPDATE
+`
+
+type HubSlotByNoForUpdateParams struct {
+	HubID  uuid.UUID
+	SlotNo int32
+}
+
+func (q *Queries) HubSlotByNoForUpdate(ctx context.Context, arg HubSlotByNoForUpdateParams) (MobilityHubslot, error) {
+	row := q.db.QueryRow(ctx, hubSlotByNoForUpdate, arg.HubID, arg.SlotNo)
+	var i MobilityHubslot
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SlotNo,
+		&i.State,
+		&i.BatteryID,
+		&i.HubID,
+	)
+	return i, err
 }
 
 const insertBattery = `-- name: InsertBattery :exec
@@ -526,19 +585,20 @@ WHERE ($1::bool OR b.current_hub_id = ANY($2::uuid[])
   AND ($3::text IS NULL OR b.status = $3)
   AND ($4::uuid IS NULL OR b.battery_type_id = $4)
   AND ($5::uuid IS NULL OR b.current_hub_id = $5)
-  AND ($6::text IS NULL OR b.serial ILIKE '%' || $6 || '%' OR t.name ILIKE '%' || $6 || '%'
-       OR h.code ILIKE '%' || $6 || '%' OR h.name ILIKE '%' || $6 || '%')
-ORDER BY CASE WHEN $7::text = 'serial' THEN b.serial END,
-  CASE WHEN $7::text = '-serial' THEN b.serial END DESC,
-  CASE WHEN $7::text = 'status' THEN b.status END,
-  CASE WHEN $7::text = '-status' THEN b.status END DESC,
-  CASE WHEN $7::text = 'charge_pct' THEN b.charge_pct END,
-  CASE WHEN $7::text = '-charge_pct' THEN b.charge_pct END DESC,
-  CASE WHEN $7::text = 'health_pct' THEN b.health_pct END,
-  CASE WHEN $7::text = '-health_pct' THEN b.health_pct END DESC,
-  CASE WHEN $7::text = 'created_at' THEN b.created_at END,
+  AND ($6::text IS NULL OR b.custodian_type = $6)
+  AND ($7::text IS NULL OR b.serial ILIKE '%' || $7 || '%' OR t.name ILIKE '%' || $7 || '%'
+       OR h.code ILIKE '%' || $7 || '%' OR h.name ILIKE '%' || $7 || '%')
+ORDER BY CASE WHEN $8::text = 'serial' THEN b.serial END,
+  CASE WHEN $8::text = '-serial' THEN b.serial END DESC,
+  CASE WHEN $8::text = 'status' THEN b.status END,
+  CASE WHEN $8::text = '-status' THEN b.status END DESC,
+  CASE WHEN $8::text = 'charge_pct' THEN b.charge_pct END,
+  CASE WHEN $8::text = '-charge_pct' THEN b.charge_pct END DESC,
+  CASE WHEN $8::text = 'health_pct' THEN b.health_pct END,
+  CASE WHEN $8::text = '-health_pct' THEN b.health_pct END DESC,
+  CASE WHEN $8::text = 'created_at' THEN b.created_at END,
   b.created_at DESC
-LIMIT $9 OFFSET $8
+LIMIT $10 OFFSET $9
 `
 
 type ListBatteryIDsParams struct {
@@ -547,6 +607,7 @@ type ListBatteryIDsParams struct {
 	Status      *string
 	BatteryType *uuid.UUID
 	Hub         *uuid.UUID
+	Custodian   *string
 	Q           *string
 	Ord         string
 	Off         int32
@@ -561,6 +622,7 @@ func (q *Queries) ListBatteryIDs(ctx context.Context, arg ListBatteryIDsParams) 
 		arg.Status,
 		arg.BatteryType,
 		arg.Hub,
+		arg.Custodian,
 		arg.Q,
 		arg.Ord,
 		arg.Off,
@@ -658,4 +720,18 @@ func (q *Queries) SerialTaken(ctx context.Context, arg SerialTakenParams) (bool,
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const setSlotStateForBattery = `-- name: SetSlotStateForBattery :exec
+UPDATE mobility_hubslot SET state = $2, updated_at = now() WHERE battery_id = $1
+`
+
+type SetSlotStateForBatteryParams struct {
+	BatteryID *uuid.UUID
+	State     string
+}
+
+func (q *Queries) SetSlotStateForBattery(ctx context.Context, arg SetSlotStateForBatteryParams) error {
+	_, err := q.db.Exec(ctx, setSlotStateForBattery, arg.BatteryID, arg.State)
+	return err
 }

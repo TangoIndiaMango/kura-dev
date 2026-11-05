@@ -10,6 +10,7 @@ import { buildBayBoardCardsFromSlots } from './hubBayBoardModel'
 import { stationExtrasForDetail, type HubAction } from './hubDetailHelpers'
 import { useHubStationAgents } from './HubStationAgents'
 import { HubBayStatusGrid } from './HubBayStatusGrid'
+import { HubBatteriesTab } from './HubBatteriesTab'
 import { HubStationOverview, HubStatusBanner } from './HubStationOverview'
 import {
   HubCollectionsPanel,
@@ -183,11 +184,18 @@ export function HubsDetailPanel({ id }: { id: string }) {
                 <HubEnergyThroughputCockpit hub={hub} slots={slots} extras={extras} />
                 <HubBayStatusGrid
                   hubId={hub.id}
+                  hubName={hub.name}
+                  slots={slots}
                   boardCards={boardCards}
                   subtitle="Live slot states"
                 />
               </div>
             ),
+          },
+          {
+            id: 'batteries',
+            label: 'Batteries',
+            content: <HubBatteriesTab hubId={hub.id} enabled={tab === 'batteries'} />,
           },
           {
             id: 'agents',

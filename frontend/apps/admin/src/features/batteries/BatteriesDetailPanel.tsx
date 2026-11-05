@@ -38,6 +38,7 @@ import {
   batteryStatusLabel,
 } from './types'
 import { useUrlTab } from '@shared/hooks/useUrlTab'
+import { usePackBayActions } from '../hubs/bay/usePackBayActions'
 
 export function BatteriesDetailPanel({ id }: { id: string }) {
   const navigate = useNavigate()
@@ -69,6 +70,7 @@ export function BatteriesDetailPanel({ id }: { id: string }) {
   const retireBattery = useRetireBattery(id)
   const setStatus = useSetBatteryStatus(id)
   const { hubs } = useHubs({ page_size: 100 }, { enabled: transferOpen })
+  const bayWork = usePackBayActions(battery)
 
   const hubOptions = useMemo(
     () =>
@@ -114,7 +116,7 @@ export function BatteriesDetailPanel({ id }: { id: string }) {
     refetchLabel()
   }
 
-  const actions = batteryDetailActions({
+  const actions = [...bayWork.actions, ...batteryDetailActions({
     battery,
     canManage,
     onEdit: () => navigate(`/batteries/${battery.id}/edit`),
@@ -124,7 +126,7 @@ export function BatteriesDetailPanel({ id }: { id: string }) {
     onFlag: () => setPending('flag'),
     onSetActive: () => setPending('activate'),
     onRetire: () => setPending('retire'),
-  })
+  })]
 
   return (
     <>
@@ -195,6 +197,7 @@ export function BatteriesDetailPanel({ id }: { id: string }) {
         />
       </AdminDetailPage>
 
+      {bayWork.modals}
       <BatteryTransferModal
         opened={transferOpen}
         onClose={() => setTransferOpen(false)}

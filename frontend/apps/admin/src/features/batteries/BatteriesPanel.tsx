@@ -10,12 +10,14 @@ import { AdminDonutChart, ADMIN_CHART_COLORS } from '@shared/components/charts'
 import { Button, Progress } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { PlusSignIcon } from 'hugeicons-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiErrorMessage } from '@lib/api/auth'
 import { downloadExportFromApi } from '@shared/utils/downloadCsvFromApi'
 import { buildPagePagination } from '@shared/utils/cursor-pagination'
 import { useCapabilities } from '../auth/useCapabilities'
+import { useHubs } from '../hubs/hooks/use-hubs'
+import { LOCATION_OPTIONS } from '../hubs/bay/bayFormat'
 import {
   BATTERY_HEADERS,
   STATUS_OPTIONS,
@@ -38,19 +40,45 @@ export function BatteriesPanel() {
   const { can } = useCapabilities()
   const [exporting, setExporting] = useState(false)
 
+  // Filter by hub ("which packs belong to this hub") and by where the pack is.
+  const { hubs } = useHubs({ page_size: 200 })
+  const extraFilterFields = useMemo(
+    () => [
+      {
+        type: 'select' as const,
+        key: 'hub',
+        label: 'Hub',
+        placeholder: 'Any hub',
+        options: hubs.map((h) => ({ value: h.id, label: h.name })),
+      },
+      {
+        type: 'select' as const,
+        key: 'custodian',
+        label: 'Where',
+        placeholder: 'Anywhere',
+        options: LOCATION_OPTIONS,
+      },
+    ],
+    [hubs],
+  )
   const controls = useAdminModuleControls({
     scope: 'batteries',
     statusOptions: STATUS_OPTIONS,
     filterTitle: 'Filter batteries',
     showDateRange: false,
     includeDateRangeInFilter: false,
+    extraFilterFields,
   })
 
   const statusFilter = controls.getFilter('status')
+  const hubFilter = controls.getFilter('hub')
+  const whereFilter = controls.getFilter('custodian')
 
   const listFilters = {
     ...(controls.search ? { search: controls.search } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
+    ...(hubFilter ? { current_hub: hubFilter } : {}),
+    ...(whereFilter ? { custodian: whereFilter } : {}),
   }
 
   const { batteries, isPending, isError, isPlaceholderData, totalPages } =
@@ -58,6 +86,8 @@ export function BatteriesPanel() {
       {
         search: controls.search || undefined,
         status: statusFilter,
+        current_hub: hubFilter,
+        custodian: whereFilter,
         page: controls.page,
         page_size: controls.pageSize,
       },

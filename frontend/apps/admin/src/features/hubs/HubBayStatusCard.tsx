@@ -62,13 +62,18 @@ export function HubBayStatusCard({
               <p className="truncate text-[12.5px] font-semibold text-[var(--tx)]">
                 {card.sohLabel}
               </p>
-              <span className="inline-block rounded-[6px] bg-[var(--ta)] px-2 py-0.5 text-[10px] font-bold text-[#C47D0E]">
-                PIN {card.reserved.code}
-              </span>
+              {card.reserved.code ? (
+                <span className="inline-block rounded-[6px] bg-[var(--ta)] px-2 py-0.5 text-[10px] font-bold text-[#C47D0E]">
+                  {card.reserved.code}
+                </span>
+              ) : null}
             </div>
           ) : (
             <div className="mt-2 space-y-1 text-[12px] text-[var(--mu)]">
               {card.sohLabel ? <div className="truncate">{card.sohLabel}</div> : null}
+              {card.stale ? (
+                <div className="font-semibold text-[#E67E22]">Reading is old · check it</div>
+              ) : null}
               {card.tempLabel ? <div className="tabular-nums">{card.tempLabel}</div> : null}
             </div>
           )}

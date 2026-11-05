@@ -91,6 +91,7 @@ type Querier interface {
 	BatteryRows(ctx context.Context, ids []uuid.UUID) ([]BatteryRowsRow, error)
 	BatterySlot(ctx context.Context, batteryID *uuid.UUID) (MobilityHubslot, error)
 	BatteryStatusCounts(ctx context.Context, arg BatteryStatusCountsParams) ([]BatteryStatusCountsRow, error)
+	BatteryStatusOf(ctx context.Context, id uuid.UUID) (string, error)
 	BatteryTypeByID(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
 	BatteryTypeCounts(ctx context.Context, arg BatteryTypeCountsParams) ([]BatteryTypeCountsRow, error)
 	BatteryTypeForUpdate(ctx context.Context, id uuid.UUID) (MobilityBatterytype, error)
@@ -269,6 +270,8 @@ type Querier interface {
 	FirstOwnedAccount(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	FirstOwnedAccountForUpdate(ctx context.Context, ownerUserID uuid.UUID) (AccountsAccount, error)
 	FleetCsvRows(ctx context.Context, arg FleetCsvRowsParams) ([]FleetCsvRowsRow, error)
+	// First empty bay at a hub, locked so two packs received at once never share it.
+	FreeSlotForUpdate(ctx context.Context, hubID uuid.UUID) (MobilityHubslot, error)
 	GetCooperative(ctx context.Context, id uuid.UUID) (GetCooperativeRow, error)
 	GetDriverRow(ctx context.Context, id uuid.UUID) (GetDriverRowRow, error)
 	GetPermission(ctx context.Context, id uuid.UUID) (GetPermissionRow, error)
@@ -293,7 +296,10 @@ type Querier interface {
 	HubRow(ctx context.Context, id uuid.UUID) (MobilityHub, error)
 	// Hub columns plus slot state counts (hubs_with_slot_counts annotations).
 	HubRows(ctx context.Context, ids []uuid.UUID) ([]HubRowsRow, error)
+	HubSlotByNoForUpdate(ctx context.Context, arg HubSlotByNoForUpdateParams) (MobilityHubslot, error)
 	HubSlotNumbers(ctx context.Context, hubID uuid.UUID) ([]int32, error)
+	// The bay board: each bay, its pack, the pack's own status and last charge
+	// reading, and the booking holding it (if reserved).
 	HubSlotRows(ctx context.Context, hubID uuid.UUID) ([]HubSlotRowsRow, error)
 	HubSlotStateCounts(ctx context.Context, hubID uuid.UUID) (HubSlotStateCountsRow, error)
 	HubSlotStates(ctx context.Context, hubID uuid.UUID) ([]HubSlotStatesRow, error)
@@ -679,6 +685,7 @@ type Querier interface {
 	SetPinFailure(ctx context.Context, arg SetPinFailureParams) error
 	SetPspEventStatus(ctx context.Context, arg SetPspEventStatusParams) error
 	SetSlot(ctx context.Context, arg SetSlotParams) error
+	SetSlotStateForBattery(ctx context.Context, arg SetSlotStateForBatteryParams) error
 	SetSwapPaymentMode(ctx context.Context, arg SetSwapPaymentModeParams) error
 	SetUserNamesStep(ctx context.Context, arg SetUserNamesStepParams) error
 	SetUserOnboardingStep(ctx context.Context, arg SetUserOnboardingStepParams) error

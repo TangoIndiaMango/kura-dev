@@ -48,6 +48,14 @@ export type HubSlotApi = {
   battery_id: string | null
   battery_serial: string | null
   battery_charge_pct: number | null
+  /** The pack's own status (AVAILABLE, RESERVED, CHARGING, …). */
+  battery_status: string | null
+  battery_type: string | null
+  /** Who gave the last reading: staff (MANUAL) or a charger (BMS). */
+  charge_source: 'MANUAL' | 'BMS' | string | null
+  charge_observed_at: string | null
+  /** Booking holding this pack, when reserved. */
+  reservation_code: string | null
 }
 
 export type HubStats = {

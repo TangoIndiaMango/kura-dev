@@ -32,6 +32,10 @@ export type BatteryListApi = {
   hub_code: string | null
   hub_name: string | null
   custodian_type: string
+  /** MANUAL (staff) or BMS (charger). */
+  charge_source?: string
+  /** When the charge was last read; null = never. */
+  charge_observed_at?: string | null
   created_at: string
 }
 
@@ -161,14 +165,23 @@ export function batteryStatusLabel(status: BatteryStatus): string {
   }
 }
 
+const WHERE_AT_HUB: Record<string, string> = {
+  HUB_SLOT: 'In a bay',
+  TRANSIT: 'Waiting at hub',
+  WORKSHOP: 'Workshop',
+}
+
 export function batteryLocationLabel(b: {
   status: BatteryStatus
   hub_name: string | null
   hub_code: string | null
   vehicle_id?: string | null
+  custodian_type?: string | null
 }): string {
   if (b.status === 'ISSUED' && b.vehicle_id) return `Vehicle · ${b.vehicle_id.slice(0, 8)}`
-  if (b.hub_name) return b.hub_name
-  if (b.hub_code) return b.hub_code
+  if (b.custodian_type === 'VEHICLE') return 'On a vehicle'
+  const hub = b.hub_name ?? b.hub_code
+  const where = b.custodian_type ? WHERE_AT_HUB[b.custodian_type] : undefined
+  if (hub) return where ? `${hub} · ${where}` : hub
   return 'Unassigned'
 }

@@ -166,6 +166,9 @@ func (h *BatteryHandler) faultTx(ctx context.Context, id uuid.UUID, note string)
 		if err := saveBattery(ctx, q, b); err != nil {
 			return err
 		}
+		if err := syncSlot(ctx, q, b); err != nil { // the bay it sat in is free again
+			return err
+		}
 		if err := recordBatteryEvent(ctx, q, b, custodyEvent{Event: "FAULT", Actor: actorID(who), FromSet: true,
 			FromType: fromType, FromID: fromID, ToType: b.CustodianType, ToID: b.CustodianID,
 			Meta: map[string]any{"note": note}}); err != nil {
@@ -184,6 +187,9 @@ func (h *BatteryHandler) foundTx(ctx context.Context, id uuid.UUID, note string)
 		before := batterySnap(b, false)
 		b.Status = "AVAILABLE"
 		if err := saveBattery(ctx, q, b); err != nil {
+			return err
+		}
+		if err := syncSlot(ctx, q, b); err != nil {
 			return err
 		}
 		if err := recordBatteryEvent(ctx, q, b, custodyEvent{Event: "FOUND", Actor: actorID(who),
@@ -239,30 +245,6 @@ func (h *BatteryHandler) toTerminal(ctx context.Context, q *db.Queries, b db.Mob
 		return err
 	}
 	return emitAction(ctx, q, who, b, before, action, note, true, nil)
-}
-
-// adminStatusTx is BatteryService._admin_status (CHARGING / AVAILABLE / UNAVAILABLE).
-func (h *BatteryHandler) adminStatusTx(ctx context.Context, id uuid.UUID, status, note string) error {
-	return h.custodyTx(ctx, id, func(q *db.Queries, b db.MobilityBattery, who *events.Actor) error {
-		if swapOnly[b.Status] || b.Status == "RETIRED" {
-			return apperr.Conflict("CONFLICT", "Cannot set "+status+" from "+b.Status+".")
-		}
-		before := batterySnap(b, true)
-		if status == "UNAVAILABLE" {
-			if err := q.ClearSlotOfBattery(ctx, &b.ID); err != nil {
-				return err
-			}
-		}
-		b.Status = status
-		if err := saveBattery(ctx, q, b); err != nil {
-			return err
-		}
-		if err := recordBatteryEvent(ctx, q, b, custodyEvent{Event: "TRIAGED", Actor: actorID(who),
-			Meta: map[string]any{"status": status, "note": note}}); err != nil {
-			return err
-		}
-		return emitService(ctx, q, who, b, before, "battery.status_changed", status)
-	})
 }
 
 // setStatus is BatteryService.set_status: routes the legacy status endpoint
